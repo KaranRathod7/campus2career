@@ -1,0 +1,56 @@
+1.
+s = input("Enter string with spaces: ")
+# Manual strip
+while s and s[0] == ' ':
+    s = s[1:]
+while s and s[-1] == ' ':
+    s = s[:-1]
+print("Trimmed:", s)
+
+2.
+s = input("Enter sentence: ")
+words = s.split()
+longest = ""
+max_len = 0
+for word in words:
+    if len(word) > max_len:
+        max_len = len(word)
+        longest = word
+print("Longest word:", longest)
+
+3.
+s = input("Enter string: ").lower()
+vowels = "aeiou"
+count = 0
+for char in s:
+    if char in vowels:
+        count += 1
+print("Vowels count:", count)
+
+
+
+s = input("Enter string: ")
+reversed_s = ""
+for i in range(len(s)-1, -1, -1):
+    reversed_s += s[i]
+print("Reversed:", reversed_s)
+
+
+
+s = input("Enter string: ").lower().replace(" ", "")
+is_pal = True
+for i in range(len(s)//2):
+    if s[i] != s[-(i+1)]:
+        is_pal = False
+        break
+print("Palindrome:", is_pal)
+
+
+
+
+s1 = input("First string: ").lower().replace(" ", "")
+s2 = input("Second string: ").lower().replace(" ", "")
+if sorted(s1) == sorted(s2):
+    print("Anagrams")
+else:
+    print("Not anagrams")

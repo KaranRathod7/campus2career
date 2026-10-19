@@ -1,0 +1,348 @@
+{
+  "users": [
+    {
+      "id": "admin-uuid-1",
+      "name": "Platform Administrator",
+      "email": "admin@campus2career.org",
+      "password_hash": "$2b$10$x0AgxdV8b/d7IS1zrd9wnO8NEI.jSOrzt9RPjRswqzvNioAbkL9Da",
+      "role": "admin",
+      "is_verified": true,
+      "stream": "ALL"
+    },
+    {
+      "id": "usr-1792429659906",
+      "name": "Rohan Test",
+      "email": "rohan.test@btech.ac.in",
+      "password_hash": "$2b$10$VPr77Z5aphflupuqT6Wqh.ZxLiODQtmzBH3zQz6EEHv7Mafb3XAly",
+      "role": "learner",
+      "stream": "ECE",
+      "is_verified": true,
+      "created_at": "2026-10-19T17:07:39.907Z"
+    }
+  ],
+  "login_attempts": {
+    "192.168.1.100_admin@campus2career.org": {
+      "failed_attempts": 5,
+      "locked_until": "2026-10-19T17:12:28.958Z",
+      "updated_at": "2026-10-19T17:07:28.958Z"
+    },
+    "::ffff:127.0.0.1_attacker@suspicious.net": {
+      "failed_attempts": 5,
+      "locked_until": "2026-10-19T17:40:17.916Z",
+      "updated_at": "2026-10-19T17:35:17.916Z"
+    }
+  },
+  "pending_verifications": [],
+  "candidates": [
+    {
+      "id": "cand-1",
+      "name": "Aman Patel",
+      "email": "aman.patel@engineering.edu",
+      "stream": "IT",
+      "domain": "Full-Stack & Microservices",
+      "experience_level": "Fresher (0-1 yr)",
+      "skill_score": 94,
+      "skills": [
+        "TypeScript",
+        "Next.js",
+        "PostgreSQL",
+        "Docker"
+      ],
+      "capstone_proof": "Microservice-based Event Streaming Engine with Kafka and PostgreSQL outbox pattern. Benchmarked at 12,000 req/sec."
+    },
+    {
+      "id": "cand-2",
+      "name": "Priya Sharma",
+      "email": "priya.sharma@systems.edu",
+      "stream": "CSE",
+      "domain": "Distributed Systems",
+      "experience_level": "Fresher (0-1 yr)",
+      "skill_score": 96,
+      "skills": [
+        "Go",
+        "Raft Consensus",
+        "Redis Redlock",
+        "PostgreSQL"
+      ],
+      "capstone_proof": "Fault-tolerant key-value store implementing Raft consensus in Go with linearizable reads and cluster heartbeat failover."
+    },
+    {
+      "id": "cand-3",
+      "name": "Rohan Verma",
+      "email": "rohan.verma@embedded.edu",
+      "stream": "ECE",
+      "domain": "Embedded Firmware & RTOS",
+      "experience_level": "Fresher (0-1 yr)",
+      "skill_score": 92,
+      "skills": [
+        "ARM Cortex-M",
+        "FreeRTOS",
+        "Bare-metal STM32",
+        "C/C++"
+      ],
+      "capstone_proof": "Bare-metal STM32 register driver with DMA and FreeRTOS task notification queues with logic analyzer decodes."
+    },
+    {
+      "id": "cand-4",
+      "name": "Neha Kulkarni",
+      "email": "neha.kulkarni@design.edu",
+      "stream": "ME",
+      "domain": "CAD / Product Design",
+      "experience_level": "1-2 yrs",
+      "skill_score": 91,
+      "skills": [
+        "SolidWorks",
+        "ANSYS Mechanical",
+        "GD&T",
+        "DFM"
+      ],
+      "capstone_proof": "Structural FEA optimization and thermal fatigue analysis for EV Battery Thermal Enclosures in SolidWorks and ANSYS."
+    },
+    {
+      "id": "cand-5",
+      "name": "Devang Mehta",
+      "email": "devang.mehta@ai.edu",
+      "stream": "AIDS",
+      "domain": "GenAI & RAG Systems",
+      "experience_level": "Fresher (0-1 yr)",
+      "skill_score": 95,
+      "skills": [
+        "Python",
+        "PyTorch",
+        "FastAPI",
+        "pgvector"
+      ],
+      "capstone_proof": "Hybrid dense-sparse retrieval RAG system with sub-50ms latency using pgvector and FlashAttention kernels."
+    },
+    {
+      "id": "cand-6",
+      "name": "Sneha Joshi",
+      "email": "sneha.joshi@cloud.edu",
+      "stream": "CSE",
+      "domain": "Cloud Infrastructure",
+      "experience_level": "1-2 yrs",
+      "skill_score": 93,
+      "skills": [
+        "Kubernetes",
+        "Terraform",
+        "AWS",
+        "Linux Kernel Profiling"
+      ],
+      "capstone_proof": "Multi-region Kubernetes ingress mesh with automated eBPF observability and zero-downtime rolling canary deployments."
+    },
+    {
+      "id": "cand-7",
+      "name": "Aniket Shah",
+      "email": "aniket.shah@data.edu",
+      "stream": "IT",
+      "domain": "Database Engineering",
+      "experience_level": "Fresher (0-1 yr)",
+      "skill_score": 92,
+      "skills": [
+        "PostgreSQL Internal Buffers",
+        "B-Tree Tuning",
+        "WAL Replication"
+      ],
+      "capstone_proof": "Custom WAL parsing streaming replicator with B-Tree index fragmentation benchmark suite and buffer cache optimization."
+    }
+  ],
+  "market_signals": [
+    {
+      "id": "sig-1792431317421",
+      "recruiter_name": "Lead Architect",
+      "company": "Amazon Web Services",
+      "stream": "CSE",
+      "domain": "Cloud Architecture & Reliability",
+      "demand_surge": "+88% Surge",
+      "ctc_range": "\u20b922 - \u20b936 LPA",
+      "mandatory_skills": [
+        "AWS",
+        "Distributed Systems",
+        "Chaos Engineering",
+        "Go"
+      ],
+      "fresher_deficit": "Lacking knowledge in multi-region failover and distributed transactions.",
+      "actionable_directive": "Build distributed systems with leader election and automated heartbeat failover.",
+      "created_at": "2026-10-19T17:35:17.421Z"
+    },
+    {
+      "id": "sig-1792429725710",
+      "recruiter_name": "Dr. Vikram Kulkarni",
+      "company": "Qualcomm Systems",
+      "stream": "ECE",
+      "domain": "Bare-Metal STM32",
+      "demand_surge": "+90% Surge",
+      "ctc_range": "\u20b918 - \u20b925 LPA",
+      "mandatory_skills": [
+        "ARM Cortex-M",
+        "FreeRTOS",
+        "STM32 DMA"
+      ],
+      "fresher_deficit": "Candidates cannot configure DMA registers and fail on logic analyzers.",
+      "actionable_directive": "Build bare-metal driver projects with DMA.",
+      "created_at": "2026-10-19T17:08:45.712Z"
+    },
+    {
+      "id": "sig-1",
+      "recruiter_name": "Dr. Vikram Kulkarni",
+      "company": "Qualcomm",
+      "stream": "ECE",
+      "domain": "Embedded Firmware & RTOS",
+      "demand_surge": "+84% Urgent Hiring Surge",
+      "ctc_range": "\u20b914 - \u20b924 LPA",
+      "mandatory_skills": [
+        "ARM Cortex-M",
+        "FreeRTOS",
+        "Bare-metal STM32",
+        "C/C++"
+      ],
+      "fresher_deficit": "Candidates lack bare-metal register debugging skills, rely on heavy HAL abstractions, and cannot diagnose DMA race conditions.",
+      "actionable_directive": "Build register-level UART/SPI drivers from reference datasheets. Demonstrate FreeRTOS task scheduling with logic analyzer evidence."
+    },
+    {
+      "id": "sig-2",
+      "recruiter_name": "Ananya Deshmukh",
+      "company": "Razorpay",
+      "stream": "CSE",
+      "domain": "Distributed Systems",
+      "demand_surge": "+76% Urgent Hiring Surge",
+      "ctc_range": "\u20b918 - \u20b928 LPA",
+      "mandatory_skills": [
+        "Go",
+        "Raft Consensus",
+        "Redis Redlock",
+        "PostgreSQL"
+      ],
+      "fresher_deficit": "Candidates write naive CRUD APIs that fail under network partitions with duplicate double-spend race conditions.",
+      "actionable_directive": "Master distributed lock algorithms, idempotent API design, and strict serializable transaction isolation in PostgreSQL."
+    },
+    {
+      "id": "sig-3",
+      "recruiter_name": "Karthik Ramanathan",
+      "company": "NVIDIA Partner",
+      "stream": "AIDS",
+      "domain": "GenAI & RAG Systems",
+      "demand_surge": "+92% Critical Demand",
+      "ctc_range": "\u20b916 - \u20b930 LPA",
+      "mandatory_skills": [
+        "Python",
+        "PyTorch",
+        "FastAPI",
+        "pgvector"
+      ],
+      "fresher_deficit": "Candidates only know toy API wrapper scripts and fail to optimize embedding cosine index latency or chunk re-ranking.",
+      "actionable_directive": "Implement vector database indexing with HNSW in pgvector, fine-tune embedding bi-encoders, and profile sub-50ms token generation."
+    },
+    {
+      "id": "sig-4",
+      "recruiter_name": "Meera Sen",
+      "company": "Atlassian",
+      "stream": "IT",
+      "domain": "Full-Stack & Microservices",
+      "demand_surge": "+68% Hiring Surge",
+      "ctc_range": "\u20b915 - \u20b926 LPA",
+      "mandatory_skills": [
+        "TypeScript",
+        "Next.js",
+        "PostgreSQL",
+        "Docker"
+      ],
+      "fresher_deficit": "Inability to handle async message queue worker backpressure and memory leaks in containerized Node runtimes.",
+      "actionable_directive": "Implement transactional outbox patterns with PostgreSQL and message queues, with strict TypeScript interfaces across services."
+    }
+  ],
+  "market_news": [
+    {
+      "id": "news-1792431317426",
+      "title": "Amazon Web Services Hiring Standard: Cloud Architecture & Reliability (CSE) \u2014 Priority on AWS, Distributed Systems, Chaos Engineering",
+      "stream": "CSE",
+      "summary": "Recruiter Alert from Amazon Web Services: \"Lacking knowledge in multi-region failover and distributed transactions.\". Directive for learners: Build distributed systems with leader election and automated heartbeat failover.",
+      "in_demand_skills": [
+        "AWS",
+        "Distributed Systems",
+        "Chaos Engineering",
+        "Go"
+      ],
+      "source_company": "Amazon Web Services",
+      "published_at": "2026-10-19T17:35:17.426Z"
+    },
+    {
+      "id": "news-1792429725728",
+      "title": "Qualcomm Systems Hiring Standard: Bare-Metal STM32 (ECE) \u2014 Priority on ARM Cortex-M, FreeRTOS, STM32 DMA",
+      "stream": "ECE",
+      "summary": "Recruiter Alert from Qualcomm Systems: \"Candidates cannot configure DMA registers and fail on logic analyzers.\". Directive for learners: Build bare-metal driver projects with DMA.",
+      "in_demand_skills": [
+        "ARM Cortex-M",
+        "FreeRTOS",
+        "STM32 DMA"
+      ],
+      "source_company": "Qualcomm Systems",
+      "published_at": "2026-10-19T17:08:45.728Z"
+    },
+    {
+      "id": "news-1",
+      "title": "Surge in Core Embedded Systems Hiring: Focus on RTOS and DMA over basic Arduino loops.",
+      "stream": "ECE",
+      "summary": "Leading semiconductor and automotive firms including Qualcomm report a 4x hiring surge for freshers capable of bare-metal register programming, FreeRTOS concurrency, and logic analyzer debugging.",
+      "in_demand_skills": [
+        "ARM Cortex-M",
+        "FreeRTOS",
+        "Bare-metal STM32",
+        "C/C++"
+      ],
+      "source_company": "Qualcomm",
+      "published_at": "2026-10-19T17:06:42.747Z"
+    },
+    {
+      "id": "news-2",
+      "title": "Enterprise Backend Pivot: 70%+ recruiters flagging deficit in raw SQL indexing and concurrency race handling.",
+      "stream": "CSE",
+      "summary": "Fintech and cloud platforms report rejection of candidates who cannot explain B-Tree index internals, transaction isolation levels, and atomic lock management under high concurrent workloads.",
+      "in_demand_skills": [
+        "PostgreSQL",
+        "Go",
+        "Distributed Transactions",
+        "Redis Redlock"
+      ],
+      "source_company": "Razorpay",
+      "published_at": "2026-10-19T17:06:42.747Z"
+    },
+    {
+      "id": "news-3",
+      "title": "AI Systems Demand: Engineering teams shifting hiring from wrapper APIs to vector indexing (HNSW) and model latency optimization.",
+      "stream": "AIDS",
+      "summary": "Top engineering teams are actively filtering for candidates who can optimize embedding retrieval, benchmark pgvector HNSW indexing, and deploy low-latency inference pipelines.",
+      "in_demand_skills": [
+        "pgvector",
+        "PyTorch",
+        "FastAPI",
+        "HNSW Indexing"
+      ],
+      "source_company": "NVIDIA Partner",
+      "published_at": "2026-10-19T17:06:42.747Z"
+    }
+  ],
+  "diagnostics": [
+    {
+      "id": "diag-1792431317449",
+      "user_email": "learner.test@engineering.ac.in",
+      "stream": "IT",
+      "module_title": "Distributed Systems & Concurrency",
+      "mode": 10,
+      "score": 80,
+      "passed": true,
+      "answers": [
+        2,
+        1,
+        0,
+        [
+          0,
+          2
+        ],
+        1
+      ],
+      "submitted_at": "2026-10-19T17:35:17.449Z"
+    }
+  ],
+  "student_activity_logs": []
+}

@@ -1,0 +1,111 @@
+09:59 13-02-202609:59 13-02-2026#include <iostream>
+using namespace std;
+
+// Function for Bubble Sort
+void performBubbleSort(int data[], int size) {
+    for (int step = 0; step < size - 1; step++) {
+        for (int idx = 0; idx < size - step - 1; idx++) {
+            if (data[idx] > data[idx + 1]) {
+                int temp = data[idx];
+                data[idx] = data[idx + 1];
+                data[idx + 1] = temp;
+            }
+        }
+    }
+}
+
+// Function for Selection Sort
+void performSelectionSort(int data[], int size) {
+    for (int step = 0; step < size - 1; step++) {
+        int min_idx = step;
+        for (int idx = step + 1; idx < size; idx++) {
+            if (data[idx] < data[min_idx]) {
+                min_idx = idx;
+            }
+        }
+        int temp = data[min_idx];
+        data[min_idx] = data[step];
+        data[step] = temp;
+    }
+}
+
+// Helper for Merge Sort
+void mergeParts(int data[], int p, int q, int r) {
+    int n1 = q - p + 1;
+    int n2 = r - q;
+    int L[n1], M[n2];
+    for (int i = 0; i < n1; i++) L[i] = data[p + i];
+    for (int j = 0; j < n2; j++) M[j] = data[q + 1 + j];
+    int i = 0, j = 0, k = p;
+    while (i < n1 && j < n2) {
+        if (L[i] <= M[j]) { data[k] = L[i]; i++; }
+        else { data[k] = M[j]; j++; }
+        k++;
+    }
+    while (i < n1) { data[k] = L[i]; i++; k++; }
+    while (j < n2) { data[k] = M[j]; j++; k++; }
+}
+
+void performMergeSort(int data[], int l, int r) {
+    if (l < r) {
+        int m = l + (r - l) / 2;
+        performMergeSort(data, l, m);
+        performMergeSort(data, m + 1, r);
+        mergeParts(data, l, m, r);
+    }
+}
+
+// Helper for Quick Sort
+int partitionArray(int data[], int low, int high) {
+    int pivot = data[high];
+    int i = (low - 1);
+    for (int j = low; j < high; j++) {
+        if (data[j] <= pivot) {
+            i++;
+            int temp = data[i];
+            data[i] = data[j];
+            data[j] = temp;
+        }
+    }
+    int temp = data[i + 1];
+    data[i + 1] = data[high];
+    data[high] = temp;
+    return (i + 1);
+}
+
+void performQuickSort(int data[], int low, int high) {
+    if (low < high) {
+        int pi = partitionArray(data, low, high);
+        performQuickSort(data, low, pi - 1);
+        performQuickSort(data, pi + 1, high);
+    }
+}
+
+void showArray(int data[], int size) {
+    for (int i = 0; i < size; i++) cout << data[i] << " ";
+    cout << endl;
+}
+
+int main() {
+    int n, choice;
+    cout << "Enter number of elements: ";
+    cin >> n;
+    int vals[n];
+    cout << "Enter elements: ";
+    for (int i = 0; i < n; i++) cin >> vals[i];
+
+    cout << "\nChoose Sort:\n1.Bubble\n2.Selection\n3.Merge\n4.Quick\nChoice: ";
+    cin >> choice;
+
+    switch(choice) {
+        case 1: performBubbleSort(vals, n); break;
+        case 2: performSelectionSort(vals, n); break;
+        case 3: performMergeSort(vals, 0, n - 1); break;
+        case 4: performQuickSort(vals, 0, n - 1); break;
+        default: cout << "Invalid"; return 0;
+    }
+
+    cout << "Sorted Array: ";
+    showArray(vals, n);
+    return 0;
+}

@@ -1,0 +1,133 @@
+{
+  "version": 2,
+  "public": true,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "picture-in-picture=(), fullscreen=*"
+        }
+      ]
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/admin/login",
+      "dest": "/api/admin/login.js"
+    },
+    {
+      "src": "/api/admin/session",
+      "dest": "/api/admin/session.js"
+    },
+    {
+      "src": "/api/admin/logout",
+      "dest": "/api/admin/logout.js"
+    },
+    {
+      "src": "/api/recruiter/invite",
+      "dest": "/api/recruiter/invite.js"
+    },
+    {
+      "src": "/api/recruiter/signals",
+      "dest": "/api/recruiter/signals.js"
+    },
+    {
+      "src": "/api/candidates",
+      "dest": "/api/candidates.js"
+    },
+    {
+      "src": "/api/news",
+      "dest": "/api/news.js"
+    },
+    {
+      "src": "/api/register",
+      "dest": "/api/register.js"
+    },
+    {
+      "src": "/api/login",
+      "dest": "/api/login.js"
+    },
+    {
+      "src": "/api/verify-email",
+      "dest": "/api/verify-email.js"
+    },
+    {
+      "src": "/api/verify-pin",
+      "dest": "/api/verify-pin.js"
+    },
+    {
+      "src": "/api/send-email",
+      "dest": "/api/send-email.js"
+    },
+    {
+      "src": "/api/emails",
+      "dest": "/api/emails.js"
+    },
+    {
+      "src": "/api/admin/users",
+      "dest": "/api/admin/users.js"
+    },
+    {
+      "src": "/api/mcq/submit",
+      "dest": "/api/mcq/submit.js"
+    },
+    {
+      "src": "/api/logout",
+      "dest": "/api/logout.js"
+    },
+    {
+      "src": "/api/me",
+      "dest": "/api/me.js"
+    },
+    {
+      "src": "/api/student/log-activity",
+      "dest": "/api/student/log-activity.js"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1.js"
+    },
+    {
+      "src": "/(dashboard|recruiter|login|signup)(.*)",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/verify(.*)",
+      "dest": "/index.html$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ]
+}

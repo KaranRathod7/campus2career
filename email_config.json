@@ -1,0 +1,12 @@
+{
+  "provider": "brevo",
+  "brevo_api_key": "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",
+  "brevo_from_email": "campus2career7@gmail.com",
+  "sender_name": "Campus2Career Verification",
+  "sender_email": "campus2career7@gmail.com",
+  "smtp_enabled": true,
+  "smtp_server": "smtp-relay.brevo.com",
+  "smtp_port": 587,
+  "smtp_user": "campus2career7@gmail.com",
+  "smtp_password": ""
+}
