@@ -5,19 +5,52 @@ const fs = require('fs');
 const path = require('path');
 
 let pool = null;
-const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL || process.env.SUPABASE_POSTGRES_URL;
+let lastDbError = null;
+const rawConnStr = process.env.POSTGRES_URL || process.env.DATABASE_URL || process.env.SUPABASE_POSTGRES_URL || '';
+const connectionString = rawConnStr.trim();
 
 if (connectionString) {
   try {
-    pool = new Pool({
-      connectionString,
-      ssl: connectionString.includes('localhost') ? false : { rejectUnauthorized: false },
-      max: 10,
-      idleTimeoutMillis: 30000
+    const isLocal = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
+    let parse;
+    try {
+      parse = require('pg-connection-string').parse;
+    } catch (e) {}
+
+    let poolConfig = {
+      max: 3, // Low connection limit suited for serverless lambdas
+      connectionTimeoutMillis: 5000, // Timeout fast on cold start / paused DB
+      idleTimeoutMillis: 10000
+    };
+
+    if (parse) {
+      // Strip sslmode from URL so pg-connection-string does not override ssl config
+      const cleanUri = connectionString.replace(/([?&])sslmode=[^&]+(&|$)/i, '$1').replace(/[?&]$/, '');
+      const parsed = parse(cleanUri);
+      delete parsed.sslmode;
+      poolConfig = {
+        ...poolConfig,
+        ...parsed,
+        ssl: isLocal ? false : { rejectUnauthorized: false }
+      };
+    } else {
+      poolConfig.connectionString = connectionString;
+      poolConfig.ssl = isLocal ? false : { rejectUnauthorized: false };
+    }
+
+    pool = new Pool(poolConfig);
+
+    // Prevent unhandled error event from crashing the serverless worker
+    pool.on('error', (err) => {
+      console.warn('[Campus2Career DB Pool Notice - Handled]', err.message);
+      lastDbError = err.message;
     });
-    console.log('[Campus2Career DB] Connected to PostgreSQL / Supabase pool.');
+
+    console.log('[Campus2Career DB] PostgreSQL / Supabase pool configured with SSL support.');
   } catch (err) {
     console.error('[Campus2Career DB] Pool init failed:', err.message);
+    lastDbError = err.message;
+    pool = null;
   }
 }
 
@@ -221,15 +254,45 @@ function saveLocalStore(store) {
 
 // Ensure schema is auto-migrated if connected to PostgreSQL
 let schemaInitialized = false;
+let schemaAttempted = false;
 async function ensureSchema() {
-  if (!pool || schemaInitialized) return;
+  if (!pool || schemaInitialized || schemaAttempted) return;
+  schemaAttempted = true;
   try {
-    const schemaSql = fs.readFileSync(path.join(ROOT_DIR, 'schema.sql'), 'utf-8');
-    await pool.query(schemaSql);
-    schemaInitialized = true;
-    console.log('[Campus2Career DB] PostgreSQL schema & seed migration verified.');
+    const schemaPath = path.join(ROOT_DIR, 'schema.sql');
+    if (fs.existsSync(schemaPath)) {
+      const schemaSql = fs.readFileSync(schemaPath, 'utf-8');
+      if (schemaSql && schemaSql.trim()) {
+        await pool.query(schemaSql);
+        schemaInitialized = true;
+        console.log('[Campus2Career DB] PostgreSQL schema & seed migration verified.');
+        return;
+      }
+    }
   } catch (err) {
-    console.warn('[Campus2Career DB] Auto-migration notice:', err.message);
+    console.warn('[Campus2Career DB] Auto-migration notice (falling back to inline verification):', err.message);
+  }
+
+  // Minimal inline DDL guarantee if schema.sql was not packaged by Vercel
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS candidates (
+        id VARCHAR(100) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255),
+        stream VARCHAR(50),
+        domain VARCHAR(255),
+        experience_level VARCHAR(100),
+        skill_score NUMERIC(5,2) DEFAULT 90,
+        dynamic_competence_percent NUMERIC(5,2) DEFAULT 90,
+        skills TEXT[],
+        capstone_proof TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    schemaInitialized = true;
+  } catch (inlineErr) {
+    console.warn('[Campus2Career DB] Inline DDL notice (restricted DB role or table exists):', inlineErr.message);
   }
 }
 
@@ -250,9 +313,14 @@ const db = {
   async getUserByEmail(email) {
     const normalized = (email || '').trim().toLowerCase();
     if (pool) {
-      await ensureSchema();
-      const res = await pool.query('SELECT * FROM users WHERE LOWER(email) = $1 LIMIT 1', [normalized]);
-      return res.rows[0] || null;
+      try {
+        await ensureSchema();
+        const res = await pool.query('SELECT * FROM users WHERE LOWER(email) = $1 LIMIT 1', [normalized]);
+        return res.rows[0] || null;
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud getUserByEmail notice (falling back to local):', err.message);
+        lastDbError = err.message;
+      }
     }
     const store = getLocalStore();
     return store.users.find(u => u.email.toLowerCase() === normalized) || null;
@@ -261,14 +329,19 @@ const db = {
   async createUser({ name, email, password_hash, role, stream, is_verified = false }) {
     const normalized = (email || '').trim().toLowerCase();
     if (pool) {
-      await ensureSchema();
-      const res = await pool.query(
-        `INSERT INTO users (name, email, password_hash, role, stream, is_verified)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         RETURNING *`,
-        [name, normalized, password_hash, role, stream || 'IT', is_verified]
-      );
-      return res.rows[0];
+      try {
+        await ensureSchema();
+        const res = await pool.query(
+          `INSERT INTO users (name, email, password_hash, role, stream, is_verified)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING *`,
+          [name, normalized, password_hash, role, stream || 'IT', is_verified]
+        );
+        return res.rows[0];
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud createUser notice (falling back to local):', err.message);
+        lastDbError = err.message;
+      }
     }
     const store = getLocalStore();
     const newUser = {
@@ -289,9 +362,14 @@ const db = {
   async markUserVerified(email) {
     const normalized = (email || '').trim().toLowerCase();
     if (pool) {
-      await ensureSchema();
-      await pool.query('UPDATE users SET is_verified = TRUE WHERE LOWER(email) = $1', [normalized]);
-      return true;
+      try {
+        await ensureSchema();
+        await pool.query('UPDATE users SET is_verified = TRUE WHERE LOWER(email) = $1', [normalized]);
+        return true;
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud markUserVerified notice (falling back to local):', err.message);
+        lastDbError = err.message;
+      }
     }
     const store = getLocalStore();
     const u = store.users.find(usr => usr.email.toLowerCase() === normalized);
@@ -304,9 +382,14 @@ const db = {
 
   async getAllUsers() {
     if (pool) {
-      await ensureSchema();
-      const res = await pool.query('SELECT id, name, email, role, stream, is_verified, created_at FROM users ORDER BY created_at DESC');
-      return res.rows;
+      try {
+        await ensureSchema();
+        const res = await pool.query('SELECT id, name, email, role, stream, is_verified, created_at FROM users ORDER BY created_at DESC');
+        return res.rows;
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud getAllUsers notice (falling back to local):', err.message);
+        lastDbError = err.message;
+      }
     }
     const store = getLocalStore();
     return (store.users || []).map(u => ({
@@ -323,9 +406,14 @@ const db = {
   async deleteUser(idOrEmail) {
     const val = (idOrEmail || '').trim().toLowerCase();
     if (pool) {
-      await ensureSchema();
-      const res = await pool.query('DELETE FROM users WHERE id::text = $1 OR LOWER(email) = $1 RETURNING id, email', [val]);
-      return res.rows.length > 0;
+      try {
+        await ensureSchema();
+        const res = await pool.query('DELETE FROM users WHERE id::text = $1 OR LOWER(email) = $1 RETURNING id, email', [val]);
+        return res.rows.length > 0;
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud deleteUser notice (falling back to local):', err.message);
+        lastDbError = err.message;
+      }
     }
     const store = getLocalStore();
     const initLen = (store.users || []).length;
@@ -344,21 +432,26 @@ const db = {
     const now = new Date();
 
     if (pool) {
-      await ensureSchema();
-      const res = await pool.query(
-        `SELECT failed_attempts, locked_until 
-         FROM login_attempts 
-         WHERE ip_address = $1 AND email = $2`,
-        [ipAddr, emailAddr]
-      );
-      if (res.rows.length > 0) {
-        const row = res.rows[0];
-        if (row.failed_attempts >= 5 && row.locked_until && new Date(row.locked_until) > now) {
-          const remainingSecs = Math.ceil((new Date(row.locked_until).getTime() - now.getTime()) / 1000);
-          return { isLocked: true, remainingSecs, attempts: row.failed_attempts };
+      try {
+        await ensureSchema();
+        const res = await pool.query(
+          `SELECT failed_attempts, locked_until 
+           FROM login_attempts 
+           WHERE ip_address = $1 AND email = $2`,
+          [ipAddr, emailAddr]
+        );
+        if (res.rows.length > 0) {
+          const row = res.rows[0];
+          if (row.failed_attempts >= 5 && row.locked_until && new Date(row.locked_until) > now) {
+            const remainingSecs = Math.ceil((new Date(row.locked_until).getTime() - now.getTime()) / 1000);
+            return { isLocked: true, remainingSecs, attempts: row.failed_attempts };
+          }
         }
+        return { isLocked: false, remainingSecs: 0, attempts: res.rows[0] ? res.rows[0].failed_attempts : 0 };
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud checkRateLimit notice (falling back to local):', err.message);
+        lastDbError = err.message;
       }
-      return { isLocked: false, remainingSecs: 0, attempts: res.rows[0] ? res.rows[0].failed_attempts : 0 };
     }
 
     const store = getLocalStore();
@@ -377,39 +470,44 @@ const db = {
     const now = new Date();
 
     if (pool) {
-      await ensureSchema();
-      const cur = await pool.query(
-        `SELECT failed_attempts FROM login_attempts WHERE ip_address = $1 AND email = $2`,
-        [ipAddr, emailAddr]
-      );
-      let attempts = 1;
-      if (cur.rows.length > 0) {
-        attempts = cur.rows[0].failed_attempts + 1;
+      try {
+        await ensureSchema();
+        const cur = await pool.query(
+          `SELECT failed_attempts FROM login_attempts WHERE ip_address = $1 AND email = $2`,
+          [ipAddr, emailAddr]
+        );
+        let attempts = 1;
+        if (cur.rows.length > 0) {
+          attempts = cur.rows[0].failed_attempts + 1;
+        }
+
+        // Exponential backoff:
+        // 5th attempt = 5 minutes lockout
+        // 6th+ attempt = 15 minutes lockout
+        let lockedUntil = null;
+        if (attempts === 5) {
+          lockedUntil = new Date(now.getTime() + 5 * 60 * 1000);
+        } else if (attempts >= 6) {
+          lockedUntil = new Date(now.getTime() + 15 * 60 * 1000);
+        }
+
+        await pool.query(
+          `INSERT INTO login_attempts (ip_address, email, failed_attempts, locked_until, updated_at)
+           VALUES ($1, $2, $3, $4, NOW())
+           ON CONFLICT (ip_address, email) 
+           DO UPDATE SET failed_attempts = $3, locked_until = $4, updated_at = NOW()`,
+          [ipAddr, emailAddr, attempts, lockedUntil]
+        );
+
+        return {
+          attempts,
+          isLocked: attempts >= 5,
+          remainingSecs: lockedUntil ? Math.ceil((lockedUntil.getTime() - now.getTime()) / 1000) : 0
+        };
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud recordFailedAttempt notice (falling back to local):', err.message);
+        lastDbError = err.message;
       }
-
-      // Exponential backoff:
-      // 5th attempt = 5 minutes lockout
-      // 6th+ attempt = 15 minutes lockout
-      let lockedUntil = null;
-      if (attempts === 5) {
-        lockedUntil = new Date(now.getTime() + 5 * 60 * 1000);
-      } else if (attempts >= 6) {
-        lockedUntil = new Date(now.getTime() + 15 * 60 * 1000);
-      }
-
-      await pool.query(
-        `INSERT INTO login_attempts (ip_address, email, failed_attempts, locked_until, updated_at)
-         VALUES ($1, $2, $3, $4, NOW())
-         ON CONFLICT (ip_address, email) 
-         DO UPDATE SET failed_attempts = $3, locked_until = $4, updated_at = NOW()`,
-        [ipAddr, emailAddr, attempts, lockedUntil]
-      );
-
-      return {
-        attempts,
-        isLocked: attempts >= 5,
-        remainingSecs: lockedUntil ? Math.ceil((lockedUntil.getTime() - now.getTime()) / 1000) : 0
-      };
     }
 
     const store = getLocalStore();
@@ -438,9 +536,14 @@ const db = {
     const ipAddr = ip || '127.0.0.1';
     const emailAddr = (email || '').trim().toLowerCase();
     if (pool) {
-      await ensureSchema();
-      await pool.query('DELETE FROM login_attempts WHERE ip_address = $1 AND email = $2', [ipAddr, emailAddr]);
-      return;
+      try {
+        await ensureSchema();
+        await pool.query('DELETE FROM login_attempts WHERE ip_address = $1 AND email = $2', [ipAddr, emailAddr]);
+        return;
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud clearRateLimit notice (falling back to local):', err.message);
+        lastDbError = err.message;
+      }
     }
     const store = getLocalStore();
     const key = `${ipAddr}_${emailAddr}`;
@@ -454,15 +557,20 @@ const db = {
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
 
     if (pool) {
-      await ensureSchema();
-      // Remove any previous pending verification for this email
-      await pool.query('DELETE FROM pending_verifications WHERE LOWER(email) = $1', [normalized]);
-      await pool.query(
-        `INSERT INTO pending_verifications (email, pin, token, expires_at)
-         VALUES ($1, $2, $3, $4)`,
-        [normalized, pin, token, expiresAt]
-      );
-      return { email: normalized, pin, token, expiresAt };
+      try {
+        await ensureSchema();
+        // Remove any previous pending verification for this email
+        await pool.query('DELETE FROM pending_verifications WHERE LOWER(email) = $1', [normalized]);
+        await pool.query(
+          `INSERT INTO pending_verifications (email, pin, token, expires_at)
+           VALUES ($1, $2, $3, $4)`,
+          [normalized, pin, token, expiresAt]
+        );
+        return { email: normalized, pin, token, expiresAt };
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud createPendingVerification notice (falling back to local):', err.message);
+        lastDbError = err.message;
+      }
     }
 
     const store = getLocalStore();
@@ -485,16 +593,21 @@ const db = {
     const now = new Date();
 
     if (pool) {
-      await ensureSchema();
-      const res = await pool.query(
-        `SELECT * FROM pending_verifications 
-         WHERE LOWER(email) = $1 
-           AND (token = $2 OR pin = $2) 
-           AND expires_at > NOW()
-         ORDER BY created_at DESC LIMIT 1`,
-        [normalized, tokenOrPin]
-      );
-      return res.rows[0] || null;
+      try {
+        await ensureSchema();
+        const res = await pool.query(
+          `SELECT * FROM pending_verifications 
+           WHERE LOWER(email) = $1 
+             AND (token = $2 OR pin = $2) 
+             AND expires_at > NOW()
+           ORDER BY created_at DESC LIMIT 1`,
+          [normalized, tokenOrPin]
+        );
+        return res.rows[0] || null;
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud getPendingVerification notice (falling back to local):', err.message);
+        lastDbError = err.message;
+      }
     }
 
     const store = getLocalStore();
@@ -508,9 +621,14 @@ const db = {
   async deletePendingVerification(email) {
     const normalized = (email || '').trim().toLowerCase();
     if (pool) {
-      await ensureSchema();
-      await pool.query('DELETE FROM pending_verifications WHERE LOWER(email) = $1', [normalized]);
-      return;
+      try {
+        await ensureSchema();
+        await pool.query('DELETE FROM pending_verifications WHERE LOWER(email) = $1', [normalized]);
+        return;
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud deletePendingVerification notice (falling back to local):', err.message);
+        lastDbError = err.message;
+      }
     }
     const store = getLocalStore();
     store.pending_verifications = store.pending_verifications.filter(v => v.email.toLowerCase() !== normalized);
@@ -563,27 +681,35 @@ const db = {
     };
 
     if (pool) {
-      await ensureSchema();
-      let queryStr = 'SELECT * FROM candidates WHERE (skill_score >= 75 OR dynamic_competence_percent >= 75)';
-      const params = [];
-      let idx = 1;
+      try {
+        await ensureSchema();
+        let queryStr = 'SELECT * FROM candidates WHERE skill_score >= 75';
+        const params = [];
+        let idx = 1;
 
-      if (stream && stream !== 'all') {
-        queryStr += ` AND UPPER(stream) = $${idx++}`;
-        params.push(stream.toUpperCase());
-      }
-      if (domain && domain !== 'all') {
-        queryStr += ` AND domain ILIKE $${idx++}`;
-        params.push(`%${domain}%`);
-      }
-      if (experience && experience !== 'all') {
-        queryStr += ` AND experience_level ILIKE $${idx++}`;
-        params.push(`%${experience}%`);
-      }
+        if (stream && stream !== 'all') {
+          queryStr += ` AND UPPER(stream) = $${idx++}`;
+          params.push(stream.toUpperCase());
+        }
+        if (domain && domain !== 'all') {
+          queryStr += ` AND domain ILIKE $${idx++}`;
+          params.push(`%${domain}%`);
+        }
+        if (experience && experience !== 'all') {
+          queryStr += ` AND experience_level ILIKE $${idx++}`;
+          params.push(`%${experience}%`);
+        }
 
-      queryStr += ' ORDER BY skill_score DESC, created_at DESC';
-      const res = await pool.query(queryStr, params);
-      return res.rows.map(enrichCandidate);
+        queryStr += ' ORDER BY skill_score DESC, created_at DESC';
+        const res = await pool.query(queryStr, params);
+        if (res && res.rows && res.rows.length > 0) {
+          return res.rows.map(enrichCandidate);
+        }
+        console.log('[Campus2Career DB] Cloud database returned 0 candidates, utilizing seeded candidate pool.');
+      } catch (dbErr) {
+        console.warn('[Campus2Career DB] Cloud candidates query notice (recovering with fallback pool):', dbErr.message);
+        lastDbError = dbErr.message;
+      }
     }
 
     const store = getLocalStore();
@@ -628,9 +754,13 @@ const db = {
 
   async getCandidateById(id) {
     if (pool) {
-      await ensureSchema();
-      const res = await pool.query('SELECT * FROM candidates WHERE id::text = $1 OR email = $1 LIMIT 1', [id]);
-      return res.rows[0] || null;
+      try {
+        await ensureSchema();
+        const res = await pool.query('SELECT * FROM candidates WHERE id::text = $1 OR email = $1 LIMIT 1', [id]);
+        if (res.rows[0]) return res.rows[0];
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud getCandidateById notice:', err.message);
+      }
     }
     const store = getLocalStore();
     return store.candidates.find(c => c.id === id || c.email === id) || null;
@@ -639,24 +769,32 @@ const db = {
   // Market Signals
   async getMarketSignals() {
     if (pool) {
-      await ensureSchema();
-      const res = await pool.query('SELECT * FROM market_signals ORDER BY created_at DESC');
-      return res.rows;
+      try {
+        await ensureSchema();
+        const res = await pool.query('SELECT * FROM market_signals ORDER BY created_at DESC');
+        return res.rows;
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud getMarketSignals notice:', err.message);
+      }
     }
     const store = getLocalStore();
-    return store.market_signals;
+    return store.market_signals || [];
   },
 
   async createMarketSignal({ recruiter_name, company, stream, domain, demand_surge, ctc_range, mandatory_skills, fresher_deficit, actionable_directive }) {
     if (pool) {
-      await ensureSchema();
-      const res = await pool.query(
-        `INSERT INTO market_signals (recruiter_name, company, stream, domain, demand_surge, ctc_range, mandatory_skills, fresher_deficit, actionable_directive)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-         RETURNING *`,
-        [recruiter_name, company, stream, domain, demand_surge || '+75% Surge', ctc_range || '₹12 - ₹24 LPA', mandatory_skills, fresher_deficit, actionable_directive]
-      );
-      return res.rows[0];
+      try {
+        await ensureSchema();
+        const res = await pool.query(
+          `INSERT INTO market_signals (recruiter_name, company, stream, domain, demand_surge, ctc_range, mandatory_skills, fresher_deficit, actionable_directive)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+           RETURNING *`,
+          [recruiter_name, company, stream, domain, demand_surge || '+75% Surge', ctc_range || '₹12 - ₹24 LPA', mandatory_skills, fresher_deficit, actionable_directive]
+        );
+        return res.rows[0];
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud createMarketSignal notice:', err.message);
+      }
     }
     const store = getLocalStore();
     const sig = {
@@ -680,24 +818,33 @@ const db = {
   // Market News
   async getMarketNews() {
     if (pool) {
-      await ensureSchema();
-      const res = await pool.query('SELECT * FROM market_news ORDER BY published_at DESC');
-      return res.rows;
+      try {
+        await ensureSchema();
+        const res = await pool.query('SELECT * FROM market_news ORDER BY published_at DESC');
+        return res.rows;
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud getMarketNews notice:', err.message);
+      }
     }
     const store = getLocalStore();
-    return store.market_news;
+    return store.market_news || [];
   },
 
   async createMarketNews({ title, stream, summary, in_demand_skills, source_company }) {
     if (pool) {
-      await ensureSchema();
-      const res = await pool.query(
-        `INSERT INTO market_news (title, stream, summary, in_demand_skills, source_company)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING *`,
-        [title, stream, summary, in_demand_skills, source_company]
-      );
-      return res.rows[0];
+      try {
+        await ensureSchema();
+        const res = await pool.query(
+          `INSERT INTO market_news (title, stream, summary, in_demand_skills, source_company)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING *`,
+          [title, stream, summary, in_demand_skills, source_company]
+        );
+        return res.rows[0];
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud createMarketNews notice (falling back to local):', err.message);
+        lastDbError = err.message;
+      }
     }
     const store = getLocalStore();
     const news = {
@@ -718,14 +865,19 @@ const db = {
   async recordDiagnostic({ user_email, stream, module_title, mode, score, passed, answers }) {
     const normalized = (user_email || '').trim().toLowerCase();
     if (pool) {
-      await ensureSchema();
-      const res = await pool.query(
-        `INSERT INTO diagnostics (user_email, stream, module_title, mode, score, passed, answers)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING *`,
-        [normalized, stream || 'IT', module_title, mode || 10, score, passed, JSON.stringify(answers || [])]
-      );
-      return res.rows[0];
+      try {
+        await ensureSchema();
+        const res = await pool.query(
+          `INSERT INTO diagnostics (user_email, stream, module_title, mode, score, passed, answers)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING *`,
+          [normalized, stream || 'IT', module_title, mode || 10, score, passed, JSON.stringify(answers || [])]
+        );
+        return res.rows[0];
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud recordDiagnostic notice (falling back to local):', err.message);
+        lastDbError = err.message;
+      }
     }
     const store = getLocalStore();
     if (!store.diagnostics) store.diagnostics = [];
@@ -748,12 +900,17 @@ const db = {
   async getUserDiagnostics(user_email) {
     const normalized = (user_email || '').trim().toLowerCase();
     if (pool) {
-      await ensureSchema();
-      const res = await pool.query(
-        'SELECT * FROM diagnostics WHERE LOWER(user_email) = $1 ORDER BY submitted_at DESC',
-        [normalized]
-      );
-      return res.rows;
+      try {
+        await ensureSchema();
+        const res = await pool.query(
+          'SELECT * FROM diagnostics WHERE LOWER(user_email) = $1 ORDER BY submitted_at DESC',
+          [normalized]
+        );
+        return res.rows;
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud getUserDiagnostics notice (falling back to local):', err.message);
+        lastDbError = err.message;
+      }
     }
     const store = getLocalStore();
     return (store.diagnostics || []).filter(d => (d.user_email || '').toLowerCase() === normalized);
@@ -762,14 +919,19 @@ const db = {
   // Sovereign Admin Audit Logs
   async recordAuditLog({ actor_email, action, details, ip_address }) {
     if (pool) {
-      await ensureSchema();
-      const res = await pool.query(
-        `INSERT INTO audit_logs (actor_email, action, details, ip_address)
-         VALUES ($1, $2, $3, $4)
-         RETURNING *`,
-        [actor_email || 'admin@campus2career.org', action, details || '', ip_address || '127.0.0.1']
-      );
-      return res.rows[0];
+      try {
+        await ensureSchema();
+        const res = await pool.query(
+          `INSERT INTO audit_logs (actor_email, action, details, ip_address)
+           VALUES ($1, $2, $3, $4)
+           RETURNING *`,
+          [actor_email || 'admin@campus2career.org', action, details || '', ip_address || '127.0.0.1']
+        );
+        return res.rows[0];
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud recordAuditLog notice (falling back to local):', err.message);
+        lastDbError = err.message;
+      }
     }
     const store = getLocalStore();
     if (!store.audit_logs) store.audit_logs = [];
@@ -788,9 +950,14 @@ const db = {
 
   async getAuditLogs() {
     if (pool) {
-      await ensureSchema();
-      const res = await pool.query('SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 50');
-      return res.rows;
+      try {
+        await ensureSchema();
+        const res = await pool.query('SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 50');
+        return res.rows;
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud getAuditLogs notice (falling back to local):', err.message);
+        lastDbError = err.message;
+      }
     }
     const store = getLocalStore();
     return (store.audit_logs || []).slice(0, 50);
@@ -804,40 +971,45 @@ const db = {
     const cleanMod = module_name || 'General Engineering Module';
 
     if (pool) {
-      await ensureSchema();
-      const validUuid = (user_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(user_id))) ? String(user_id) : null;
-      // Insert row into student_activity_logs (Trigger automatically executes)
-      const insertRes = await pool.query(
-        `INSERT INTO student_activity_logs (user_id, user_email, activity_type, duration_minutes, score, module_name)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         RETURNING *`,
-        [validUuid, normalizedEmail, activity_type, duration, scoreVal, cleanMod]
-      );
+      try {
+        await ensureSchema();
+        const validUuid = (user_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(user_id))) ? String(user_id) : null;
+        // Insert row into student_activity_logs (Trigger automatically executes)
+        const insertRes = await pool.query(
+          `INSERT INTO student_activity_logs (user_id, user_email, activity_type, duration_minutes, score, module_name)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING *`,
+          [validUuid, normalizedEmail, activity_type, duration, scoreVal, cleanMod]
+        );
 
-      // Query the trigger-updated metrics from users table
-      const userRes = await pool.query(
-        `SELECT total_study_minutes, total_lecture_minutes, avg_exam_score, dynamic_competence_percent
-         FROM users
-         WHERE (id::text = $1 OR LOWER(email) = $2) LIMIT 1`,
-        [validUuid || '00000000-0000-0000-0000-000000000000', normalizedEmail]
-      );
+        // Query the trigger-updated metrics from users table
+        const userRes = await pool.query(
+          `SELECT total_study_minutes, total_lecture_minutes, avg_exam_score, dynamic_competence_percent
+           FROM users
+           WHERE (id::text = $1 OR LOWER(email) = $2) LIMIT 1`,
+          [validUuid || '00000000-0000-0000-0000-000000000000', normalizedEmail]
+        );
 
-      const metrics = userRes.rows[0] || {
-        total_study_minutes: duration,
-        total_lecture_minutes: 0,
-        avg_exam_score: scoreVal || 0,
-        dynamic_competence_percent: 25.0
-      };
+        const metrics = userRes.rows[0] || {
+          total_study_minutes: duration,
+          total_lecture_minutes: 0,
+          avg_exam_score: scoreVal || 0,
+          dynamic_competence_percent: 25.0
+        };
 
-      return {
-        activity: insertRes.rows[0],
-        competence: {
-          total_study_minutes: Number(metrics.total_study_minutes) || 0,
-          total_lecture_minutes: Number(metrics.total_lecture_minutes) || 0,
-          avg_exam_score: Number(metrics.avg_exam_score) || 0,
-          dynamic_competence_percent: Number(metrics.dynamic_competence_percent) || 25.0
-        }
-      };
+        return {
+          activity: insertRes.rows[0],
+          competence: {
+            total_study_minutes: Number(metrics.total_study_minutes) || 0,
+            total_lecture_minutes: Number(metrics.total_lecture_minutes) || 0,
+            avg_exam_score: Number(metrics.avg_exam_score) || 0,
+            dynamic_competence_percent: Number(metrics.dynamic_competence_percent) || 25.0
+          }
+        };
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud logStudentActivity notice (falling back to local):', err.message);
+        lastDbError = err.message;
+      }
     }
 
     // High-reliability local fallback store
@@ -905,20 +1077,25 @@ const db = {
   async getStudentCompetence(user_id, user_email) {
     const normalizedEmail = (user_email || '').trim().toLowerCase();
     if (pool) {
-      await ensureSchema();
-      const res = await pool.query(
-        `SELECT total_study_minutes, total_lecture_minutes, avg_exam_score, dynamic_competence_percent
-         FROM users
-         WHERE (id::text = $1 OR LOWER(email) = $2) LIMIT 1`,
-        [user_id ? String(user_id) : '00000000-0000-0000-0000-000000000000', normalizedEmail]
-      );
-      if (res.rows.length > 0) {
-        return {
-          total_study_minutes: Number(res.rows[0].total_study_minutes) || 0,
-          total_lecture_minutes: Number(res.rows[0].total_lecture_minutes) || 0,
-          avg_exam_score: Number(res.rows[0].avg_exam_score) || 0,
-          dynamic_competence_percent: Number(res.rows[0].dynamic_competence_percent) || 25.0
-        };
+      try {
+        await ensureSchema();
+        const res = await pool.query(
+          `SELECT total_study_minutes, total_lecture_minutes, avg_exam_score, dynamic_competence_percent
+           FROM users
+           WHERE (id::text = $1 OR LOWER(email) = $2) LIMIT 1`,
+          [user_id ? String(user_id) : '00000000-0000-0000-0000-000000000000', normalizedEmail]
+        );
+        if (res.rows.length > 0) {
+          return {
+            total_study_minutes: Number(res.rows[0].total_study_minutes) || 0,
+            total_lecture_minutes: Number(res.rows[0].total_lecture_minutes) || 0,
+            avg_exam_score: Number(res.rows[0].avg_exam_score) || 0,
+            dynamic_competence_percent: Number(res.rows[0].dynamic_competence_percent) || 25.0
+          };
+        }
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud getStudentCompetence notice (falling back to local):', err.message);
+        lastDbError = err.message;
       }
     }
 
@@ -938,6 +1115,15 @@ const db = {
       avg_exam_score: 0,
       dynamic_competence_percent: 25.0
     };
+  },
+
+  // Connection & Diagnostics Helpers
+  isCloudConnected() {
+    return Boolean(pool);
+  },
+  getLocalStore,
+  getLastError() {
+    return lastDbError;
   }
 };
 

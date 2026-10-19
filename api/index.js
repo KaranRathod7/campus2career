@@ -22,6 +22,13 @@ app.use((req, res, next) => {
   next();
 });
 
+// Guard against unhandled rejections crashing the serverless worker
+if (!process.listeners('unhandledRejection').some(fn => fn.name === 'campus2careerRejectionHandler')) {
+  process.on('unhandledRejection', function campus2careerRejectionHandler(reason) {
+    console.warn('[Campus2Career Serverless Warning] Unhandled Rejection caught:', (reason && reason.message) || reason);
+  });
+}
+
 // Helper: Wrap handler for Express execution
 const adapt = (handler) => async (req, res, next) => {
   try {
@@ -29,7 +36,11 @@ const adapt = (handler) => async (req, res, next) => {
   } catch (err) {
     console.error(`[API Error: ${req.method} ${req.url}]`, err);
     if (!res.headersSent) {
-      res.status(500).json({ success: false, error: err.message });
+      res.status(500).json({
+        success: false,
+        error: err.message,
+        detail: err.detail || (err.stack ? err.stack.split('\n')[0] : undefined)
+      });
     }
   }
 };

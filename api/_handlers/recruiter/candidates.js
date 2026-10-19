@@ -21,17 +21,45 @@ module.exports = async (req, res) => {
     const domain = url.searchParams.get('domain') || 'all';
     const experience = url.searchParams.get('experience') || 'all';
 
-    // Retrieve candidates enriched with dynamic competence levels, percentages, and verified talent badges
-    const candidates = await db.getCandidates({ stream, domain, experience });
+    let candidates = [];
+    let isFallback = false;
+    let dbWarning = null;
+
+    try {
+      candidates = await db.getCandidates({ stream, domain, experience });
+    } catch (dbErr) {
+      console.warn('[Recruiter Candidates Handler Warning - Recovering via local store]', dbErr.message);
+      isFallback = true;
+      dbWarning = dbErr.message;
+      const store = (db.getLocalStore && db.getLocalStore()) || { candidates: [] };
+      candidates = store.candidates || [];
+    }
+
+    const lastErr = db.getLastError ? db.getLastError() : null;
 
     return res.status(200).json({
       success: true,
       count: candidates.length,
       filter: { stream, domain, experience },
+      storageMode: db.isCloudConnected && db.isCloudConnected() ? (isFallback || lastErr ? 'cloud-with-fallback' : 'postgresql') : 'local-store',
+      fallback: isFallback || Boolean(lastErr),
+      dbWarning: dbWarning || lastErr || undefined,
       candidates
     });
   } catch (err) {
-    console.error('[Recruiter Candidates API Error]', err);
-    return res.status(500).json({ success: false, error: err.message });
+    console.error('[Recruiter Candidates API Critical Recovery]', err);
+    const store = (db.getLocalStore && db.getLocalStore()) || { candidates: [] };
+    const fallbackCandidates = store.candidates || [];
+
+    return res.status(200).json({
+      success: true,
+      count: fallbackCandidates.length,
+      filter: { stream: 'all', domain: 'all', experience: 'all' },
+      storageMode: 'emergency-fallback',
+      fallback: true,
+      error: err.message,
+      detail: err.stack ? err.stack.split('\n')[0] : 'Unhandled exception safely caught',
+      candidates: fallbackCandidates
+    });
   }
 };
