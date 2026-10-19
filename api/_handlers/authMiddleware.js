@@ -1,6 +1,13 @@
 // Authentication & Guard Middleware for Campus2Career
 const jwt = require('jsonwebtoken');
-const cookie = require('cookie');
+
+let cookie = null;
+try {
+  cookie = require('cookie');
+} catch (e) {
+  // If cookie is an ES Module or not present, use robust internal fallback
+  cookie = null;
+}
 
 const JWT_SECRET = process.env.JWT_SECRET || 'campus2career_enterprise_super_secret_jwt_key_2026';
 const ADMIN_COOKIE_NAME = 'admin_session';
@@ -8,18 +15,23 @@ const ADMIN_COOKIE_NAME = 'admin_session';
 function parseCookies(req) {
   const cookieHeader = req.headers && req.headers.cookie;
   if (!cookieHeader) return {};
-  if (typeof cookie.parseCookie === 'function') {
-    return cookie.parseCookie(cookieHeader);
+  if (cookie && typeof cookie.parse === 'function') {
+    try {
+      return cookie.parse(cookieHeader);
+    } catch (e) {}
   }
-  if (typeof cookie.parse === 'function') {
-    return cookie.parse(cookieHeader);
-  }
-  // Fallback parsing
+  // Native high-reliability parser
   const list = {};
   cookieHeader.split(';').forEach(c => {
     const parts = c.split('=');
     if (parts.length >= 2) {
-      list[parts[0].trim()] = decodeURIComponent(parts.slice(1).join('=').trim());
+      const key = parts[0].trim();
+      const val = parts.slice(1).join('=').trim();
+      try {
+        list[key] = decodeURIComponent(val);
+      } catch (e) {
+        list[key] = val;
+      }
     }
   });
   return list;
@@ -40,26 +52,19 @@ function signAdminToken(user) {
 
 function setAdminCookie(res, token) {
   const isProd = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL);
-  let serialized;
-  if (typeof cookie.stringifySetCookie === 'function') {
-    serialized = cookie.stringifySetCookie({
-      name: ADMIN_COOKIE_NAME,
-      value: token,
-      httpOnly: true,
-      secure: isProd,
-      sameSite: 'Strict',
-      maxAge: 8 * 60 * 60, // 8 hours in seconds
-      path: '/'
-    });
-  } else if (typeof cookie.serialize === 'function') {
-    serialized = cookie.serialize(ADMIN_COOKIE_NAME, token, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: 'strict',
-      maxAge: 8 * 60 * 60,
-      path: '/'
-    });
-  } else {
+  let serialized = null;
+  if (cookie && typeof cookie.serialize === 'function') {
+    try {
+      serialized = cookie.serialize(ADMIN_COOKIE_NAME, token, {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: 'strict',
+        maxAge: 8 * 60 * 60, // 8 hours in seconds
+        path: '/'
+      });
+    } catch (e) {}
+  }
+  if (!serialized) {
     serialized = `${ADMIN_COOKIE_NAME}=${token}; Max-Age=28800; Path=/; HttpOnly; SameSite=Strict${isProd ? '; Secure' : ''}`;
   }
   res.setHeader('Set-Cookie', serialized);
@@ -67,26 +72,19 @@ function setAdminCookie(res, token) {
 
 function clearAdminCookie(res) {
   const isProd = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL);
-  let serialized;
-  if (typeof cookie.stringifySetCookie === 'function') {
-    serialized = cookie.stringifySetCookie({
-      name: ADMIN_COOKIE_NAME,
-      value: '',
-      httpOnly: true,
-      secure: isProd,
-      sameSite: 'Strict',
-      maxAge: 0,
-      path: '/'
-    });
-  } else if (typeof cookie.serialize === 'function') {
-    serialized = cookie.serialize(ADMIN_COOKIE_NAME, '', {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: 'strict',
-      maxAge: 0,
-      path: '/'
-    });
-  } else {
+  let serialized = null;
+  if (cookie && typeof cookie.serialize === 'function') {
+    try {
+      serialized = cookie.serialize(ADMIN_COOKIE_NAME, '', {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: 'strict',
+        maxAge: 0,
+        path: '/'
+      });
+    } catch (e) {}
+  }
+  if (!serialized) {
     serialized = `${ADMIN_COOKIE_NAME}=; Max-Age=0; Path=/; HttpOnly; SameSite=Strict${isProd ? '; Secure' : ''}`;
   }
   res.setHeader('Set-Cookie', serialized);
