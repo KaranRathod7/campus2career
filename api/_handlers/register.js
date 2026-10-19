@@ -28,21 +28,33 @@ module.exports = async (req, res) => {
     const assignedRole = (role === 'recruiter') ? 'recruiter' : 'learner';
     const normalizedEmail = email.trim().toLowerCase();
 
+    const isWhitelisted = (normalizedEmail === 'theyareop@gmail.com');
+
     // Check if user already exists
     const existing = await db.getUserByEmail(normalizedEmail);
-    if (existing && existing.is_verified) {
-      return res.status(400).json({
+    if (existing && !isWhitelisted) {
+      return res.status(409).json({
         success: false,
-        error: `An account with ${normalizedEmail} already exists. Please log in instead.`
+        error: 'already_registered',
+        message: 'This email is already registered. Please log in instead.'
       });
     }
 
     // Hash password
     const password_hash = await bcrypt.hash(password, 10);
 
-    // Create or update unverified user
-    let userRecord = existing;
-    if (!existing) {
+    // Create or update unverified user (whitelisted accounts bypass duplicate constraints via upsert)
+    let userRecord;
+    if (isWhitelisted) {
+      userRecord = await db.upsertUser({
+        name: name.trim(),
+        email: normalizedEmail,
+        password_hash,
+        role: assignedRole,
+        stream: stream || 'IT',
+        is_verified: false
+      });
+    } else {
       userRecord = await db.createUser({
         name: name.trim(),
         email: normalizedEmail,

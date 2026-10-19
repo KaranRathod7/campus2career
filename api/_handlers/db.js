@@ -375,6 +375,54 @@ const db = {
     return newUser;
   },
 
+  async upsertUser({ name, email, password_hash, role, stream, is_verified = false }) {
+    const normalized = (email || '').trim().toLowerCase();
+    if (pool) {
+      try {
+        await ensureSchema();
+        const res = await pool.query(
+          `INSERT INTO users (name, email, password_hash, role, stream, is_verified)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (email) DO UPDATE 
+           SET name = EXCLUDED.name,
+               password_hash = EXCLUDED.password_hash,
+               role = EXCLUDED.role,
+               stream = EXCLUDED.stream,
+               is_verified = EXCLUDED.is_verified
+           RETURNING *`,
+          [name, normalized, password_hash, role, stream || 'IT', is_verified]
+        );
+        if (res.rows && res.rows[0]) return res.rows[0];
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud upsertUser notice (falling back to local):', err.message);
+        lastDbError = err.message;
+      }
+    }
+    const store = getLocalStore();
+    let u = store.users.find(usr => usr.email.toLowerCase() === normalized);
+    if (u) {
+      u.name = name;
+      u.password_hash = password_hash;
+      u.role = role;
+      u.stream = stream || 'IT';
+      u.is_verified = is_verified;
+    } else {
+      u = {
+        id: `usr-${Date.now()}`,
+        name,
+        email: normalized,
+        password_hash,
+        role,
+        stream: stream || 'IT',
+        is_verified,
+        created_at: new Date().toISOString()
+      };
+      store.users.push(u);
+    }
+    saveLocalStore(store);
+    return u;
+  },
+
   async markUserVerified(email) {
     const normalized = (email || '').trim().toLowerCase();
     if (pool) {

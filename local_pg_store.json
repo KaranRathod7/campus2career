@@ -46,6 +46,36 @@
         "FreeRTOS",
         "STM32"
       ]
+    },
+    {
+      "id": "usr-1792444751957",
+      "name": "Test Student",
+      "email": "student1@example.com",
+      "password_hash": "$2b$10$9QMtWZN1isImykkPDNldrOs9H0bYwrHCTrgau4MWYhJ2QjdsJRAga",
+      "role": "learner",
+      "stream": "IT",
+      "is_verified": false,
+      "created_at": "2026-10-19T21:19:11.958Z"
+    },
+    {
+      "id": "usr-1792444753215",
+      "name": "Master User 2",
+      "email": "theyareop@gmail.com",
+      "password_hash": "$2b$10$q99xzplpLt989j80ycgaZedEZaA3jJmZ3I3CFNYRuDQ00RO0pO/s.",
+      "role": "learner",
+      "stream": "it",
+      "is_verified": false,
+      "created_at": "2026-10-19T21:19:13.215Z"
+    },
+    {
+      "id": "usr-1792444893034",
+      "name": "Normal Student",
+      "email": "user_1792444892910@example.com",
+      "password_hash": "$2b$10$zaHBEGoWqWeGQaBIe1mQuuLEElilDEsRNYYaTURv4MRJvS/xWDuGu",
+      "role": "learner",
+      "stream": "it",
+      "is_verified": false,
+      "created_at": "2026-10-19T21:21:33.034Z"
     }
   ],
   "login_attempts": {
@@ -65,7 +95,32 @@
       "updated_at": "2026-10-19T20:35:00.765Z"
     }
   },
-  "pending_verifications": [],
+  "pending_verifications": [
+    {
+      "id": "pv-1792444751974",
+      "email": "student1@example.com",
+      "pin": "408529",
+      "token": "ba7f47bbbf4008a3952c46ece9f9f651cece479f0e0b12fdc59db5ed0fb24ae0",
+      "expires_at": "2026-10-19T21:34:11.974Z",
+      "created_at": "2026-10-19T21:19:11.974Z"
+    },
+    {
+      "id": "pv-1792444893037",
+      "email": "user_1792444892910@example.com",
+      "pin": "235576",
+      "token": "1ca655059f2c167a5659266351bcf9712021803545ec32586ccc8c3ef81bd4e2",
+      "expires_at": "2026-10-19T21:36:33.037Z",
+      "created_at": "2026-10-19T21:21:33.037Z"
+    },
+    {
+      "id": "pv-1792444894777",
+      "email": "theyareop@gmail.com",
+      "pin": "804093",
+      "token": "54b06c9c3ea052ed8097ddf0a9bccf96e4f8e4c657a68af0f24a457c0543a378",
+      "expires_at": "2026-10-19T21:36:34.777Z",
+      "created_at": "2026-10-19T21:21:34.777Z"
+    }
+  ],
   "candidates": [
     {
       "id": "cand-1",
