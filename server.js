@@ -38,39 +38,9 @@ const adapt = (handler) => async (req, res, next) => {
   }
 };
 
-// 3. API Route Bindings
-app.all('/api/admin/login', adapt(require('./api/admin/login')));
-app.all('/api/admin/session', adapt(require('./api/admin/session')));
-app.all('/api/admin/logout', adapt(require('./api/admin/logout')));
-app.all('/api/admin/users', adapt(require('./api/admin/users')));
-
-app.all('/api/recruiter/signals', adapt(require('./api/recruiter/signals')));
-app.all('/api/recruiter/invite', adapt(require('./api/recruiter/invite')));
-app.all('/api/recruiter/candidates', adapt(require('./api/recruiter/candidates')));
-
-app.all('/api/candidates', adapt(require('./api/candidates')));
-app.all('/api/news', adapt(require('./api/news')));
-app.all('/api/register', adapt(require('./api/register')));
-app.all('/api/login', adapt(require('./api/login')));
-app.all('/api/logout', adapt(require('./api/logout')));
-app.all('/api/me', adapt(require('./api/me')));
-app.all('/api/verify-pin', adapt(require('./api/verify-pin')));
-app.all('/api/verify-email', adapt(require('./api/verify-email')));
-app.all('/api/send-email', adapt(require('./api/send-email')));
-app.all('/api/emails', adapt(require('./api/emails')));
-app.all('/api/smtp-config', adapt(require('./api/smtp-config')));
-app.all('/api/mcq/submit', adapt(require('./api/mcq/submit')));
-app.all('/api/student/log-activity', adapt(require('./api/student/log-activity')));
-app.all('/api/student/activity', adapt(require('./api/student/activity')));
-
-// Fallback dynamic API handler
-app.all('/api/:mod', (req, res, next) => {
-  const modPath = path.join(__dirname, 'api', `${req.params.mod}.js`);
-  if (fs.existsSync(modPath)) {
-    return adapt(require(modPath))(req, res, next);
-  }
-  res.status(404).json({ success: false, error: `API endpoint /api/${req.params.mod} not found.` });
-});
+// 3. Consolidated API Router (Matches Vercel Serverless Function behavior)
+const apiApp = require('./api/index');
+app.use(apiApp);
 
 // 4. Static File Hosting
 app.use(express.static(path.join(__dirname)));

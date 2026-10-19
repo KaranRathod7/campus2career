@@ -1,6 +1,11 @@
 const fs = require('fs');
 const path = require('path');
-const OUTBOX_FILE = path.join(__dirname, '..', 'emails_outbox.json');
+const ROOT_DIR = fs.existsSync(path.join(__dirname, '..', '..', 'emails_outbox.json'))
+  ? path.join(__dirname, '..', '..')
+  : (fs.existsSync(path.join(__dirname, '..', 'emails_outbox.json'))
+      ? path.join(__dirname, '..')
+      : process.cwd());
+const OUTBOX_FILE = path.join(ROOT_DIR, 'emails_outbox.json');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');

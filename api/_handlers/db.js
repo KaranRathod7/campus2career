@@ -22,8 +22,13 @@ if (connectionString) {
 }
 
 // In-memory / file-backed fallback store for seamless offline/local development
-const LOCAL_DB_FILE = path.join(__dirname, '..', 'candidates_db.json');
-const LOCAL_STORE_FILE = path.join(__dirname, '..', 'local_pg_store.json');
+const ROOT_DIR = fs.existsSync(path.join(__dirname, '..', '..', 'local_pg_store.json'))
+  ? path.join(__dirname, '..', '..')
+  : (fs.existsSync(path.join(__dirname, '..', 'local_pg_store.json'))
+      ? path.join(__dirname, '..')
+      : process.cwd());
+const LOCAL_DB_FILE = path.join(ROOT_DIR, 'candidates_db.json');
+const LOCAL_STORE_FILE = path.join(ROOT_DIR, 'local_pg_store.json');
 
 function getLocalStore() {
   if (fs.existsSync(LOCAL_STORE_FILE)) {
@@ -219,7 +224,7 @@ let schemaInitialized = false;
 async function ensureSchema() {
   if (!pool || schemaInitialized) return;
   try {
-    const schemaSql = fs.readFileSync(path.join(__dirname, '..', 'schema.sql'), 'utf-8');
+    const schemaSql = fs.readFileSync(path.join(ROOT_DIR, 'schema.sql'), 'utf-8');
     await pool.query(schemaSql);
     schemaInitialized = true;
     console.log('[Campus2Career DB] PostgreSQL schema & seed migration verified.');

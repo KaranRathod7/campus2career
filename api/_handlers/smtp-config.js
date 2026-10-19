@@ -4,7 +4,12 @@ const fs = require('fs');
 const path = require('path');
 const { verifyAdmin } = require('./authMiddleware');
 
-const CONFIG_FILE = path.join(__dirname, '..', 'email_config.json');
+const ROOT_DIR = fs.existsSync(path.join(__dirname, '..', '..', 'email_config.json'))
+  ? path.join(__dirname, '..', '..')
+  : (fs.existsSync(path.join(__dirname, '..', 'email_config.json'))
+      ? path.join(__dirname, '..')
+      : process.cwd());
+const CONFIG_FILE = path.join(ROOT_DIR, 'email_config.json');
 
 function loadConfig() {
   const defaultConfig = {
