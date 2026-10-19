@@ -6,53 +6,102 @@ const path = require('path');
 
 let pool = null;
 let lastDbError = null;
-const rawConnStr = process.env.POSTGRES_URL || process.env.DATABASE_URL || process.env.SUPABASE_POSTGRES_URL || '';
-const connectionString = rawConnStr.trim();
 
-if (connectionString) {
-  try {
-    const isLocal = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
-    let parse;
-    try {
-      parse = require('pg-connection-string').parse;
-    } catch (e) {}
-
-    let poolConfig = {
-      max: 3, // Low connection limit suited for serverless lambdas
-      connectionTimeoutMillis: 5000, // Timeout fast on cold start / paused DB
-      idleTimeoutMillis: 10000
-    };
-
-    if (parse) {
-      // Strip sslmode from URL so pg-connection-string does not override ssl config
-      const cleanUri = connectionString.replace(/([?&])sslmode=[^&]+(&|$)/i, '$1').replace(/[?&]$/, '');
-      const parsed = parse(cleanUri);
-      delete parsed.sslmode;
-      poolConfig = {
-        ...poolConfig,
-        ...parsed,
-        ssl: isLocal ? false : { rejectUnauthorized: false }
-      };
-    } else {
-      poolConfig.connectionString = connectionString;
-      poolConfig.ssl = isLocal ? false : { rejectUnauthorized: false };
-    }
-
-    pool = new Pool(poolConfig);
-
-    // Prevent unhandled error event from crashing the serverless worker
-    pool.on('error', (err) => {
-      console.warn('[Campus2Career DB Pool Notice - Handled]', err.message);
-      lastDbError = err.message;
-    });
-
-    console.log('[Campus2Career DB] PostgreSQL / Supabase pool configured with SSL support.');
-  } catch (err) {
-    console.error('[Campus2Career DB] Pool init failed:', err.message);
-    lastDbError = err.message;
-    pool = null;
-  }
+function getConnectionString() {
+  return (
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL_NON_POOLING ||
+    process.env.DATABASE_URL ||
+    process.env.SUPABASE_POSTGRES_URL ||
+    process.env.SUPABASE_DATABASE_URL ||
+    process.env.SUPABASE_DB_URL ||
+    ''
+  ).trim();
 }
+
+function initPool() {
+  if (pool) return pool;
+
+  const connectionString = getConnectionString();
+
+  if (connectionString) {
+    try {
+      const isLocal = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
+      let parse;
+      try {
+        parse = require('pg-connection-string').parse;
+      } catch (e) {}
+
+      // Strip sslmode from URL so pg-connection-string or node-pg does not override custom SSL config
+      const cleanUri = connectionString.replace(/([?&])sslmode=[^&]+(&|$)/i, '$1').replace(/[?&]$/, '');
+
+      let poolConfig = {
+        max: 5,
+        connectionTimeoutMillis: 10000,
+        idleTimeoutMillis: 30000
+      };
+
+      if (parse) {
+        try {
+          const parsed = parse(cleanUri);
+          delete parsed.sslmode;
+          poolConfig = {
+            ...poolConfig,
+            ...parsed,
+            ssl: isLocal ? false : { rejectUnauthorized: false }
+          };
+        } catch (parseErr) {
+          poolConfig.connectionString = cleanUri;
+          poolConfig.ssl = isLocal ? false : { rejectUnauthorized: false };
+        }
+      } else {
+        poolConfig.connectionString = cleanUri;
+        poolConfig.ssl = isLocal ? false : { rejectUnauthorized: false };
+      }
+
+      pool = new Pool(poolConfig);
+
+      pool.on('error', (err) => {
+        console.error('[Campus2Career DB Pool Error]:', err.message);
+        lastDbError = err.message;
+      });
+
+      console.log('[Campus2Career DB] PostgreSQL / Supabase pool configured with SSL support.');
+      return pool;
+    } catch (err) {
+      console.error('[Campus2Career DB] Pool init failed:', err.message);
+      lastDbError = err.message;
+      pool = null;
+      return null;
+    }
+  } else if (process.env.PGHOST) {
+    try {
+      pool = new Pool({
+        host: process.env.PGHOST,
+        port: process.env.PGPORT ? parseInt(process.env.PGPORT, 10) : 5432,
+        database: process.env.PGDATABASE,
+        user: process.env.PGUSER,
+        password: process.env.PGPASSWORD,
+        ssl: (process.env.PGHOST === 'localhost' || process.env.PGHOST === '127.0.0.1') ? false : { rejectUnauthorized: false },
+        max: 5,
+        connectionTimeoutMillis: 10000,
+        idleTimeoutMillis: 30000
+      });
+      console.log('[Campus2Career DB] PostgreSQL / Supabase pool configured via PGHOST.');
+      return pool;
+    } catch (err) {
+      console.error('[Campus2Career DB] PGHOST Pool init failed:', err.message);
+      lastDbError = err.message;
+      pool = null;
+      return null;
+    }
+  }
+
+  return null;
+}
+
+initPool();
 
 // In-memory / file-backed fallback store for seamless offline/local development
 const ROOT_DIR = fs.existsSync(path.join(__dirname, '..', '..', 'local_pg_store.json'))
@@ -270,52 +319,128 @@ function saveLocalStore(store) {
 
 // Ensure schema is auto-migrated if connected to PostgreSQL
 let schemaInitialized = false;
-let schemaAttempted = false;
-async function ensureSchema() {
-  if (!pool || schemaInitialized || schemaAttempted) return;
-  schemaAttempted = true;
-  try {
-    const schemaPath = path.join(ROOT_DIR, 'schema.sql');
-    if (fs.existsSync(schemaPath)) {
-      const schemaSql = fs.readFileSync(schemaPath, 'utf-8');
-      if (schemaSql && schemaSql.trim()) {
-        await pool.query(schemaSql);
-        schemaInitialized = true;
-        console.log('[Campus2Career DB] PostgreSQL schema & seed migration verified.');
-        return;
-      }
-    }
-  } catch (err) {
-    console.warn('[Campus2Career DB] Auto-migration notice (falling back to inline verification):', err.message);
-  }
+let schemaPromise = null;
 
-  // Minimal inline DDL guarantee if schema.sql was not packaged by Vercel
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS candidates (
-        id VARCHAR(100) PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        email VARCHAR(255),
-        stream VARCHAR(50),
-        domain VARCHAR(255),
-        experience_level VARCHAR(100),
-        skill_score NUMERIC(5,2) DEFAULT 90,
-        dynamic_competence_percent NUMERIC(5,2) DEFAULT 90,
-        skills TEXT[],
-        capstone_proof TEXT,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-    schemaInitialized = true;
-  } catch (inlineErr) {
-    console.warn('[Campus2Career DB] Inline DDL notice (restricted DB role or table exists):', inlineErr.message);
-  }
+async function ensureSchema() {
+  const p = initPool();
+  if (!p) return;
+  if (schemaInitialized) return;
+  if (schemaPromise) return await schemaPromise;
+
+  schemaPromise = (async () => {
+    try {
+      // 1. Extension (safe ignore if restricted/already installed)
+      try {
+        await p.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto";');
+      } catch (e) {}
+
+      // 2. Users Table
+      await p.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          name VARCHAR(255) NOT NULL,
+          email VARCHAR(255) UNIQUE NOT NULL,
+          password_hash VARCHAR(255) NOT NULL,
+          role VARCHAR(50) NOT NULL DEFAULT 'learner',
+          is_verified BOOLEAN DEFAULT FALSE,
+          stream VARCHAR(100) DEFAULT 'IT',
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // 3. User Table Column Migrations (in case table existed with fewer columns)
+      const userCols = [
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS branch VARCHAR(100);",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS college VARCHAR(255);",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS year INT;",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS skills TEXT[];",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS total_study_minutes INT DEFAULT 0;",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS total_lecture_minutes INT DEFAULT 0;",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS avg_exam_score NUMERIC(5,2) DEFAULT 0;",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS dynamic_competence_percent NUMERIC(5,2) DEFAULT 25.0;"
+      ];
+      for (const colSql of userCols) {
+        try { await p.query(colSql); } catch (e) {}
+      }
+
+      // 4. Pending Verifications Table
+      await p.query(`
+        CREATE TABLE IF NOT EXISTS pending_verifications (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          email VARCHAR(255) NOT NULL,
+          pin VARCHAR(20) NOT NULL,
+          token VARCHAR(255) NOT NULL,
+          expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      try {
+        await p.query('CREATE INDEX IF NOT EXISTS idx_pending_verifications_email ON pending_verifications (LOWER(TRIM(email)));');
+      } catch (e) {}
+
+      // 5. Login Attempts Table
+      await p.query(`
+        CREATE TABLE IF NOT EXISTS login_attempts (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          ip_address VARCHAR(100) NOT NULL,
+          email VARCHAR(255) NOT NULL,
+          failed_attempts INT DEFAULT 1,
+          locked_until TIMESTAMP WITH TIME ZONE,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT unique_ip_email UNIQUE(ip_address, email)
+        );
+      `);
+
+      // 6. Candidates Table
+      await p.query(`
+        CREATE TABLE IF NOT EXISTS candidates (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          name VARCHAR(255) NOT NULL,
+          email VARCHAR(255) UNIQUE,
+          stream VARCHAR(50),
+          domain VARCHAR(255),
+          experience_level VARCHAR(100),
+          skill_score NUMERIC(5,2) DEFAULT 90,
+          dynamic_competence_percent NUMERIC(5,2) DEFAULT 90,
+          skills TEXT[],
+          capstone_proof TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // 7. Seed Admin if not present
+      try {
+        await p.query(`
+          INSERT INTO users (name, email, password_hash, role, is_verified, stream)
+          VALUES (
+            'Platform Administrator',
+            'admin@campus2career.org',
+            '$2b$10$x0AgxdV8b/d7IS1zrd9wnO8NEI.jSOrzt9RPjRswqzvNioAbkL9Da',
+            'admin',
+            TRUE,
+            'ALL'
+          )
+          ON CONFLICT (email) DO NOTHING;
+        `);
+      } catch (e) {}
+
+      schemaInitialized = true;
+      console.log('[Campus2Career DB] Inline DDL schema verification successfully completed.');
+    } catch (err) {
+      console.error('[Campus2Career DB] Schema initialization error:', err.message, err.detail || '');
+      schemaPromise = null;
+      throw err;
+    }
+  })();
+
+  return await schemaPromise;
 }
 
 async function query(text, params = []) {
-  if (pool) {
+  const p = initPool();
+  if (p) {
     await ensureSchema();
-    return await pool.query(text, params);
+    return await p.query(text, params);
   }
   return null;
 }
@@ -328,36 +453,52 @@ const db = {
   // Users
   async getUserByEmail(email) {
     const normalized = (email || '').trim().toLowerCase();
-    if (pool) {
+    const p = initPool();
+    if (p) {
       try {
         await ensureSchema();
-        const res = await pool.query('SELECT * FROM users WHERE LOWER(email) = $1 LIMIT 1', [normalized]);
+        const res = await p.query(
+          'SELECT * FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) LIMIT 1',
+          [normalized]
+        );
         return res.rows[0] || null;
       } catch (err) {
-        console.warn('[Campus2Career DB] Cloud getUserByEmail notice (falling back to local):', err.message);
+        console.error('[Campus2Career DB] Cloud getUserByEmail error:', err.message, err.detail || '');
         lastDbError = err.message;
+        throw err;
       }
     }
+    if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+      throw new Error('Database pool not connected: Missing POSTGRES_URL or DATABASE_URL environment variable on server.');
+    }
     const store = getLocalStore();
-    return store.users.find(u => u.email.toLowerCase() === normalized) || null;
+    return (store.users || []).find(u => u.email.toLowerCase() === normalized) || null;
   },
 
   async createUser({ name, email, password_hash, role, stream, is_verified = false }) {
     const normalized = (email || '').trim().toLowerCase();
-    if (pool) {
+    const p = initPool();
+    if (p) {
       try {
         await ensureSchema();
-        const res = await pool.query(
+        const res = await p.query(
           `INSERT INTO users (name, email, password_hash, role, stream, is_verified)
            VALUES ($1, $2, $3, $4, $5, $6)
            RETURNING *`,
           [name, normalized, password_hash, role, stream || 'IT', is_verified]
         );
+        if (!res.rows || !res.rows[0]) {
+          throw new Error('Database INSERT INTO users returned no row.');
+        }
         return res.rows[0];
       } catch (err) {
-        console.warn('[Campus2Career DB] Cloud createUser notice (falling back to local):', err.message);
+        console.error('[DB Insert Error]:', err.message, err.detail || '');
         lastDbError = err.message;
+        throw err;
       }
+    }
+    if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+      throw new Error('Database pool not connected: Missing POSTGRES_URL or DATABASE_URL environment variable on server.');
     }
     const store = getLocalStore();
     const newUser = {
@@ -377,10 +518,11 @@ const db = {
 
   async upsertUser({ name, email, password_hash, role, stream, is_verified = false }) {
     const normalized = (email || '').trim().toLowerCase();
-    if (pool) {
+    const p = initPool();
+    if (p) {
       try {
         await ensureSchema();
-        const res = await pool.query(
+        const res = await p.query(
           `INSERT INTO users (name, email, password_hash, role, stream, is_verified)
            VALUES ($1, $2, $3, $4, $5, $6)
            ON CONFLICT (email) DO UPDATE 
@@ -392,11 +534,18 @@ const db = {
            RETURNING *`,
           [name, normalized, password_hash, role, stream || 'IT', is_verified]
         );
-        if (res.rows && res.rows[0]) return res.rows[0];
+        if (!res.rows || !res.rows[0]) {
+          throw new Error('Database UPSERT INTO users returned no row.');
+        }
+        return res.rows[0];
       } catch (err) {
-        console.warn('[Campus2Career DB] Cloud upsertUser notice (falling back to local):', err.message);
+        console.error('[DB Upsert Error]:', err.message, err.detail || '');
         lastDbError = err.message;
+        throw err;
       }
+    }
+    if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+      throw new Error('Database pool not connected: Missing POSTGRES_URL or DATABASE_URL environment variable on server.');
     }
     const store = getLocalStore();
     let u = store.users.find(usr => usr.email.toLowerCase() === normalized);
@@ -425,15 +574,23 @@ const db = {
 
   async markUserVerified(email) {
     const normalized = (email || '').trim().toLowerCase();
-    if (pool) {
+    const p = initPool();
+    if (p) {
       try {
         await ensureSchema();
-        await pool.query('UPDATE users SET is_verified = TRUE WHERE LOWER(email) = $1', [normalized]);
-        return true;
+        const res = await p.query(
+          'UPDATE users SET is_verified = TRUE WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) RETURNING *',
+          [normalized]
+        );
+        return res.rows[0] || true;
       } catch (err) {
-        console.warn('[Campus2Career DB] Cloud markUserVerified notice (falling back to local):', err.message);
+        console.error('[Campus2Career DB] Cloud markUserVerified error:', err.message, err.detail || '');
         lastDbError = err.message;
+        throw err;
       }
+    }
+    if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+      throw new Error('Database pool not connected: Missing POSTGRES_URL or DATABASE_URL environment variable on server.');
     }
     const store = getLocalStore();
     const u = store.users.find(usr => usr.email.toLowerCase() === normalized);
@@ -450,17 +607,18 @@ const db = {
     const cleanBranch = (branch || stream || 'it').toLowerCase();
     const cleanSkills = Array.isArray(skills) ? skills : (typeof skills === 'string' ? skills.split(',').map(s => s.trim()) : null);
 
-    if (pool) {
+    const p = initPool();
+    if (p) {
       try {
         await ensureSchema();
         try {
-          await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS branch VARCHAR(50);');
-          await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS college VARCHAR(255);');
-          await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS year INT;');
-          await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS skills TEXT[];');
+          await p.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS branch VARCHAR(50);');
+          await p.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS college VARCHAR(255);');
+          await p.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS year INT;');
+          await p.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS skills TEXT[];');
         } catch (colErr) {}
 
-        const res = await pool.query(
+        const res = await p.query(
           `UPDATE users 
            SET stream = $1,
                branch = COALESCE($2, branch),
@@ -493,10 +651,11 @@ const db = {
   },
 
   async getAllUsers() {
-    if (pool) {
+    const p = initPool();
+    if (p) {
       try {
         await ensureSchema();
-        const res = await pool.query('SELECT id, name, email, role, stream, is_verified, created_at FROM users ORDER BY created_at DESC');
+        const res = await p.query('SELECT id, name, email, role, stream, is_verified, created_at FROM users ORDER BY created_at DESC');
         return res.rows;
       } catch (err) {
         console.warn('[Campus2Career DB] Cloud getAllUsers notice (falling back to local):', err.message);
@@ -517,10 +676,11 @@ const db = {
 
   async deleteUser(idOrEmail) {
     const val = (idOrEmail || '').trim().toLowerCase();
-    if (pool) {
+    const p = initPool();
+    if (p) {
       try {
         await ensureSchema();
-        const res = await pool.query('DELETE FROM users WHERE id::text = $1 OR LOWER(email) = $1 RETURNING id, email', [val]);
+        const res = await p.query('DELETE FROM users WHERE id::text = $1 OR LOWER(email) = $1 RETURNING id, email', [val]);
         return res.rows.length > 0;
       } catch (err) {
         console.warn('[Campus2Career DB] Cloud deleteUser notice (falling back to local):', err.message);
@@ -542,11 +702,12 @@ const db = {
     const ipAddr = ip || '127.0.0.1';
     const emailAddr = (email || '').trim().toLowerCase();
     const now = new Date();
+    const p = initPool();
 
-    if (pool) {
+    if (p) {
       try {
         await ensureSchema();
-        const res = await pool.query(
+        const res = await p.query(
           `SELECT failed_attempts, locked_until 
            FROM login_attempts 
            WHERE ip_address = $1 AND email = $2`,
@@ -580,11 +741,12 @@ const db = {
     const ipAddr = ip || '127.0.0.1';
     const emailAddr = (email || '').trim().toLowerCase();
     const now = new Date();
+    const p = initPool();
 
-    if (pool) {
+    if (p) {
       try {
         await ensureSchema();
-        const cur = await pool.query(
+        const cur = await p.query(
           `SELECT failed_attempts FROM login_attempts WHERE ip_address = $1 AND email = $2`,
           [ipAddr, emailAddr]
         );
@@ -603,7 +765,7 @@ const db = {
           lockedUntil = new Date(now.getTime() + 15 * 60 * 1000);
         }
 
-        await pool.query(
+        await p.query(
           `INSERT INTO login_attempts (ip_address, email, failed_attempts, locked_until, updated_at)
            VALUES ($1, $2, $3, $4, NOW())
            ON CONFLICT (ip_address, email) 
@@ -647,10 +809,11 @@ const db = {
   async clearRateLimit(ip, email) {
     const ipAddr = ip || '127.0.0.1';
     const emailAddr = (email || '').trim().toLowerCase();
-    if (pool) {
+    const p = initPool();
+    if (p) {
       try {
         await ensureSchema();
-        await pool.query('DELETE FROM login_attempts WHERE ip_address = $1 AND email = $2', [ipAddr, emailAddr]);
+        await p.query('DELETE FROM login_attempts WHERE ip_address = $1 AND email = $2', [ipAddr, emailAddr]);
         return;
       } catch (err) {
         console.warn('[Campus2Career DB] Cloud clearRateLimit notice (falling back to local):', err.message);
@@ -667,26 +830,33 @@ const db = {
   async createPendingVerification(email, pin, token) {
     const normalized = (email || '').trim().toLowerCase();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+    const p = initPool();
 
-    if (pool) {
+    if (p) {
       try {
         await ensureSchema();
         // Remove any previous pending verification for this email
-        await pool.query('DELETE FROM pending_verifications WHERE LOWER(email) = $1', [normalized]);
-        await pool.query(
+        await p.query('DELETE FROM pending_verifications WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))', [normalized]);
+        const res = await p.query(
           `INSERT INTO pending_verifications (email, pin, token, expires_at)
-           VALUES ($1, $2, $3, $4)`,
+           VALUES ($1, $2, $3, $4)
+           RETURNING *`,
           [normalized, pin, token, expiresAt]
         );
-        return { email: normalized, pin, token, expiresAt };
+        return res.rows[0] || { email: normalized, pin, token, expires_at: expiresAt };
       } catch (err) {
-        console.warn('[Campus2Career DB] Cloud createPendingVerification notice (falling back to local):', err.message);
+        console.error('[DB Insert Error - pending_verifications]:', err.message, err.detail || '');
         lastDbError = err.message;
+        throw err;
       }
     }
 
+    if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+      throw new Error('Database pool not connected: Missing POSTGRES_URL or DATABASE_URL environment variable on server.');
+    }
+
     const store = getLocalStore();
-    store.pending_verifications = store.pending_verifications.filter(v => v.email.toLowerCase() !== normalized);
+    store.pending_verifications = (store.pending_verifications || []).filter(v => v.email.toLowerCase() !== normalized);
     const rec = {
       id: `pv-${Date.now()}`,
       email: normalized,
@@ -702,48 +872,63 @@ const db = {
 
   async getPendingVerification(email, tokenOrPin) {
     const normalized = (email || '').trim().toLowerCase();
+    const cleanTokenOrPin = (tokenOrPin || '').toString().trim();
     const now = new Date();
+    const p = initPool();
 
-    if (pool) {
+    if (p) {
       try {
         await ensureSchema();
-        const res = await pool.query(
+        const res = await p.query(
           `SELECT * FROM pending_verifications 
-           WHERE LOWER(email) = $1 
-             AND (token = $2 OR pin = $2) 
+           WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) 
+             AND (TRIM(token) = $2 OR TRIM(pin) = $2) 
              AND expires_at > NOW()
            ORDER BY created_at DESC LIMIT 1`,
-          [normalized, tokenOrPin]
+          [normalized, cleanTokenOrPin]
         );
         return res.rows[0] || null;
       } catch (err) {
-        console.warn('[Campus2Career DB] Cloud getPendingVerification notice (falling back to local):', err.message);
+        console.error('[DB Lookup Error - pending_verifications]:', err.message, err.detail || '');
         lastDbError = err.message;
+        throw err;
       }
     }
 
+    if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+      throw new Error('Database pool not connected: Missing POSTGRES_URL or DATABASE_URL environment variable on server.');
+    }
+
     const store = getLocalStore();
-    return store.pending_verifications.find(v => 
+    return (store.pending_verifications || []).find(v => 
       v.email.toLowerCase() === normalized &&
-      (v.token === tokenOrPin || v.pin === tokenOrPin) &&
+      (v.token === cleanTokenOrPin || v.pin === cleanTokenOrPin) &&
       new Date(v.expires_at) > now
     ) || null;
   },
 
   async deletePendingVerification(email) {
     const normalized = (email || '').trim().toLowerCase();
-    if (pool) {
+    const p = initPool();
+
+    if (p) {
       try {
         await ensureSchema();
-        await pool.query('DELETE FROM pending_verifications WHERE LOWER(email) = $1', [normalized]);
+        await p.query('DELETE FROM pending_verifications WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))', [normalized]);
         return;
       } catch (err) {
-        console.warn('[Campus2Career DB] Cloud deletePendingVerification notice (falling back to local):', err.message);
+        console.error('[DB Delete Error - pending_verifications]:', err.message, err.detail || '');
         lastDbError = err.message;
+        throw err;
       }
     }
+
+    if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+      throw new Error('Database pool not connected: Missing POSTGRES_URL or DATABASE_URL environment variable on server.');
+    }
+
     const store = getLocalStore();
-    store.pending_verifications = store.pending_verifications.filter(v => v.email.toLowerCase() !== normalized);
+    store.pending_verifications = (store.pending_verifications || []).filter(v => v.email.toLowerCase() !== normalized);
     saveLocalStore(store);
   },
 

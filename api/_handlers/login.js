@@ -41,7 +41,14 @@ module.exports = async (req, res) => {
     }
 
     // 2. Fetch user
-    const user = await db.getUserByEmail(normalizedEmail);
+    let user;
+    try {
+      user = await db.getUserByEmail(normalizedEmail);
+    } catch (err) {
+      console.error('[DB Login Lookup Error]:', err.message, err.detail);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+
     if (!user) {
       const failed = await db.recordFailedAttempt(ip, normalizedEmail);
       const remainingAttempts = Math.max(0, 5 - failed.attempts);

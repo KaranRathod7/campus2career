@@ -39,7 +39,14 @@ module.exports = async (req, res) => {
       });
     }
 
-    const pending = await db.getPendingVerification(normalizedEmail, cleanPin);
+    let pending;
+    try {
+      pending = await db.getPendingVerification(normalizedEmail, cleanPin);
+    } catch (err) {
+      console.error('[DB Lookup Error]:', err.message, err.detail);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+
     if (!pending) {
       const failed = await db.recordFailedAttempt(ip, normalizedEmail);
       const remainingAttempts = Math.max(0, 5 - failed.attempts);
@@ -56,18 +63,31 @@ module.exports = async (req, res) => {
     // Reset rate limit on success
     await db.clearRateLimit(ip, normalizedEmail);
 
-    // Mark user verified
-    await db.markUserVerified(normalizedEmail);
-    // Delete pending record
-    await db.deletePendingVerification(normalizedEmail);
+    // Mark user verified in database
+    try {
+      await db.markUserVerified(normalizedEmail);
+      await db.deletePendingVerification(normalizedEmail);
+    } catch (err) {
+      console.error('[DB Update Error]:', err.message, err.detail);
+      return res.status(500).json({ success: false, error: err.message });
+    }
 
-    const user = await db.getUserByEmail(normalizedEmail) || {
-      id: 'usr',
-      name: 'User',
-      email: normalizedEmail,
-      role: 'learner',
-      stream: 'IT'
-    };
+    // Fetch verified user from database
+    let user;
+    try {
+      user = await db.getUserByEmail(normalizedEmail);
+    } catch (err) {
+      console.error('[DB Lookup Error]:', err.message, err.detail);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User record not found in database after verification.'
+      });
+    }
+
     const role = user.role || 'learner';
     const redirect = role === 'recruiter' ? '/recruiter' : '/dashboard';
 

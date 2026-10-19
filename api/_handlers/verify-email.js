@@ -119,17 +119,26 @@ module.exports = async (req, res) => {
       await db.deletePendingVerification(normalizedEmail);
 
       const user = await db.getUserByEmail(normalizedEmail);
-      const isRecruiter = user && user.role === 'recruiter';
+      if (!user) {
+        return res.status(404).json({ success: false, error: 'User record not found in database.' });
+      }
+
+      const isRecruiter = user.role === 'recruiter';
       const redirect = isRecruiter ? '/recruiter' : '/dashboard';
 
       return res.status(200).json({
         success: true,
         message: 'Email successfully verified! Your account is activated.',
         user: {
-          id: user ? user.id : 'user',
-          name: user ? user.name : 'Student',
+          id: user.id,
+          name: user.name,
           email: normalizedEmail,
-          role: user ? user.role : 'learner',
+          role: user.role || 'learner',
+          stream: user.stream || null,
+          branch: user.branch || user.stream || null,
+          skills: user.skills || null,
+          college: user.college || null,
+          year: user.year || null,
           is_verified: true
         },
         redirect

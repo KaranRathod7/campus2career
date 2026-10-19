@@ -31,7 +31,14 @@ module.exports = async (req, res) => {
     const isWhitelisted = (normalizedEmail === 'theyareop@gmail.com');
 
     // Check if user already exists
-    const existing = await db.getUserByEmail(normalizedEmail);
+    let existing;
+    try {
+      existing = await db.getUserByEmail(normalizedEmail);
+    } catch (err) {
+      console.error('[DB Lookup Error]:', err.message, err.detail);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+
     if (existing && !isWhitelisted) {
       return res.status(409).json({
         success: false,
@@ -43,34 +50,45 @@ module.exports = async (req, res) => {
     // Hash password
     const password_hash = await bcrypt.hash(password, 10);
 
+    // Direct Database Insertion on Registration:
     // Create or update unverified user (whitelisted accounts bypass duplicate constraints via upsert)
     let userRecord;
-    if (isWhitelisted) {
-      userRecord = await db.upsertUser({
-        name: name.trim(),
-        email: normalizedEmail,
-        password_hash,
-        role: assignedRole,
-        stream: stream || 'IT',
-        is_verified: false
-      });
-    } else {
-      userRecord = await db.createUser({
-        name: name.trim(),
-        email: normalizedEmail,
-        password_hash,
-        role: assignedRole,
-        stream: stream || 'IT',
-        is_verified: false
-      });
+    try {
+      if (isWhitelisted) {
+        userRecord = await db.upsertUser({
+          name: name.trim(),
+          email: normalizedEmail,
+          password_hash,
+          role: assignedRole,
+          stream: stream || 'IT',
+          is_verified: false
+        });
+      } else {
+        userRecord = await db.createUser({
+          name: name.trim(),
+          email: normalizedEmail,
+          password_hash,
+          role: assignedRole,
+          stream: stream || 'IT',
+          is_verified: false
+        });
+      }
+    } catch (err) {
+      console.error('[DB Insert Error]:', err.message, err.detail);
+      return res.status(500).json({ success: false, error: err.message });
     }
 
     // Generate 6-digit random PIN & 32-byte secure random hex token
     const pin = Math.floor(100000 + Math.random() * 900000).toString();
     const token = crypto.randomBytes(32).toString('hex');
 
-    // Store into pending_verifications with 15-minute expiration
-    await db.createPendingVerification(normalizedEmail, pin, token);
+    // Store into pending_verifications in database with 15-minute expiration
+    try {
+      await db.createPendingVerification(normalizedEmail, pin, token);
+    } catch (err) {
+      console.error('[DB Insert Error]:', err.message, err.detail);
+      return res.status(500).json({ success: false, error: err.message });
+    }
 
     // Determine Base URL for email verification link
     const proto = req.headers['x-forwarded-proto'] || 'http';
@@ -78,13 +96,19 @@ module.exports = async (req, res) => {
     const baseUrl = `${proto}://${host}`;
 
     // Send Brevo transactional email
-    const emailResult = await sendVerificationEmail({
-      to: normalizedEmail,
-      name: name.trim(),
-      pin,
-      token,
-      baseUrl
-    });
+    let emailResult = { success: false, error: 'Brevo email not dispatched' };
+    try {
+      emailResult = await sendVerificationEmail({
+        to: normalizedEmail,
+        name: name.trim(),
+        pin,
+        token,
+        baseUrl
+      });
+    } catch (emailErr) {
+      console.warn('[Brevo Dispatch Warning]:', emailErr.message);
+      emailResult = { success: false, error: emailErr.message };
+    }
 
     return res.status(200).json({
       success: true,
@@ -96,6 +120,6 @@ module.exports = async (req, res) => {
     });
   } catch (error) {
     console.error('[Registration Error]', error);
-    return res.status(500).json({ success: false, error: `Registration error: ${error.message}` });
+    return res.status(500).json({ success: false, error: error.message });
   }
 };
