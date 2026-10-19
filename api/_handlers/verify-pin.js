@@ -26,13 +26,35 @@ module.exports = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Email and 6-digit PIN are required.' });
     }
 
-    const pending = await db.getPendingVerification(normalizedEmail, cleanPin);
-    if (!pending) {
-      return res.status(400).json({
+    const ip = req.headers['x-forwarded-for'] ? req.headers['x-forwarded-for'].split(',')[0].trim() : (req.socket?.remoteAddress || '127.0.0.1');
+
+    // 1. Rate Limiting Check
+    const rateStatus = await db.checkRateLimit(ip, normalizedEmail);
+    if (rateStatus.isLocked) {
+      return res.status(429).json({
         success: false,
-        error: 'Incorrect or expired PIN. Please enter the valid 6-digit code received via email.'
+        error: `Security Alert: Too many failed verification attempts. Locked for ${rateStatus.remainingSecs}s.`,
+        remainingSecs: rateStatus.remainingSecs,
+        isLocked: true
       });
     }
+
+    const pending = await db.getPendingVerification(normalizedEmail, cleanPin);
+    if (!pending) {
+      const failed = await db.recordFailedAttempt(ip, normalizedEmail);
+      const remainingAttempts = Math.max(0, 5 - failed.attempts);
+      return res.status(400).json({
+        success: false,
+        error: failed.isLocked
+          ? `Security Alert: Too many failed attempts. Verification locked for ${failed.remainingSecs}s.`
+          : `Incorrect or expired PIN. ${remainingAttempts} attempt(s) remaining before security lockout.`,
+        remainingAttempts,
+        isLocked: failed.isLocked
+      });
+    }
+
+    // Reset rate limit on success
+    await db.clearRateLimit(ip, normalizedEmail);
 
     // Mark user verified
     await db.markUserVerified(normalizedEmail);
@@ -60,7 +82,11 @@ module.exports = async (req, res) => {
         name: user.name,
         email: normalizedEmail,
         role,
-        stream: user.stream || 'IT',
+        stream: user.stream || null,
+        branch: user.branch || user.stream || null,
+        skills: user.skills || null,
+        college: user.college || null,
+        year: user.year || null,
         is_verified: true
       },
       token,

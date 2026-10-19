@@ -63,10 +63,21 @@ const ROOT_DIR = fs.existsSync(path.join(__dirname, '..', '..', 'local_pg_store.
 const LOCAL_DB_FILE = path.join(ROOT_DIR, 'candidates_db.json');
 const LOCAL_STORE_FILE = path.join(ROOT_DIR, 'local_pg_store.json');
 
+let inMemoryStore = null;
+
 function getLocalStore() {
+  if (inMemoryStore) return inMemoryStore;
+  const tmpPath = path.join('/tmp', 'local_pg_store.json');
+  if (fs.existsSync(tmpPath)) {
+    try {
+      inMemoryStore = JSON.parse(fs.readFileSync(tmpPath, 'utf-8'));
+      return inMemoryStore;
+    } catch (e) {}
+  }
   if (fs.existsSync(LOCAL_STORE_FILE)) {
     try {
-      return JSON.parse(fs.readFileSync(LOCAL_STORE_FILE, 'utf-8'));
+      inMemoryStore = JSON.parse(fs.readFileSync(LOCAL_STORE_FILE, 'utf-8'));
+      return inMemoryStore;
     } catch (e) {}
   }
   return {
@@ -245,10 +256,15 @@ function getLocalStore() {
 }
 
 function saveLocalStore(store) {
+  inMemoryStore = store;
   try {
     fs.writeFileSync(LOCAL_STORE_FILE, JSON.stringify(store, null, 2), 'utf-8');
+    return;
+  } catch (e) {}
+  try {
+    fs.writeFileSync(path.join('/tmp', 'local_pg_store.json'), JSON.stringify(store, null, 2), 'utf-8');
   } catch (e) {
-    console.error('[Campus2Career DB] Local store write failed:', e);
+    console.error('[Campus2Career DB] Local store write failed:', e.message);
   }
 }
 
@@ -378,6 +394,54 @@ const db = {
       saveLocalStore(store);
     }
     return true;
+  },
+
+  async updateUserProfile({ email, stream, branch, skills, college, year }) {
+    const normalized = (email || '').trim().toLowerCase();
+    const cleanStream = (stream || branch || 'IT').toUpperCase();
+    const cleanBranch = (branch || stream || 'it').toLowerCase();
+    const cleanSkills = Array.isArray(skills) ? skills : (typeof skills === 'string' ? skills.split(',').map(s => s.trim()) : null);
+
+    if (pool) {
+      try {
+        await ensureSchema();
+        try {
+          await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS branch VARCHAR(50);');
+          await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS college VARCHAR(255);');
+          await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS year INT;');
+          await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS skills TEXT[];');
+        } catch (colErr) {}
+
+        const res = await pool.query(
+          `UPDATE users 
+           SET stream = $1,
+               branch = COALESCE($2, branch),
+               college = COALESCE($3, college),
+               year = COALESCE($4, year),
+               skills = COALESCE($5, skills)
+           WHERE LOWER(email) = $6
+           RETURNING *`,
+          [cleanStream, cleanBranch, college || null, year ? parseInt(year, 10) : null, cleanSkills, normalized]
+        );
+        if (res.rows[0]) return res.rows[0];
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud updateUserProfile notice (falling back to local):', err.message);
+        lastDbError = err.message;
+      }
+    }
+
+    const store = getLocalStore();
+    const u = (store.users || []).find(usr => usr.email.toLowerCase() === normalized);
+    if (u) {
+      u.stream = cleanStream;
+      u.branch = cleanBranch;
+      if (college) u.college = college;
+      if (year) u.year = parseInt(year, 10);
+      if (cleanSkills) u.skills = cleanSkills;
+      saveLocalStore(store);
+      return u;
+    }
+    return null;
   },
 
   async getAllUsers() {

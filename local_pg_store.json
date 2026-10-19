@@ -18,6 +18,34 @@
       "stream": "ECE",
       "is_verified": true,
       "created_at": "2026-10-19T17:07:39.907Z"
+    },
+    {
+      "id": "usr-1792442100499",
+      "name": "Test Student",
+      "email": "test_student_1792442100321@campus.edu",
+      "password_hash": "$2b$10$6tdg7OaD064L4vY8UU.UcOBDDs/k8pKaFrwIrggmnLZvVX0wybvDK",
+      "role": "learner",
+      "stream": "IT",
+      "is_verified": false,
+      "created_at": "2026-10-19T20:35:00.499Z"
+    },
+    {
+      "id": "usr-1792442127781",
+      "name": "Test Student",
+      "email": "test_student_1792442127541@campus.edu",
+      "password_hash": "$2b$10$EwXrWh4/PfsfCZ7VHYhTrOLHXB9j8TcmcMLf2xe5fHEO6onOnb.9C",
+      "role": "learner",
+      "stream": "ECE",
+      "is_verified": true,
+      "created_at": "2026-10-19T20:35:27.781Z",
+      "branch": "ece",
+      "college": "MIT",
+      "year": 3,
+      "skills": [
+        "Embedded C",
+        "FreeRTOS",
+        "STM32"
+      ]
     }
   ],
   "login_attempts": {
@@ -30,6 +58,11 @@
       "failed_attempts": 5,
       "locked_until": "2026-10-19T17:40:17.916Z",
       "updated_at": "2026-10-19T17:35:17.916Z"
+    },
+    "127.0.0.1_test_student_1792442100321@campus.edu": {
+      "failed_attempts": 2,
+      "locked_until": null,
+      "updated_at": "2026-10-19T20:35:00.765Z"
     }
   },
   "pending_verifications": [],
@@ -154,7 +187,7 @@
       "stream": "CSE",
       "domain": "Cloud Architecture & Reliability",
       "demand_surge": "+88% Surge",
-      "ctc_range": "\u20b922 - \u20b936 LPA",
+      "ctc_range": "₹22 - ₹36 LPA",
       "mandatory_skills": [
         "AWS",
         "Distributed Systems",
@@ -172,7 +205,7 @@
       "stream": "ECE",
       "domain": "Bare-Metal STM32",
       "demand_surge": "+90% Surge",
-      "ctc_range": "\u20b918 - \u20b925 LPA",
+      "ctc_range": "₹18 - ₹25 LPA",
       "mandatory_skills": [
         "ARM Cortex-M",
         "FreeRTOS",
@@ -189,7 +222,7 @@
       "stream": "ECE",
       "domain": "Embedded Firmware & RTOS",
       "demand_surge": "+84% Urgent Hiring Surge",
-      "ctc_range": "\u20b914 - \u20b924 LPA",
+      "ctc_range": "₹14 - ₹24 LPA",
       "mandatory_skills": [
         "ARM Cortex-M",
         "FreeRTOS",
@@ -206,7 +239,7 @@
       "stream": "CSE",
       "domain": "Distributed Systems",
       "demand_surge": "+76% Urgent Hiring Surge",
-      "ctc_range": "\u20b918 - \u20b928 LPA",
+      "ctc_range": "₹18 - ₹28 LPA",
       "mandatory_skills": [
         "Go",
         "Raft Consensus",
@@ -223,7 +256,7 @@
       "stream": "AIDS",
       "domain": "GenAI & RAG Systems",
       "demand_surge": "+92% Critical Demand",
-      "ctc_range": "\u20b916 - \u20b930 LPA",
+      "ctc_range": "₹16 - ₹30 LPA",
       "mandatory_skills": [
         "Python",
         "PyTorch",
@@ -240,7 +273,7 @@
       "stream": "IT",
       "domain": "Full-Stack & Microservices",
       "demand_surge": "+68% Hiring Surge",
-      "ctc_range": "\u20b915 - \u20b926 LPA",
+      "ctc_range": "₹15 - ₹26 LPA",
       "mandatory_skills": [
         "TypeScript",
         "Next.js",
@@ -254,7 +287,7 @@
   "market_news": [
     {
       "id": "news-1792431317426",
-      "title": "Amazon Web Services Hiring Standard: Cloud Architecture & Reliability (CSE) \u2014 Priority on AWS, Distributed Systems, Chaos Engineering",
+      "title": "Amazon Web Services Hiring Standard: Cloud Architecture & Reliability (CSE) — Priority on AWS, Distributed Systems, Chaos Engineering",
       "stream": "CSE",
       "summary": "Recruiter Alert from Amazon Web Services: \"Lacking knowledge in multi-region failover and distributed transactions.\". Directive for learners: Build distributed systems with leader election and automated heartbeat failover.",
       "in_demand_skills": [
@@ -268,7 +301,7 @@
     },
     {
       "id": "news-1792429725728",
-      "title": "Qualcomm Systems Hiring Standard: Bare-Metal STM32 (ECE) \u2014 Priority on ARM Cortex-M, FreeRTOS, STM32 DMA",
+      "title": "Qualcomm Systems Hiring Standard: Bare-Metal STM32 (ECE) — Priority on ARM Cortex-M, FreeRTOS, STM32 DMA",
       "stream": "ECE",
       "summary": "Recruiter Alert from Qualcomm Systems: \"Candidates cannot configure DMA registers and fail on logic analyzers.\". Directive for learners: Build bare-metal driver projects with DMA.",
       "in_demand_skills": [

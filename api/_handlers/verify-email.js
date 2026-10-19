@@ -11,12 +11,46 @@ module.exports = async (req, res) => {
     return res.status(200).end();
   }
 
-  // 1. GET Request: 1-Click Link from Brevo email
+  // 1. GET Request: 1-Click Link from Brevo email OR Status Polling Check
   if (req.method === 'GET') {
     try {
       const url = new URL(req.url, `http://${req.headers.host || 'localhost:8000'}`);
-      const token = url.searchParams.get('token');
+      const isCheck = url.searchParams.get('check') === 'true' || url.searchParams.get('status') === 'true';
       const email = url.searchParams.get('email');
+
+      // Polling check for cross-device verification
+      if (isCheck && email) {
+        const normalizedEmail = email.trim().toLowerCase();
+        const user = await db.getUserByEmail(normalizedEmail);
+        if (user && user.is_verified) {
+          const { signUserToken, setUserCookie } = require('./authMiddleware');
+          const token = signUserToken(user);
+          setUserCookie(res, token);
+          return res.status(200).json({
+            success: true,
+            is_verified: true,
+            user: {
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              role: user.role || 'learner',
+              stream: user.stream || null,
+              branch: user.branch || user.stream || null,
+              skills: user.skills || null,
+              college: user.college || null,
+              year: user.year || null,
+              is_verified: true
+            },
+            token
+          });
+        }
+        return res.status(200).json({
+          success: true,
+          is_verified: false
+        });
+      }
+
+      const token = url.searchParams.get('token');
 
       if (!token || !email) {
         return res.writeHead(302, { Location: '/signup?error=invalid_token' }).end();
@@ -40,6 +74,15 @@ module.exports = async (req, res) => {
 
       // Check role to route to designated portal
       const user = await db.getUserByEmail(normalizedEmail);
+      if (user) {
+        try {
+          const { signUserToken, setUserCookie } = require('./authMiddleware');
+          const token = signUserToken(user);
+          setUserCookie(res, token);
+        } catch (e) {
+          console.warn('[Verify Email] Failed to set cookie on redirect:', e);
+        }
+      }
       const isRecruiter = user && user.role === 'recruiter';
       const redirectTarget = isRecruiter 
         ? `/recruiter?verified=true&email=${encodeURIComponent(normalizedEmail)}`

@@ -347,13 +347,6 @@
               </div>
               <p class="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 leading-none hidden lg:block">Personalized Core Skill Competence Engine</p>
             </div>
-          </div>
-
-          <!-- ADMIN BUTTON JUST RIGHT OF CAMPUS2CAREER -->
-          <button id="adminLoginNavBtn" onclick="openDatabaseViewerModal()" title="Sovereign Master Admin Portal" class="px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs font-bold rounded-xl text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/70 hover:bg-indigo-100 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 transition-all whitespace-nowrap flex items-center space-x-1.5 shadow-2xs cursor-pointer">
-            <i class="fa-solid fa-shield-halved text-indigo-600 dark:text-indigo-400 text-xs"></i>
-            <span>Admin</span>
-          </button>
         </div>
 
         <!-- Desktop Navigation Items (Learner Mode) -->
@@ -916,7 +909,7 @@
         <div id="wizardStep1" class="wizard-pane block space-y-4">
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">University / Institute</label>
-            <input type="text" id="obCollege" value="Gujarat Technological University (GTU Affiliate)" class="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#008080]">
+            <input type="text" id="obCollege" placeholder="e.g. Gujarat Technological University / IIT / NIT" class="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#008080]">
           </div>
 
           <div>
@@ -23712,7 +23705,31 @@ const defaultMarketReports = [
       }
     }
 
+    function hasCompletedOnboarding(user) {
+      if (!user) return false;
+      if (user.role === 'recruiter') return true;
+      if (user.isGuest) return true;
+      if (user.onboarded) return true;
+      const stream = (user.stream || user.branch || '').toLowerCase();
+      const hasStream = stream && stream !== 'all';
+      const hasSkills = Array.isArray(user.skills) && user.skills.length > 0;
+      return Boolean(hasStream && hasSkills);
+    }
+
     function navigateTo(screenId) {
+      if (screenId === 'dashboard') {
+        screenId = 'analyzer';
+      }
+
+      // Route Check / Onboarding Guard:
+      // If student has not completed onboarding, automatically trigger full onboarding wizard
+      if (appState.user && !appState.user.isGuest && appState.user.role !== 'recruiter' && !hasCompletedOnboarding(appState.user)) {
+        if (screenId !== 'home') {
+          openOnboardingModal(appState.user.stream || appState.user.branch || null);
+          return;
+        }
+      }
+
       // 1. Enforce strict role-based route protection
       if (!checkRouteGuard(screenId)) {
         return;
@@ -23725,7 +23742,12 @@ const defaultMarketReports = [
         view.classList.remove('block');
       });
 
-      const target = document.getElementById(`screen-${screenId}`);
+      let target = document.getElementById(`screen-${screenId}`);
+      if (!target) {
+        console.warn(`Screen view "screen-${screenId}" not found, falling back to analyzer.`);
+        target = document.getElementById('screen-analyzer') || document.getElementById('screen-home');
+        screenId = 'analyzer';
+      }
       if (target) {
         target.classList.remove('hidden');
         target.classList.add('block');
@@ -24190,6 +24212,16 @@ function getActiveDomainKey() {
 
     function switchGlobalStream(streamKey, directApply = false) {
       if (!STREAM_DATA[streamKey]) return;
+
+      // Lock stream to profile for logged-in users (demo / unauthenticated only)
+      if (appState.user && !appState.user.isGuest) {
+        const lockedStream = (appState.user.stream || appState.user.branch || '').toLowerCase();
+        if (lockedStream && lockedStream !== 'all' && streamKey !== lockedStream) {
+          showToast(`Stream is locked to your enrolled profile (${lockedStream.toUpperCase()}).`);
+          return;
+        }
+      }
+
       const currentStream = getActiveStreamKey();
 
       // Exploration of other stream triggers the guided diagnostic evaluation flow
@@ -25400,14 +25432,35 @@ function onWizardBranchChanged(branchKey) {
 
         appState.selectedStream = branch;
         if (!appState.user || appState.user.isGuest) {
-          appState.user = { isGuest: true, branch: branch, role: appState.selectedRole || 'student', year: appState.selectedYear || 3 };
+          appState.user = { isGuest: true, branch: branch, stream: branch, role: appState.selectedRole || 'student', year: appState.selectedYear || 3, onboarded: true, skills: chosenStack.map(s => s.name) };
         } else {
           appState.user.branch = branch;
+          appState.user.stream = branch;
+          appState.user.onboarded = true;
+          appState.user.skills = chosenStack.map(s => s.name);
           if (appState.selectedRole) appState.user.role = appState.selectedRole;
+          const colVal = (document.getElementById('obCollege') && document.getElementById('obCollege').value.trim()) || '';
+          if (colVal) appState.user.college = colVal;
           if (appState.selectedRole === 'student') {
             appState.user.year = appState.selectedYear || appState.user.year || 3;
           } else {
             appState.user.year = appState.selectedYear || null;
+          }
+
+          // Persist preferences to Supabase / Backend via /api/me
+          if (appState.user.email) {
+            fetch('/api/me', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: appState.user.email,
+                stream: branch,
+                branch: branch,
+                skills: chosenStack.map(s => s.name),
+                college: appState.user.college,
+                year: appState.user.year
+              })
+            }).catch(e => console.warn('[Onboarding Sync Notice]', e));
           }
         }
 
@@ -25415,6 +25468,7 @@ function onWizardBranchChanged(branchKey) {
         applyStreamChange(branch, true);
         appState.currentStack = chosenStack;
         saveStateToStorage();
+        updateAuthUI();
 
         renderSkillLevelDiagram();
         runLiveRecalculations();
@@ -27221,6 +27275,7 @@ function onWizardBranchChanged(branchKey) {
       document.querySelectorAll('.auth-required-mobile-tab').forEach(b => b.classList.remove('hidden'));
 
       const isAuthenticated = !!(appState.user && appState.user.name && !appState.user.isGuest);
+      const navStreamContainer = document.getElementById('navStreamSelectorContainer');
 
       if (isAuthenticated) {
         if (loggedOutDiv) loggedOutDiv.classList.add('hidden');
@@ -27230,8 +27285,21 @@ function onWizardBranchChanged(branchKey) {
         }
         if (namePill) namePill.innerText = appState.user.name;
         updateLiveCompetenceUI(appState.user);
+
+        // Hide stream selector pill from navbar for logged-in users (demo-only dropdown)
+        if (navStreamContainer) navStreamContainer.classList.add('hidden');
+
+        // Strictly lock stream to user profile
+        if (appState.user.stream || appState.user.branch) {
+          const lockedStream = (appState.user.stream || appState.user.branch).toLowerCase();
+          if (lockedStream && lockedStream !== 'all') {
+            appState.selectedStream = lockedStream;
+            updateNavStreamLabel(lockedStream);
+          }
+        }
       } else {
-        // Visitor / Evaluation mode: keep navigation tabs visible, login/signup actions available
+        // Visitor / Demo / Evaluation mode: stream selector is visible
+        if (navStreamContainer) navStreamContainer.classList.remove('hidden');
         if (loggedInDiv) loggedInDiv.classList.add('hidden');
         if (loggedOutDiv) {
           loggedOutDiv.classList.remove('hidden');
@@ -27403,6 +27471,19 @@ function onWizardBranchChanged(branchKey) {
         modal.classList.add('flex');
       }
       document.body.style.overflow = 'hidden';
+
+      // Ensure all fields start completely empty
+      const nameInput = document.getElementById('authNameInput');
+      const userInput = document.getElementById('authUsernameInput');
+      const emailInput = document.getElementById('authEmailInput');
+      const passInput = document.getElementById('authPassInput');
+      const codeInput = document.getElementById('authVerificationCodeInput');
+      if (nameInput) nameInput.value = '';
+      if (userInput) userInput.value = '';
+      if (emailInput) emailInput.value = '';
+      if (passInput) passInput.value = '';
+      if (codeInput) codeInput.value = '';
+
       switchAuthTab(appState.authMode);
     }
 
@@ -27413,35 +27494,8 @@ function onWizardBranchChanged(branchKey) {
         modal.classList.remove('flex');
       }
       document.body.style.overflow = '';
-    }
-
-    function switchAuthTab(mode) {
-      appState.authMode = mode;
-      const isSignUp = mode === 'signup';
-      const upTab = document.getElementById('authTab-signup');
-      const inTab = document.getElementById('authTab-signin');
-      const nameField = document.getElementById('authNameField');
-      const nameInput = document.getElementById('authNameInput');
-      const emailInput = document.getElementById('authEmailInput');
-      const passInput = document.getElementById('authPassInput');
-
-      if (isSignUp) {
-        upTab.className = "py-2.5 rounded-lg bg-[#008080] text-white shadow-xs transition-all font-bold";
-        inTab.className = "py-2.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all font-semibold";
-        document.getElementById('authModalTitle').innerText = "Sign Up to Campus2Career";
-        if (nameField) nameField.classList.remove('hidden');
-        document.getElementById('authSubmitBtn').innerHTML = `<span>Create Account &amp; Start Diagnostic &rarr;</span>`;
-        if (nameInput) nameInput.value = "Rohan Varma";
-        if (emailInput) emailInput.value = "rohan@btech.ac.in";
-        if (passInput) passInput.value = "password123";
-      } else {
-        inTab.className = "py-2.5 rounded-lg bg-[#008080] text-white shadow-xs transition-all font-bold";
-        upTab.className = "py-2.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all font-semibold";
-        document.getElementById('authModalTitle').innerText = "Log In to Campus2Career";
-        if (nameField) nameField.classList.add('hidden');
-        document.getElementById('authSubmitBtn').innerHTML = `<span>Log In to Dashboard &rarr;</span>`;
-        if (emailInput) emailInput.value = "rohan@btech.ac.in";
-        if (passInput) passInput.value = "password123";
+      if (typeof stopVerificationPolling === 'function') {
+        stopVerificationPolling();
       }
     }
 
@@ -27449,49 +27503,13 @@ function onWizardBranchChanged(branchKey) {
       appState.authRole = role;
       const sBtn = document.getElementById('authRole-student');
       const rBtn = document.getElementById('authRole-recruiter');
-      const nameInput = document.getElementById('authNameInput');
-      const emailInput = document.getElementById('authEmailInput');
 
       if (role === 'student') {
-        sBtn.className = "py-2 rounded-lg bg-white text-slate-900 shadow-xs transition-all font-semibold";
-        rBtn.className = "py-2 rounded-lg text-slate-500 hover:text-slate-800 transition-all font-medium";
-        if (nameInput) nameInput.value = "Rohan Varma";
-        if (emailInput) emailInput.value = "rohan@btech.ac.in";
+        if (sBtn) sBtn.className = "py-2 rounded-lg bg-white text-slate-900 shadow-xs transition-all font-semibold";
+        if (rBtn) rBtn.className = "py-2 rounded-lg text-slate-500 hover:text-slate-800 transition-all font-medium";
       } else {
-        rBtn.className = "py-2 rounded-lg bg-white text-slate-900 shadow-xs transition-all font-semibold";
-        sBtn.className = "py-2 rounded-lg text-slate-500 hover:text-slate-800 transition-all font-medium";
-        if (nameInput) nameInput.value = "Dr. Vikram Kulkarni";
-        if (emailInput) emailInput.value = "v.kulkarni@qualcomm.com";
-      }
-    }
-
-    function handleAuthSubmit() {
-      const isRecruiter = appState.authRole === 'recruiter';
-      const name = document.getElementById('authNameInput').value.trim() || (isRecruiter ? 'Dr. Vikram Kulkarni' : 'Rohan Varma');
-      const email = document.getElementById('authEmailInput').value.trim() || (isRecruiter ? 'v.kulkarni@qualcomm.com' : 'rohan@btech.ac.in');
-
-      appState.user = {
-        name,
-        email,
-        college: isRecruiter ? 'Qualcomm Recruitment & Hardware Division' : 'Gujarat Technological University (GTU Affiliate)',
-        year: isRecruiter ? 0 : 3,
-        branch: isRecruiter ? 'ece' : (appState.selectedStream || 'ece'),
-        role: isRecruiter ? 'recruiter' : 'learner',
-        activeTrackPreset: isRecruiter ? 'firmware' : (appState.selectedPreset || 'firmware'),
-        verifiedReady: true,
-        verifiedToken: isRecruiter ? 'REC-QUALCOMM-2026' : 'BTECH-2026-ECE-702'
-      };
-      saveStateToStorage();
-      updateAuthUI();
-      closeAuthModal();
-
-      if (appState.authMode === 'signup' && appState.authRole === 'student') {
-        openOnboardingModal();
-      } else if (appState.authRole === 'recruiter') {
-        setRole('recruiter');
-      } else {
-        navigateTo('analyzer');
-        showToast(`Welcome back, ${name}!`);
+        if (rBtn) rBtn.className = "py-2 rounded-lg bg-white text-slate-900 shadow-xs transition-all font-semibold";
+        if (sBtn) sBtn.className = "py-2 rounded-lg text-slate-500 hover:text-slate-800 transition-all font-medium";
       }
     }
 
@@ -29124,6 +29142,7 @@ function onWizardBranchChanged(branchKey) {
             setTimeout(() => codeInput.focus(), 100);
           }
 
+          startVerificationPolling(email);
           showToast(`Verification PIN & 1-click link dispatched via Brevo! Check ${email}`);
         } catch (err) {
           if (submitBtn) {
@@ -29171,7 +29190,7 @@ function onWizardBranchChanged(branchKey) {
           }
 
           if (res.status === 429) {
-            const waitSecs = data.remaining_seconds || 300;
+            const waitSecs = data.remaining_seconds || data.remainingSecs || 300;
             const lockUntil = Date.now() + (waitSecs * 1000);
             localStorage.setItem('c2c_login_lockout_until', lockUntil.toString());
             startLoginLockoutTimer(waitSecs);
@@ -29180,7 +29199,7 @@ function onWizardBranchChanged(branchKey) {
           }
 
           if (!res.ok || !data.success) {
-            if (data.needs_verification) {
+            if (data.needs_verification || data.needsVerification) {
               pendingRegistrationUser = { email: identifier, role: data.role || 'learner' };
               const standardFields = document.getElementById('authStandardFields');
               const verifyStep = document.getElementById('authVerifyStep');
@@ -29188,10 +29207,27 @@ function onWizardBranchChanged(branchKey) {
               if (standardFields) standardFields.classList.add('hidden');
               if (verifyStep) verifyStep.classList.remove('hidden');
               if (emailDisplay) emailDisplay.innerText = identifier;
+              startVerificationPolling(identifier);
               showAuthAlert(data.error || "Email verification required. Check your inbox for the PIN or activation link.");
               return;
             }
-            showAuthAlert(data.error || "Invalid email or password.");
+
+            // Track failed attempts dynamically
+            let clientAttempts = parseInt(localStorage.getItem('c2c_login_failed_attempts') || '0', 10) + 1;
+            localStorage.setItem('c2c_login_failed_attempts', clientAttempts.toString());
+
+            let remainingAttempts = (data.remainingAttempts !== undefined)
+              ? data.remainingAttempts
+              : Math.max(0, 5 - clientAttempts);
+
+            if (remainingAttempts <= 0 || data.isLocked) {
+              const waitSecs = data.remainingSecs || 300;
+              const lockUntil = Date.now() + (waitSecs * 1000);
+              localStorage.setItem('c2c_login_lockout_until', lockUntil.toString());
+              startLoginLockoutTimer(waitSecs);
+            } else {
+              showAuthAlert(`Invalid email or password. ${remainingAttempts} attempt(s) remaining before security lockout.`);
+            }
             triggerAlertShake('authStatusAlert');
             return;
           }
@@ -29202,7 +29238,7 @@ function onWizardBranchChanged(branchKey) {
 
           const foundUser = data.user;
           appState.user = foundUser;
-          appState.selectedStream = foundUser.stream || foundUser.branch || 'it';
+          appState.selectedStream = (foundUser.stream || foundUser.branch || 'it').toLowerCase();
           appState.activeRole = foundUser.role || 'learner';
           appState.mcqHistory = foundUser.mcqHistory || [];
           appState.progress = {
@@ -29223,7 +29259,14 @@ function onWizardBranchChanged(branchKey) {
             showToast(`Welcome back, ${foundUser.name}!`);
           } else {
             setRole('learner');
-            navigateTo('dashboard');
+            if (!hasCompletedOnboarding(foundUser)) {
+              openOnboardingModal(foundUser.stream || foundUser.branch || null);
+            } else {
+              if (foundUser.stream || foundUser.branch) {
+                applyStreamChange(foundUser.stream || foundUser.branch, true);
+              }
+              navigateTo('analyzer');
+            }
             renderSkillLevelDiagram();
             updateGrowthSummaryCards();
             updateCharts();
@@ -29266,22 +29309,42 @@ function onWizardBranchChanged(branchKey) {
         const data = await res.json();
 
         if (!res.ok || !data.success) {
-          showAuthAlert(data.error || "Incorrect or expired 6-digit verification code.");
+          let clientAttempts = parseInt(localStorage.getItem('c2c_login_failed_attempts') || '0', 10) + 1;
+          localStorage.setItem('c2c_login_failed_attempts', clientAttempts.toString());
+
+          let remainingAttempts = (data.remainingAttempts !== undefined)
+            ? data.remainingAttempts
+            : Math.max(0, 5 - clientAttempts);
+
+          if (remainingAttempts <= 0 || data.isLocked) {
+            const waitSecs = data.remainingSecs || 300;
+            const lockUntil = Date.now() + (waitSecs * 1000);
+            localStorage.setItem('c2c_login_lockout_until', lockUntil.toString());
+            startLoginLockoutTimer(waitSecs);
+          } else {
+            showAuthAlert(data.error || `Incorrect or expired 6-digit verification code. ${remainingAttempts} attempt(s) remaining before security lockout.`);
+          }
           triggerAlertShake('authStatusAlert');
           return;
         }
+
+        stopVerificationPolling();
+        localStorage.removeItem('c2c_login_failed_attempts');
+        localStorage.removeItem('c2c_login_lockout_until');
 
         const verifiedUser = data.user || {
           id: 'user-' + Date.now(),
           name: pendingRegistrationUser.name || 'User',
           email: pendingRegistrationUser.email,
           role: pendingRegistrationUser.role || 'learner',
-          stream: pendingRegistrationUser.stream || 'it',
-          verified: true
+          stream: pendingRegistrationUser.stream || null,
+          branch: pendingRegistrationUser.stream || null,
+          skills: null,
+          is_verified: true
         };
 
         appState.user = verifiedUser;
-        appState.selectedStream = verifiedUser.stream || 'it';
+        appState.selectedStream = (verifiedUser.stream || verifiedUser.branch || 'it').toLowerCase();
         appState.activeRole = verifiedUser.role || 'learner';
         appState.mcqHistory = [];
         appState.progress = {
@@ -29303,7 +29366,14 @@ function onWizardBranchChanged(branchKey) {
           navigateTo('recruiter-candidates');
         } else {
           setRole('learner');
-          navigateTo('dashboard');
+          if (!hasCompletedOnboarding(verifiedUser)) {
+            openOnboardingModal(verifiedUser.stream || verifiedUser.branch || null);
+          } else {
+            if (verifiedUser.stream || verifiedUser.branch) {
+              applyStreamChange(verifiedUser.stream || verifiedUser.branch, true);
+            }
+            navigateTo('analyzer');
+          }
         }
 
         pendingRegistrationUser = null;
@@ -29333,6 +29403,7 @@ function onWizardBranchChanged(branchKey) {
         });
         const data = await res.json();
         if (res.ok && data.success) {
+          startVerificationPolling(pendingRegistrationUser.email);
           showToast("✓ New verification code & link sent to your email!");
         } else {
           showToast(data.error || "Failed to resend code. Please try again.");
@@ -29460,24 +29531,111 @@ function onWizardBranchChanged(branchKey) {
       saveAdminSmtpSettings(recipient);
     }
 
+    let verificationPollInterval = null;
+
+    function startVerificationPolling(email) {
+      stopVerificationPolling();
+      if (!email) return;
+
+      const normalizedEmail = email.trim().toLowerCase();
+      verificationPollInterval = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/verify-email?check=true&email=${encodeURIComponent(normalizedEmail)}`, {
+            headers: { 'Accept': 'application/json' }
+          });
+          if (!res.ok) return;
+          const data = await res.json();
+          if (data && data.success && data.is_verified && data.user) {
+            stopVerificationPolling();
+            const verifiedUser = data.user;
+            appState.user = verifiedUser;
+            appState.selectedStream = (verifiedUser.stream || verifiedUser.branch || 'it').toLowerCase();
+            appState.activeRole = verifiedUser.role || 'learner';
+            saveStateToStorage();
+            updateAuthUI();
+            closeAuthModal();
+
+            showToast(`✓ Account verified on device! Welcome to Campus2Career, ${verifiedUser.name}!`);
+
+            if (verifiedUser.role === 'recruiter') {
+              setRole('recruiter');
+              navigateTo('recruiter-candidates');
+            } else {
+              setRole('learner');
+              if (!hasCompletedOnboarding(verifiedUser)) {
+                openOnboardingModal(verifiedUser.stream || verifiedUser.branch || null);
+              } else {
+                if (verifiedUser.stream || verifiedUser.branch) {
+                  applyStreamChange(verifiedUser.stream || verifiedUser.branch, true);
+                }
+                navigateTo('analyzer');
+              }
+              renderSkillLevelDiagram();
+              updateGrowthSummaryCards();
+              updateCharts();
+            }
+          }
+        } catch (err) {
+          // Keep polling silently
+        }
+      }, 3000);
+    }
+
+    function stopVerificationPolling() {
+      if (verificationPollInterval) {
+        clearInterval(verificationPollInterval);
+        verificationPollInterval = null;
+      }
+    }
+
     function cancelVerificationStep() {
+      stopVerificationPolling();
       switchAuthTab('signup');
     }
 
-    // CHECK FOR URL VERIFICATION PARAMETERS (?verified=true&email=...&code=...)
-    function checkUrlVerificationParams() {
+    // CHECK FOR URL VERIFICATION PARAMETERS (?verified=true&email=...)
+    async function checkUrlVerificationParams() {
       try {
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('verified') === 'true' && urlParams.get('code')) {
-          const email = urlParams.get('email');
-          const code = urlParams.get('code');
-          if (email && code) {
-            showToast(`✓ Email ${email} verified via activation link! Please log in or continue.`);
-            // Clean up URL
-            window.history.replaceState({}, document.title, window.location.pathname);
+        const isVerified = urlParams.get('verified') === 'true';
+        const email = urlParams.get('email');
+        if (isVerified && email) {
+          // Clean up URL parameters cleanly
+          window.history.replaceState({}, document.title, window.location.pathname);
+          const res = await fetch(`/api/verify-email?check=true&email=${encodeURIComponent(email)}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.user) {
+              appState.user = data.user;
+              appState.selectedStream = (data.user.stream || data.user.branch || 'it').toLowerCase();
+              appState.activeRole = data.user.role || 'learner';
+              saveStateToStorage();
+              updateAuthUI();
+              closeAuthModal();
+              showToast(`✓ Email verified! Welcome back, ${data.user.name}!`);
+              if (data.user.role === 'recruiter') {
+                setRole('recruiter');
+                navigateTo('recruiter-candidates');
+              } else {
+                setRole('learner');
+                if (!hasCompletedOnboarding(data.user)) {
+                  openOnboardingModal(data.user.stream || data.user.branch || null);
+                } else {
+                  if (data.user.stream || data.user.branch) {
+                    applyStreamChange(data.user.stream || data.user.branch, true);
+                  }
+                  navigateTo('analyzer');
+                }
+                renderSkillLevelDiagram();
+                updateGrowthSummaryCards();
+                updateCharts();
+              }
+            }
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn('URL verification check error:', e);
+      }
     }
 
     // ONE-SHOT MARATHON REVISION MASTERCLASSES (>= 4 Hours)
@@ -30732,7 +30890,7 @@ function onWizardBranchChanged(branchKey) {
 
         <div class="space-y-1.5">
           <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">Admin Email</label>
-          <input type="email" id="adminEmailInput" value="admin@campus2career.org" placeholder="admin@campus2career.org" class="w-full text-xs p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono">
+          <input type="email" id="adminEmailInput" placeholder="admin@campus2career.org" class="w-full text-xs p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono">
         </div>
 
         <div class="space-y-1.5">

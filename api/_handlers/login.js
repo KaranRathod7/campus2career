@@ -77,6 +77,7 @@ module.exports = async (req, res) => {
     if (!user.is_verified) {
       return res.status(403).json({
         success: false,
+        needs_verification: true,
         needsVerification: true,
         error: 'Your email address has not been verified yet. Please check your email for the 6-digit confirmation code.',
         email: normalizedEmail
@@ -97,7 +98,11 @@ module.exports = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        stream: user.stream || 'IT',
+        stream: user.stream || null,
+        branch: user.branch || user.stream || null,
+        skills: user.skills || null,
+        college: user.college || null,
+        year: user.year || null,
         is_verified: true,
         total_study_minutes: Number(user.total_study_minutes) || 0,
         total_lecture_minutes: Number(user.total_lecture_minutes) || 0,
