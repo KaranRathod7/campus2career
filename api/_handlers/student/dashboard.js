@@ -35,10 +35,19 @@ module.exports = async (req, res) => {
       stream = q.stream || null;
     }
 
-    const skills = await db.getStudentSkills({
+    let skills = await db.getStudentSkills({
       user_id,
-      user_email
+      user_email,
+      stream: stream || 'IT'
     });
+
+    if (!skills || skills.length === 0) {
+      skills = await db.autoSeedStudentSkills({
+        user_id,
+        user_email,
+        stream: stream || 'IT'
+      });
+    }
 
     const analytics = await db.getStudentAnalytics({
       user_id,

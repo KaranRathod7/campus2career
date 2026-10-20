@@ -74,16 +74,60 @@ async function submitTestScore(req, res) {
 
         if (insertError) throw insertError;
 
-        // Fetch the newly updated progress summary
+        // Fetch the current progress summary for targeted skill
         let { data: currentProgress, error: fetchError } = await supabase
           .from('student_skill_progress')
           .select('*')
           .eq('user_id', userId)
-          .eq('skill_name', skillName)
+          .ilike('skill_name', skillName)
           .single();
 
-        // If row not found yet or trigger is pending, fallback query or sync
-        if (fetchError || !currentProgress) {
+        // Calculate incremental progression and enforce 80% mastery gate
+        const currentBase = currentProgress ? (Number(currentProgress.base_percentage) || 35) : 35;
+        const currentDiag = currentProgress ? (Number(currentProgress.diagnostic_score) || 0) : 0;
+        const currentLec = currentProgress ? (Number(currentProgress.lecture_score) || 0) : 0;
+        const currentMar = currentProgress ? (Number(currentProgress.marathon_score) || 0) : 0;
+        const gain = Math.max(0, Math.min(5, Math.round((score / 100) * 5)));
+        const newDiag = Math.min(34, currentDiag + gain);
+        const rawTotal = currentBase + currentLec + currentMar + newDiag;
+
+        let newTotal = rawTotal;
+        let newStatus = 'UNVERIFIED BASELINE';
+        if (rawTotal > 80 && score < 100) {
+          newTotal = 80;
+          newStatus = '80% CAP (Score 100% on Benchmark to Unlock Master Level)';
+        } else if (score >= 80 || rawTotal >= 80) {
+          newTotal = Math.min(100, Math.max(20, rawTotal));
+          newStatus = 'LIVE VERIFIED';
+        } else {
+          newTotal = Math.min(100, Math.max(20, rawTotal));
+          newStatus = 'UNVERIFIED BASELINE';
+        }
+        const isVerified = (score >= 80) || (newTotal >= 80);
+
+        const { data: upsertedProgress, error: upError } = await supabase
+          .from('student_skill_progress')
+          .upsert({
+            user_id: userId,
+            skill_name: skillName,
+            category: (currentProgress && currentProgress.category) || 'Core Skill',
+            base_percentage: currentBase,
+            diagnostic_score: newDiag,
+            lecture_score: currentLec,
+            marathon_score: currentMar,
+            total_score: newTotal,
+            latest_exam_score: score,
+            status: newStatus,
+            verified: isVerified,
+            last_tested_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id,skill_name' })
+          .select()
+          .single();
+
+        if (!upError && upsertedProgress) {
+          currentProgress = upsertedProgress;
+        } else if (fetchError || !currentProgress) {
           const fallbackRes = await db.recordTestAttempt({
             user_id: userId,
             skill_name: skillName,

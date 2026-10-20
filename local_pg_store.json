@@ -811,6 +811,26 @@
         "Data Structures & Algorithms"
       ],
       "created_at": "2026-10-20T16:22:40.366Z"
+    },
+    {
+      "id": "cand-1792521450377",
+      "user_id": "test-user-1792521450365",
+      "name": "Candidate",
+      "email": "student_1792521450365@campus2career.org",
+      "stream": "IT",
+      "domain": "Core Engineering & Architecture",
+      "experience_level": "Fresher (0-1 yr)",
+      "skill_score": 35,
+      "dynamic_competence_percent": 35,
+      "readiness_score": 35,
+      "skills": [
+        "Java & Multithreading",
+        "Spring Boot & Microservices",
+        "PostgreSQL & SQL Tuning",
+        "Docker & Containers",
+        "Production Debugging"
+      ],
+      "created_at": "2026-10-20T18:37:30.377Z"
     }
   ],
   "market_signals": [
@@ -1770,6 +1790,107 @@
       "next_milestone": "High-speed signal integrity and EMI shielding",
       "created_at": "2026-10-20T16:22:33.193Z",
       "updated_at": "2026-10-20T16:22:33.193Z"
+    },
+    {
+      "id": "ssp-1792521450366-java",
+      "user_id": "test-user-1792521450365",
+      "user_email": "student_1792521450365@campus2career.org",
+      "skill_id": "java",
+      "skill_name": "Java & Multithreading",
+      "category": "Backend Language",
+      "base_percentage": 35,
+      "diagnostic_score": 0,
+      "lecture_score": 0,
+      "marathon_score": 0,
+      "total_score": 35,
+      "latest_exam_score": 0,
+      "status": "UNVERIFIED BASELINE",
+      "verified": false,
+      "current_milestone": "Collections, Streams, Multithreading & OOP",
+      "next_milestone": "JVM Memory Tuning & Low-latency locks",
+      "created_at": "2026-10-20T18:37:30.366Z",
+      "updated_at": "2026-10-20T18:37:30.376Z"
+    },
+    {
+      "id": "ssp-1792521450376-spring",
+      "user_id": "test-user-1792521450365",
+      "user_email": "student_1792521450365@campus2career.org",
+      "skill_id": "spring",
+      "skill_name": "Spring Boot & Microservices",
+      "category": "Architecture",
+      "base_percentage": 35,
+      "diagnostic_score": 0,
+      "lecture_score": 0,
+      "marathon_score": 0,
+      "total_score": 35,
+      "latest_exam_score": 0,
+      "status": "UNVERIFIED BASELINE",
+      "verified": false,
+      "current_milestone": "REST APIs, JPA Entities & Dependency Injection",
+      "next_milestone": "Distributed Sagas & Circuit Breakers",
+      "created_at": "2026-10-20T18:37:30.376Z",
+      "updated_at": "2026-10-20T18:37:30.376Z"
+    },
+    {
+      "id": "ssp-1792521450376-postgres",
+      "user_id": "test-user-1792521450365",
+      "user_email": "student_1792521450365@campus2career.org",
+      "skill_id": "postgres",
+      "skill_name": "PostgreSQL & SQL Tuning",
+      "category": "Databases",
+      "base_percentage": 35,
+      "diagnostic_score": 0,
+      "lecture_score": 0,
+      "marathon_score": 0,
+      "total_score": 35,
+      "latest_exam_score": 0,
+      "status": "UNVERIFIED BASELINE",
+      "verified": false,
+      "current_milestone": "Complex SQL, Transactions & Foreign Keys",
+      "next_milestone": "B-Tree Index Tuning with EXPLAIN ANALYZE",
+      "created_at": "2026-10-20T18:37:30.376Z",
+      "updated_at": "2026-10-20T18:37:30.376Z"
+    },
+    {
+      "id": "ssp-1792521450376-docker",
+      "user_id": "test-user-1792521450365",
+      "user_email": "student_1792521450365@campus2career.org",
+      "skill_id": "docker",
+      "skill_name": "Docker & Containers",
+      "category": "Cloud Infra",
+      "base_percentage": 35,
+      "diagnostic_score": 34,
+      "lecture_score": 15,
+      "marathon_score": 3,
+      "total_score": 87,
+      "latest_exam_score": 100,
+      "status": "LIVE VERIFIED",
+      "verified": true,
+      "current_milestone": "Multi-stage builds & Distroless images",
+      "next_milestone": "Kubernetes Pod Deployment & Helm",
+      "created_at": "2026-10-20T18:37:30.376Z",
+      "updated_at": "2026-10-20T18:37:30.386Z",
+      "last_tested_at": "2026-10-20T18:37:30.386Z"
+    },
+    {
+      "id": "ssp-1792521450376-debug",
+      "user_id": "test-user-1792521450365",
+      "user_email": "student_1792521450365@campus2career.org",
+      "skill_id": "debug",
+      "skill_name": "Production Debugging",
+      "category": "Problem Solving",
+      "base_percentage": 35,
+      "diagnostic_score": 0,
+      "lecture_score": 0,
+      "marathon_score": 0,
+      "total_score": 35,
+      "latest_exam_score": 0,
+      "status": "UNVERIFIED BASELINE",
+      "verified": false,
+      "current_milestone": "Stack trace diagnosis & unit test mocks",
+      "next_milestone": "Heap dump analysis & connection leak profiling",
+      "created_at": "2026-10-20T18:37:30.376Z",
+      "updated_at": "2026-10-20T18:37:30.376Z"
     }
   ],
   "user_completed_lectures": [
@@ -1952,6 +2073,50 @@
         "category": "Multithreading & Concurrency"
       },
       "created_at": "2026-10-20T16:21:06.141Z"
+    },
+    {
+      "id": "attempt-1792521450379-652",
+      "user_id": "test-user-1792521450365",
+      "skill_name": "Docker & Containers",
+      "test_title": "Docker & Containerization Assessment",
+      "score": 100,
+      "total_questions": 10,
+      "correct_answers": 10,
+      "metadata": {},
+      "created_at": "2026-10-20T18:37:30.379Z"
+    },
+    {
+      "id": "attempt-1792521450382-170",
+      "user_id": "test-user-1792521450365",
+      "skill_name": "Docker & Containers",
+      "test_title": "Docker Advanced Optimization",
+      "score": 80,
+      "total_questions": 10,
+      "correct_answers": 8,
+      "metadata": {},
+      "created_at": "2026-10-20T18:37:30.382Z"
+    },
+    {
+      "id": "attempt-1792521450384-156",
+      "user_id": "test-user-1792521450365",
+      "skill_name": "Docker & Containers",
+      "test_title": "Docker Masterclass Gate Test",
+      "score": 80,
+      "total_questions": 10,
+      "correct_answers": 8,
+      "metadata": {},
+      "created_at": "2026-10-20T18:37:30.384Z"
+    },
+    {
+      "id": "attempt-1792521450386-348",
+      "user_id": "test-user-1792521450365",
+      "skill_name": "Docker & Containers",
+      "test_title": "Docker Masterclass Benchmark (100% Score)",
+      "score": 100,
+      "total_questions": 10,
+      "correct_answers": 10,
+      "metadata": {},
+      "created_at": "2026-10-20T18:37:30.386Z"
     }
   ]
 }

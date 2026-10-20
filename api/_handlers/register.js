@@ -107,6 +107,19 @@ module.exports = async (req, res) => {
       return res.status(500).json({ success: false, error: err.message });
     }
 
+    // Auto-seed default stream skills and candidate record (No manual CSV imports needed)
+    try {
+      await db.autoSeedStudentSkills({
+        user_id: userRecord.id,
+        user_email: userRecord.email,
+        user_name: userRecord.name,
+        stream: userRecord.stream || stream || 'IT',
+        base_percentage: 35
+      });
+    } catch (seedErr) {
+      console.warn('[Registration Auto-Seed Notice]:', seedErr.message);
+    }
+
     // Generate 6-digit random PIN & 32-byte secure random hex token
     const pin = Math.floor(100000 + Math.random() * 900000).toString();
     const token = crypto.randomBytes(32).toString('hex');

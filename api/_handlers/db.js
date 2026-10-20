@@ -112,6 +112,45 @@ const ROOT_DIR = fs.existsSync(path.join(__dirname, '..', '..', 'local_pg_store.
 const LOCAL_DB_FILE = path.join(ROOT_DIR, 'candidates_db.json');
 const LOCAL_STORE_FILE = path.join(ROOT_DIR, 'local_pg_store.json');
 
+// Canonical Default Skills for Auto-Seeding Across Engineering Streams
+const DEFAULT_SKILLS_BY_STREAM = {
+  it: [
+    { id: 'java', name: 'Java & Multithreading', category: 'Backend Language', current_milestone: 'Collections, Streams, Multithreading & OOP', next_milestone: 'JVM Memory Tuning & Low-latency locks' },
+    { id: 'spring', name: 'Spring Boot & Microservices', category: 'Architecture', current_milestone: 'REST APIs, JPA Entities & Dependency Injection', next_milestone: 'Distributed Sagas & Circuit Breakers' },
+    { id: 'postgres', name: 'PostgreSQL & SQL Tuning', category: 'Databases', current_milestone: 'Complex SQL, Transactions & Foreign Keys', next_milestone: 'B-Tree Index Tuning with EXPLAIN ANALYZE' },
+    { id: 'docker', name: 'Docker & Containers', category: 'Cloud Infra', current_milestone: 'Multi-stage builds & Distroless images', next_milestone: 'Kubernetes Pod Deployment & Helm' },
+    { id: 'debug', name: 'Production Debugging', category: 'Problem Solving', current_milestone: 'Stack trace diagnosis & unit test mocks', next_milestone: 'Heap dump analysis & connection leak profiling' }
+  ],
+  cse: [
+    { id: 'cse_distributed', name: 'Distributed Systems & Raft', category: 'Core Systems', current_milestone: 'Raft consensus & quorum replication', next_milestone: 'Byzantine fault tolerance & gossip protocols' },
+    { id: 'cse_os', name: 'Low-Level OS & Kernel Threads', category: 'Operating Systems', current_milestone: 'Virtual memory pages & context switching', next_milestone: 'Lock-free data structures & memory barriers' },
+    { id: 'cse_db', name: 'High-Throughput Databases', category: 'Data Architecture', current_milestone: 'B-Tree & LSM-Tree indexing', next_milestone: 'Distributed 2PC & write-ahead logging' },
+    { id: 'cse_k8s', name: 'Docker & Kubernetes Clusters', category: 'Cloud Infrastructure', current_milestone: 'Containers & pod lifecycle', next_milestone: 'Service meshes & ingress controllers' },
+    { id: 'cse_debug', name: 'Production Debugging & APM', category: 'Reliability Engineering', current_milestone: 'Thread dump diagnosis & eBPF', next_milestone: 'Distributed tracing with OpenTelemetry' }
+  ],
+  ece: [
+    { id: 'ece_firmware', name: 'Embedded C & ARM Cortex-M', category: 'Firmware', current_milestone: 'Memory-mapped registers & bare-metal C', next_milestone: 'Nested vector interrupt controller & DMA' },
+    { id: 'ece_rtos', name: 'FreeRTOS & Real-Time Kernels', category: 'Real-Time Systems', current_milestone: 'Priority preemption & mutexes', next_milestone: 'Priority inversion & thread starvation' },
+    { id: 'ece_pcb', name: 'KiCad & High-Speed PCB Layout', category: 'Hardware Design', current_milestone: 'Schematic capture & 4-layer stackup', next_milestone: 'Controlled impedance & high-speed differential pairs' },
+    { id: 'ece_protocols', name: 'Serial Protocols (I2C, SPI, CAN)', category: 'Communication', current_milestone: 'Bit timing & bus arbitration', next_milestone: 'CAN-FD frames & CRC error injection' },
+    { id: 'ece_debug', name: 'Hardware-in-Loop Debugging', category: 'Hardware Debugging', current_milestone: 'Digital oscilloscopes & logic analyzers', next_milestone: 'Signal ringing & cross-talk elimination' }
+  ],
+  aids: [
+    { id: 'aids_rag', name: 'Generative AI & Vector DBs', category: 'Applied GenAI', current_milestone: 'Vector embeddings & cosine similarity', next_milestone: 'HNSW indexing & hybrid chunk re-ranking' },
+    { id: 'aids_python', name: 'Python Concurrency & AsyncIO', category: 'Language Runtime', current_milestone: 'Event loops & coroutines', next_milestone: 'Multiprocessing & C-extensions' },
+    { id: 'aids_finetune', name: 'LLM Fine-Tuning & Quantization', category: 'Model Optimization', current_milestone: 'LoRA adapters & prompt templates', next_milestone: '4-bit GGUF quantization & flash-attention' },
+    { id: 'aids_serving', name: 'Production Model Serving', category: 'MLOps', current_milestone: 'FastAPI async inference endpoints', next_milestone: 'vLLM dynamic batching & tensor parallelism' },
+    { id: 'aids_debug', name: 'GPU Memory & Latency Profiling', category: 'Reliability Engineering', current_milestone: 'CUDA OOM diagnosis & PyTorch profiler', next_milestone: 'Kernel fusion & latency optimization' }
+  ],
+  mechanical: [
+    { id: 'mech_cad', name: 'SolidWorks & Parametric CAD', category: 'Design Engineering', current_milestone: 'Part modeling & GD&T tolerancing', next_milestone: 'Complex surfacing & sheet metal design' },
+    { id: 'mech_fea', name: 'FEA Stress Analysis (ANSYS)', category: 'Simulation', current_milestone: 'Static structural mesh convergence', next_milestone: 'Non-linear plasticity & fatigue lifecycle' },
+    { id: 'mech_cfd', name: 'CFD Fluid & Thermal Flow', category: 'Simulation', current_milestone: 'Boundary layer meshing & Navier-Stokes', next_milestone: 'Turbulence modeling (k-epsilon) & conjugate heat' },
+    { id: 'mech_mfg', name: 'CNC Machining & DFM Guidelines', category: 'Manufacturing', current_milestone: 'G-Code generation & toolpath optimization', next_milestone: '5-Axis machining & automated CMM inspection' },
+    { id: 'mech_debug', name: 'Failure Analysis & Reliability', category: 'Quality Engineering', current_milestone: 'Root-cause fractography & stress risers', next_milestone: 'Vibration FFT analysis & modal testing' }
+  ]
+};
+
 let inMemoryStore = null;
 
 function getLocalStore() {
@@ -479,7 +518,12 @@ async function ensureSchema() {
         "ALTER TABLE student_skill_progress ADD COLUMN IF NOT EXISTS category VARCHAR(100) DEFAULT 'Core Skill';",
         "ALTER TABLE student_skill_progress ADD COLUMN IF NOT EXISTS base_percentage INT DEFAULT 35;",
         "ALTER TABLE student_skill_progress ADD COLUMN IF NOT EXISTS total_score INT DEFAULT 35;",
-        "ALTER TABLE student_skill_progress ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'UNVERIFIED BASELINE';",
+        "ALTER TABLE student_skill_progress ADD COLUMN IF NOT EXISTS status VARCHAR(100) DEFAULT 'UNVERIFIED BASELINE';",
+        "ALTER TABLE student_skill_progress ALTER COLUMN status TYPE VARCHAR(100);",
+        "ALTER TABLE student_skill_progress ADD COLUMN IF NOT EXISTS diagnostic_score INT DEFAULT 0;",
+        "ALTER TABLE student_skill_progress ADD COLUMN IF NOT EXISTS lecture_score INT DEFAULT 0;",
+        "ALTER TABLE student_skill_progress ADD COLUMN IF NOT EXISTS marathon_score INT DEFAULT 0;",
+        "ALTER TABLE student_skill_progress ADD COLUMN IF NOT EXISTS latest_exam_score NUMERIC(5,2) DEFAULT 0;",
         "ALTER TABLE student_skill_progress ADD COLUMN IF NOT EXISTS lectures_completed INT DEFAULT 0;",
         "ALTER TABLE student_skill_progress ADD COLUMN IF NOT EXISTS current_milestone TEXT;",
         "ALTER TABLE student_skill_progress ADD COLUMN IF NOT EXISTS next_milestone TEXT;",
@@ -554,6 +598,11 @@ async function ensureSchema() {
           "ALTER TABLE student_test_attempts ADD COLUMN IF NOT EXISTS total_questions INT DEFAULT 0;",
           "ALTER TABLE student_test_attempts ADD COLUMN IF NOT EXISTS correct_answers INT DEFAULT 0;",
           "ALTER TABLE student_skill_progress ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT false;",
+          "ALTER TABLE student_skill_progress ADD COLUMN IF NOT EXISTS diagnostic_score INT DEFAULT 0;",
+          "ALTER TABLE student_skill_progress ADD COLUMN IF NOT EXISTS lecture_score INT DEFAULT 0;",
+          "ALTER TABLE student_skill_progress ADD COLUMN IF NOT EXISTS marathon_score INT DEFAULT 0;",
+          "ALTER TABLE student_skill_progress ADD COLUMN IF NOT EXISTS latest_exam_score NUMERIC(5,2) DEFAULT 0;",
+          "ALTER TABLE student_skill_progress ALTER COLUMN status TYPE VARCHAR(100);",
           "ALTER TABLE student_skill_progress ADD COLUMN IF NOT EXISTS last_tested_at TIMESTAMP WITH TIME ZONE;"
         ];
         for (const ac of attemptCols) {
@@ -567,12 +616,26 @@ async function ensureSchema() {
           CREATE OR REPLACE FUNCTION trg_update_student_skill_progress()
           RETURNS TRIGGER AS $
           DECLARE
-            v_base_percentage NUMERIC(5,2);
-            v_new_total NUMERIC(5,2);
-            v_new_status VARCHAR(50);
+            v_base_percentage NUMERIC(5,2) := 35;
+            v_diag_score INT := 0;
+            v_lec_score INT := 0;
+            v_mar_score INT := 0;
+            v_gain INT := 0;
+            v_new_diag INT := 0;
+            v_raw_total NUMERIC(5,2) := 35;
+            v_new_total NUMERIC(5,2) := 35;
+            v_new_status VARCHAR(100) := 'UNVERIFIED BASELINE';
           BEGIN
-            SELECT COALESCE(base_percentage, 35)
-            INTO v_base_percentage
+            SELECT 
+              COALESCE(base_percentage, 35),
+              COALESCE(diagnostic_score, 0),
+              COALESCE(lecture_score, 0),
+              COALESCE(marathon_score, 0)
+            INTO 
+              v_base_percentage,
+              v_diag_score,
+              v_lec_score,
+              v_mar_score
             FROM student_skill_progress
             WHERE (user_id = NEW.user_id OR user_id::text = NEW.user_id::text) AND LOWER(skill_name) = LOWER(NEW.skill_name)
             LIMIT 1;
@@ -581,12 +644,21 @@ async function ensureSchema() {
               v_base_percentage := 35;
             END IF;
 
-            IF NEW.score >= 80 THEN
+            -- Incremental progression: Each 10-MCQ benchmark awards up to +5% (scaled by score/100) toward 34% ceiling
+            v_gain := LEAST(5, GREATEST(0, ROUND((NEW.score / 100.0) * 5)));
+            v_new_diag := LEAST(34, v_diag_score + v_gain);
+            v_raw_total := v_base_percentage + v_lec_score + v_mar_score + v_new_diag;
+
+            -- 80% Total Mastery Gate: Total score cannot exceed 80% unless latest benchmark score was 100%
+            IF v_raw_total > 80 AND NEW.score < 100 THEN
+              v_new_total := 80;
+              v_new_status := '80% CAP (Score 100% on Benchmark to Unlock Master Level)';
+            ELSIF NEW.score >= 80 OR v_raw_total >= 80 THEN
+              v_new_total := LEAST(100, GREATEST(20, v_raw_total));
               v_new_status := 'LIVE VERIFIED';
-              v_new_total := LEAST(100, GREATEST(v_base_percentage, NEW.score));
             ELSE
+              v_new_total := LEAST(100, GREATEST(20, v_raw_total));
               v_new_status := 'UNVERIFIED BASELINE';
-              v_new_total := LEAST(100, GREATEST(v_base_percentage, ROUND(v_base_percentage + (NEW.score * 0.2))));
             END IF;
 
             INSERT INTO student_skill_progress (
@@ -594,7 +666,11 @@ async function ensureSchema() {
               skill_name,
               category,
               base_percentage,
+              diagnostic_score,
+              lecture_score,
+              marathon_score,
               total_score,
+              latest_exam_score,
               status,
               verified,
               last_tested_at,
@@ -604,14 +680,20 @@ async function ensureSchema() {
               NEW.skill_name,
               'Core Skill',
               v_base_percentage,
+              v_new_diag,
+              v_lec_score,
+              v_mar_score,
               v_new_total,
+              NEW.score,
               v_new_status,
               (NEW.score >= 80),
               NEW.created_at,
               CURRENT_TIMESTAMP
             )
             ON CONFLICT (user_id, skill_name) DO UPDATE SET
+              diagnostic_score = EXCLUDED.diagnostic_score,
               total_score = EXCLUDED.total_score,
+              latest_exam_score = EXCLUDED.latest_exam_score,
               status = EXCLUDED.status,
               verified = EXCLUDED.verified,
               last_tested_at = EXCLUDED.last_tested_at,
@@ -1738,19 +1820,44 @@ const db = {
         if (progRes.rows && progRes.rows[0]) {
           summary = progRes.rows[0];
         } else {
-          // If trigger didn't catch or row wasn't present, upsert manually
-          const isVerified = numScore >= 80;
-          const statusStr = isVerified ? 'LIVE VERIFIED' : 'UNVERIFIED BASELINE';
+          // If trigger didn't catch or row wasn't present, calculate and upsert manually
+          const currentBase = 35;
+          const currentDiag = 0;
+          const currentLec = 0;
+          const currentMar = 0;
+          const gain = Math.max(0, Math.min(5, Math.round((numScore / 100) * 5)));
+          const newDiag = Math.min(34, currentDiag + gain);
+          const rawTotal = currentBase + currentLec + currentMar + newDiag;
+          let newTotal = rawTotal;
+          let newStatus = 'UNVERIFIED BASELINE';
+
+          if (rawTotal > 80 && numScore < 100) {
+            newTotal = 80;
+            newStatus = '80% CAP (Score 100% on Benchmark to Unlock Master Level)';
+          } else if (numScore >= 80 || rawTotal >= 80) {
+            newTotal = Math.min(100, Math.max(20, rawTotal));
+            newStatus = 'LIVE VERIFIED';
+          } else {
+            newTotal = Math.min(100, Math.max(20, rawTotal));
+            newStatus = 'UNVERIFIED BASELINE';
+          }
+          const isVerified = (numScore >= 80) || (newTotal >= 80);
+
           const upRes = await p.query(
-            `INSERT INTO student_skill_progress (user_id, skill_name, category, base_percentage, total_score, status, verified, last_tested_at)
-             VALUES ($1, $2, 'Core Skill', 35, $3, $4, $5, CURRENT_TIMESTAMP)
+            `INSERT INTO student_skill_progress (
+               user_id, skill_name, category, base_percentage, diagnostic_score, lecture_score, marathon_score, total_score, latest_exam_score, status, verified, last_tested_at, updated_at
+             )
+             VALUES ($1, $2, 'Core Skill', $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
              ON CONFLICT (user_id, skill_name) DO UPDATE SET
+               diagnostic_score = EXCLUDED.diagnostic_score,
                total_score = EXCLUDED.total_score,
+               latest_exam_score = EXCLUDED.latest_exam_score,
                status = EXCLUDED.status,
                verified = EXCLUDED.verified,
-               last_tested_at = CURRENT_TIMESTAMP
+               last_tested_at = CURRENT_TIMESTAMP,
+               updated_at = CURRENT_TIMESTAMP
              RETURNING *`,
-            [validUuid, cleanSkill, numScore, statusStr, isVerified]
+            [validUuid, cleanSkill, currentBase, newDiag, currentLec, currentMar, newTotal, numScore, newStatus, isVerified]
           );
           summary = upRes.rows[0];
         }
@@ -1785,13 +1892,34 @@ const db = {
       s.skill_name.toLowerCase() === cleanSkill.toLowerCase()
     );
 
-    const isVerified = numScore >= 80;
-    const statusStr = isVerified ? 'LIVE VERIFIED' : 'UNVERIFIED BASELINE';
+    const currentBase = skillProg ? (Number(skillProg.base_percentage) || 35) : 35;
+    const currentDiag = skillProg ? (Number(skillProg.diagnostic_score) || 0) : 0;
+    const currentLec = skillProg ? (Number(skillProg.lecture_score) || 0) : 0;
+    const currentMar = skillProg ? (Number(skillProg.marathon_score) || 0) : 0;
+    const gain = Math.max(0, Math.min(5, Math.round((numScore / 100) * 5)));
+    const newDiag = Math.min(34, currentDiag + gain);
+    const rawTotal = currentBase + currentLec + currentMar + newDiag;
+
+    let newTotal = rawTotal;
+    let newStatus = 'UNVERIFIED BASELINE';
+    if (rawTotal > 80 && numScore < 100) {
+      newTotal = 80;
+      newStatus = '80% CAP (Score 100% on Benchmark to Unlock Master Level)';
+    } else if (numScore >= 80 || rawTotal >= 80) {
+      newTotal = Math.min(100, Math.max(20, rawTotal));
+      newStatus = 'LIVE VERIFIED';
+    } else {
+      newTotal = Math.min(100, Math.max(20, rawTotal));
+      newStatus = 'UNVERIFIED BASELINE';
+    }
+    const isVerified = (numScore >= 80) || (newTotal >= 80);
 
     if (skillProg) {
-      skillProg.total_score = isVerified ? Math.max(skillProg.total_score || 35, numScore) : (skillProg.total_score || 35);
-      skillProg.status = isVerified ? 'LIVE VERIFIED' : (skillProg.status || statusStr);
-      skillProg.verified = isVerified || Boolean(skillProg.verified);
+      skillProg.diagnostic_score = newDiag;
+      skillProg.total_score = newTotal;
+      skillProg.latest_exam_score = numScore;
+      skillProg.status = newStatus;
+      skillProg.verified = isVerified;
       skillProg.last_tested_at = attempt.created_at;
       skillProg.updated_at = new Date().toISOString();
       summary = skillProg;
@@ -1801,9 +1929,13 @@ const db = {
         user_id: user_id || 'anonymous',
         skill_name: cleanSkill,
         category: 'Core Skill',
-        base_percentage: 35,
-        total_score: numScore,
-        status: statusStr,
+        base_percentage: currentBase,
+        diagnostic_score: newDiag,
+        lecture_score: currentLec,
+        marathon_score: currentMar,
+        total_score: newTotal,
+        latest_exam_score: numScore,
+        status: newStatus,
         verified: isVerified,
         last_tested_at: attempt.created_at,
         created_at: new Date().toISOString(),
@@ -2376,8 +2508,16 @@ const db = {
     return synced;
   },
 
-  // Get Persisted Student Skill Progress
-  async getStudentSkills({ user_id, user_email }) {
+  // Auto-Seed Default Stream Skills and Candidate Record (No manual CSV imports needed)
+  async autoSeedStudentSkills({ user_id, user_email, user_name, stream, base_percentage = 35 }) {
+    const rawStream = (stream || 'it').toString().toLowerCase().trim();
+    let streamKey = 'it';
+    if (rawStream.includes('cse') || rawStream.includes('comp')) streamKey = 'cse';
+    else if (rawStream.includes('ece') || rawStream.includes('elect')) streamKey = 'ece';
+    else if (rawStream.includes('aid') || rawStream.includes('ai') || rawStream.includes('data')) streamKey = 'aids';
+    else if (rawStream.includes('mech')) streamKey = 'mechanical';
+
+    const defaultSkills = DEFAULT_SKILLS_BY_STREAM[streamKey] || DEFAULT_SKILLS_BY_STREAM.it;
     const p = initPool();
     let resolvedUserId = user_id;
 
@@ -2386,8 +2526,130 @@ const db = {
         await ensureSchema();
         if (!resolvedUserId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(resolvedUserId))) {
           if (user_email) {
-            const uRes = await p.query('SELECT id FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) LIMIT 1', [user_email.trim().toLowerCase()]);
-            if (uRes.rows[0]) resolvedUserId = uRes.rows[0].id;
+            const uRes = await p.query('SELECT id, name, stream FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) LIMIT 1', [user_email.trim().toLowerCase()]);
+            if (uRes.rows[0]) {
+              resolvedUserId = uRes.rows[0].id;
+              if (!user_name && uRes.rows[0].name) user_name = uRes.rows[0].name;
+            }
+          }
+        }
+
+        const validUuid = (resolvedUserId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(resolvedUserId))) ? String(resolvedUserId) : null;
+        if (validUuid) {
+          for (const s of defaultSkills) {
+            await p.query(
+              `INSERT INTO student_skill_progress (
+                user_id, skill_id, skill_name, category, base_percentage, diagnostic_score, lecture_score, marathon_score, total_score, latest_exam_score, status, verified, current_milestone, next_milestone
+              ) VALUES ($1, $2, $3, $4, $5, 0, 0, 0, $5, 0, 'UNVERIFIED BASELINE', false, $6, $7)
+              ON CONFLICT (user_id, skill_name) DO NOTHING`,
+              [validUuid, s.id, s.name, s.category, base_percentage, s.current_milestone, s.next_milestone]
+            );
+          }
+
+          // Also guarantee candidate profile exists in candidates table
+          const nameToUse = user_name || 'Candidate';
+          const emailToUse = user_email || `${validUuid}@campus2career.org`;
+          const skillNames = defaultSkills.map(s => s.name);
+          await p.query(
+            `INSERT INTO candidates (user_id, name, email, stream, domain, experience_level, skill_score, dynamic_competence_percent, readiness_score, skills)
+             VALUES ($1, $2, $3, $4, 'Core Engineering & Architecture', 'Fresher (0-1 yr)', $5, $5, $5, $6)
+             ON CONFLICT (email) DO UPDATE SET user_id = COALESCE(candidates.user_id, EXCLUDED.user_id)`,
+            [validUuid, nameToUse, emailToUse, streamKey.toUpperCase(), base_percentage, skillNames]
+          );
+
+          const seeded = await p.query(
+            `SELECT * FROM student_skill_progress WHERE user_id = $1 ORDER BY created_at ASC, skill_name ASC`,
+            [validUuid]
+          );
+          if (seeded.rows && seeded.rows.length > 0) {
+            return seeded.rows;
+          }
+        }
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud autoSeedStudentSkills notice:', err.message);
+      }
+    }
+
+    // In-memory local fallback store
+    const store = getLocalStore();
+    if (!store.student_skill_progress) store.student_skill_progress = [];
+    if (!store.candidates) store.candidates = [];
+
+    const normEmail = (user_email || '').trim().toLowerCase();
+    const effectiveUserId = resolvedUserId || user_id || (normEmail ? `usr-${normEmail}` : 'usr-default');
+    const result = [];
+
+    for (const s of defaultSkills) {
+      let existing = store.student_skill_progress.find(item => 
+        (item.user_id === effectiveUserId || (item.user_email && item.user_email === normEmail)) &&
+        item.skill_name.toLowerCase() === s.name.toLowerCase()
+      );
+      if (!existing) {
+        existing = {
+          id: `ssp-${Date.now()}-${s.id}`,
+          user_id: effectiveUserId,
+          user_email: normEmail || null,
+          skill_id: s.id,
+          skill_name: s.name,
+          category: s.category,
+          base_percentage: base_percentage,
+          diagnostic_score: 0,
+          lecture_score: 0,
+          marathon_score: 0,
+          total_score: base_percentage,
+          latest_exam_score: 0,
+          status: 'UNVERIFIED BASELINE',
+          verified: false,
+          current_milestone: s.current_milestone,
+          next_milestone: s.next_milestone,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        store.student_skill_progress.push(existing);
+      }
+      result.push(existing);
+    }
+
+    if (store.candidates) {
+      let cand = store.candidates.find(c => (c.user_id && c.user_id === effectiveUserId) || (normEmail && c.email && c.email.toLowerCase() === normEmail));
+      if (!cand) {
+        cand = {
+          id: `cand-${Date.now()}`,
+          user_id: effectiveUserId,
+          name: user_name || 'Candidate',
+          email: normEmail,
+          stream: streamKey.toUpperCase(),
+          domain: 'Core Engineering & Architecture',
+          experience_level: 'Fresher (0-1 yr)',
+          skill_score: base_percentage,
+          dynamic_competence_percent: base_percentage,
+          readiness_score: base_percentage,
+          skills: defaultSkills.map(s => s.name),
+          created_at: new Date().toISOString()
+        };
+        store.candidates.push(cand);
+      }
+    }
+
+    saveLocalStore(store);
+    return result;
+  },
+
+  // Get Persisted Student Skill Progress (Auto-initializes if empty)
+  async getStudentSkills({ user_id, user_email, stream }) {
+    const p = initPool();
+    let resolvedUserId = user_id;
+
+    if (p) {
+      try {
+        await ensureSchema();
+        if (!resolvedUserId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(resolvedUserId))) {
+          if (user_email) {
+            const uRes = await p.query('SELECT id, stream FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) LIMIT 1', [user_email.trim().toLowerCase()]);
+            if (uRes.rows[0]) {
+              resolvedUserId = uRes.rows[0].id;
+              if (!stream && uRes.rows[0].stream) stream = uRes.rows[0].stream;
+            }
           }
         }
 
@@ -2402,6 +2664,13 @@ const db = {
           if (res.rows && res.rows.length > 0) {
             return res.rows;
           }
+
+          // Auto-seed if 0 skill rows found for user
+          return await this.autoSeedStudentSkills({
+            user_id: validUuid,
+            user_email,
+            stream: stream || 'it'
+          });
         }
       } catch (err) {
         console.warn('[Campus2Career DB] Cloud getStudentSkills notice:', err.message);
@@ -2413,10 +2682,18 @@ const db = {
     const normEmail = (user_email || '').trim().toLowerCase();
     const effectiveUserId = resolvedUserId || user_id || (normEmail ? `usr-${normEmail}` : null);
 
-    const skills = (store.student_skill_progress || []).filter(item => 
+    let skills = (store.student_skill_progress || []).filter(item => 
       (effectiveUserId && item.user_id === effectiveUserId) ||
       (normEmail && item.user_email && item.user_email === normEmail)
     );
+
+    if (skills.length === 0 && (effectiveUserId || normEmail)) {
+      skills = await this.autoSeedStudentSkills({
+        user_id: effectiveUserId,
+        user_email: normEmail,
+        stream: stream || 'it'
+      });
+    }
 
     return skills;
   },
