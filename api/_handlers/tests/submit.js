@@ -53,12 +53,15 @@ async function submitTestScore(req, res) {
       return res.status(400).json({ error: 'Missing required test parameters.' });
     }
 
+    const resolvedUuid = await db.resolveUserUuid(userId);
+    const effectiveUserId = resolvedUuid || userId;
+
     // 1. If Supabase Client is configured with valid credentials, execute via Supabase SDK
     const sb = db.getSupabaseClient() || supabase;
     if (sb) {
       try {
         let insertData = {
-          user_id: userId,
+          user_id: effectiveUserId,
           skill_name: skillName,
           test_title: testTitle,
           score: score,
@@ -88,10 +91,10 @@ async function submitTestScore(req, res) {
         if (insertError) throw insertError;
 
         // Fetch the current progress summary for targeted skill
-        let { data: currentProgress, error: fetchError } = await supabase
+        let { data: currentProgress, error: fetchError } = await sb
           .from('student_skill_progress')
           .select('*')
-          .eq('user_id', userId)
+          .eq('user_id', effectiveUserId)
           .ilike('skill_name', skillName)
           .single();
 
@@ -118,10 +121,10 @@ async function submitTestScore(req, res) {
         }
         const isVerified = (score >= 80) || (newTotal >= 80);
 
-        const { data: upsertedProgress, error: upError } = await supabase
+        const { data: upsertedProgress, error: upError } = await sb
           .from('student_skill_progress')
           .upsert({
-            user_id: userId,
+            user_id: effectiveUserId,
             skill_name: skillName,
             category: (currentProgress && currentProgress.category) || 'Core Skill',
             base_percentage: currentBase,
@@ -142,7 +145,7 @@ async function submitTestScore(req, res) {
           currentProgress = upsertedProgress;
         } else if (fetchError || !currentProgress) {
           const fallbackRes = await db.recordTestAttempt({
-            user_id: userId,
+            user_id: effectiveUserId,
             skill_name: skillName,
             test_title: testTitle,
             score: score,
@@ -166,7 +169,7 @@ async function submitTestScore(req, res) {
 
     // 2. Direct PostgreSQL Pool / Local In-Memory Store Execution
     const result = await db.recordTestAttempt({
-      user_id: userId,
+      user_id: effectiveUserId,
       skill_name: skillName,
       test_title: testTitle,
       score: score,

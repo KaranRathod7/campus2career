@@ -151,6 +151,24 @@ const DEFAULT_SKILLS_BY_STREAM = {
   ]
 };
 
+// Stream Aliases for Robust Discipline Resolution
+DEFAULT_SKILLS_BY_STREAM.me = DEFAULT_SKILLS_BY_STREAM.mechanical;
+DEFAULT_SKILLS_BY_STREAM.mech = DEFAULT_SKILLS_BY_STREAM.mechanical;
+DEFAULT_SKILLS_BY_STREAM.ai = DEFAULT_SKILLS_BY_STREAM.aids;
+DEFAULT_SKILLS_BY_STREAM.cs = DEFAULT_SKILLS_BY_STREAM.cse;
+DEFAULT_SKILLS_BY_STREAM.ee = DEFAULT_SKILLS_BY_STREAM.ece;
+
+function resolveStreamKey(stream) {
+  if (!stream) return 'it';
+  const s = String(stream).trim().toLowerCase();
+  if (s === 'me' || s === 'mech' || s.includes('mechanical') || s.includes('cad') || s.includes('fea')) return 'mechanical';
+  if (s === 'cse' || s === 'cs' || s.includes('comp') || s.includes('distributed')) return 'cse';
+  if (s === 'ece' || s === 'ee' || s.includes('elect') || s.includes('embedded') || s.includes('hardware')) return 'ece';
+  if (s === 'aids' || s === 'ai' || s === 'ds' || s.includes('data science') || s.includes('genai') || s.includes('intelligence')) return 'aids';
+  if (s === 'it' || s.includes('information') || s.includes('java')) return 'it';
+  return s;
+}
+
 let inMemoryStore = null;
 
 function normalizeStoreCollections(store) {
@@ -877,6 +895,48 @@ const db = {
     return (store.users || []).find(u => u.username && u.username.toLowerCase() === normalized) || null;
   },
 
+  async getUserById(id) {
+    if (!id) return null;
+    const cleanId = String(id).trim();
+    const p = initPool();
+    if (p) {
+      try {
+        await ensureSchema();
+        const res = await p.query(
+          'SELECT * FROM users WHERE id::text = $1 LIMIT 1',
+          [cleanId]
+        );
+        return res.rows[0] || null;
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud getUserById notice:', err.message);
+      }
+    }
+    const store = getLocalStore();
+    return (store.users || []).find(u => u.id === id || String(u.id) === cleanId) || null;
+  },
+
+  async resolveUserUuid(idOrEmail) {
+    if (!idOrEmail) return null;
+    const str = String(idOrEmail).trim();
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)) {
+      return str;
+    }
+    const p = initPool();
+    if (p) {
+      try {
+        await ensureSchema();
+        const res = await p.query(
+          'SELECT id FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) OR id::text = $1 OR LOWER(TRIM(username)) = LOWER(TRIM($1)) LIMIT 1',
+          [str]
+        );
+        if (res.rows.length > 0) return res.rows[0].id;
+      } catch (e) {}
+    }
+    const store = getLocalStore();
+    const u = (store.users || []).find(x => x.email.toLowerCase() === str.toLowerCase() || x.id === str || (x.username && x.username.toLowerCase() === str.toLowerCase()));
+    return u ? u.id : null;
+  },
+
   async createUser({ name, username, email, password_hash, role, stream, is_verified = false }) {
     const normalized = (email || '').trim().toLowerCase();
     const cleanName = (name || '').trim();
@@ -1087,24 +1147,102 @@ const db = {
   async deleteUser(idOrEmail) {
     const val = (idOrEmail || '').trim().toLowerCase();
     const p = initPool();
+    let deletedId = null;
+    let deletedEmail = null;
+
     if (p) {
       try {
         await ensureSchema();
-        const res = await p.query('DELETE FROM users WHERE id::text = $1 OR LOWER(email) = $1 RETURNING id, email', [val]);
-        return res.rows.length > 0;
+        // First look up user's id and email to cascade delete cleanly
+        const uRes = await p.query(
+          'SELECT id, email FROM users WHERE id::text = $1 OR LOWER(TRIM(email)) = LOWER(TRIM($1)) LIMIT 1',
+          [val]
+        );
+        if (uRes.rows.length > 0) {
+          deletedId = uRes.rows[0].id;
+          deletedEmail = uRes.rows[0].email.toLowerCase().trim();
+
+          // 1. Delete student_skill_progress
+          await p.query('DELETE FROM student_skill_progress WHERE user_id = $1', [deletedId]);
+          // 2. Delete student_test_attempts
+          await p.query('DELETE FROM student_test_attempts WHERE user_id = $1', [deletedId]);
+          // 3. Delete user_completed_lectures
+          await p.query('DELETE FROM user_completed_lectures WHERE user_id = $1 OR LOWER(TRIM(user_email)) = $2', [deletedId, deletedEmail]);
+          // 4. Delete student_activity
+          await p.query('DELETE FROM student_activity WHERE user_id = $1', [deletedId]);
+          // 5. Delete candidates
+          await p.query('DELETE FROM candidates WHERE user_id = $1 OR LOWER(TRIM(email)) = $2', [deletedId, deletedEmail]);
+          // 6. Delete password_resets
+          await p.query('DELETE FROM password_resets WHERE LOWER(TRIM(email)) = $1', [deletedEmail]);
+          // 7. Delete pending_verifications
+          await p.query('DELETE FROM pending_verifications WHERE LOWER(TRIM(email)) = $1', [deletedEmail]);
+          // 8. Delete login_attempts
+          await p.query('DELETE FROM login_attempts WHERE user_id = $1 OR LOWER(TRIM(email)) = $2', [deletedId, deletedEmail]);
+          // 9. Delete login_rate_limits
+          await p.query('DELETE FROM login_rate_limits WHERE LOWER(TRIM(email)) = $1', [deletedEmail]);
+          // 10. Delete user
+          await p.query('DELETE FROM users WHERE id = $1', [deletedId]);
+        }
       } catch (err) {
         console.warn('[Campus2Career DB] Cloud deleteUser notice (falling back to local):', err.message);
         lastDbError = err.message;
       }
     }
-    const store = getLocalStore();
-    const initLen = (store.users || []).length;
-    store.users = (store.users || []).filter(u => u.id !== idOrEmail && u.email.toLowerCase() !== val);
-    if (store.users.length !== initLen) {
-      saveLocalStore(store);
-      return true;
+
+    // Purge from Supabase if configured
+    const sb = this.getSupabaseClient();
+    if (sb && (deletedId || deletedEmail)) {
+      try {
+        if (deletedId) {
+          await sb.from('student_skill_progress').delete().eq('user_id', deletedId);
+          await sb.from('student_test_attempts').delete().eq('user_id', deletedId);
+          await sb.from('login_attempts').delete().eq('user_id', deletedId);
+        }
+        if (deletedEmail) {
+          await sb.from('candidates').delete().ilike('email', deletedEmail);
+          await sb.from('login_attempts').delete().ilike('email', deletedEmail);
+        }
+      } catch (e) {}
     }
-    return false;
+
+    // Local fallback store purge
+    const store = getLocalStore();
+    const userToDel = (store.users || []).find(u => u.id === idOrEmail || u.email.toLowerCase() === val);
+    const uId = (userToDel && userToDel.id) || deletedId || idOrEmail;
+    const uEmail = (userToDel && userToDel.email ? userToDel.email.toLowerCase() : null) || deletedEmail || val;
+
+    store.users = (store.users || []).filter(u => u.id !== uId && u.email.toLowerCase() !== uEmail);
+    if (store.student_skill_progress) {
+      store.student_skill_progress = store.student_skill_progress.filter(s => s.user_id !== uId && (s.user_email ? s.user_email.toLowerCase() !== uEmail : true));
+    }
+    if (store.student_test_attempts) {
+      store.student_test_attempts = store.student_test_attempts.filter(a => a.user_id !== uId);
+    }
+    if (store.user_completed_lectures) {
+      store.user_completed_lectures = store.user_completed_lectures.filter(l => l.user_id !== uId && (l.user_email ? l.user_email.toLowerCase() !== uEmail : true));
+    }
+    if (store.student_activity) {
+      store.student_activity = store.student_activity.filter(a => a.user_id !== uId && (a.user_email ? a.user_email.toLowerCase() !== uEmail : true));
+    }
+    if (store.candidates) {
+      store.candidates = store.candidates.filter(c => c.user_id !== uId && (c.email ? c.email.toLowerCase() !== uEmail : true));
+    }
+    if (store.password_resets) {
+      store.password_resets = store.password_resets.filter(pr => pr.email.toLowerCase() !== uEmail);
+    }
+    if (store.pending_verifications) {
+      store.pending_verifications = store.pending_verifications.filter(pv => pv.email.toLowerCase() !== uEmail);
+    }
+    if (store.login_attempts) {
+      store.login_attempts = store.login_attempts.filter(l => l.user_id !== uId && (l.email ? l.email.toLowerCase() !== uEmail : true));
+    }
+    if (store.login_rate_limits) {
+      Object.keys(store.login_rate_limits).forEach(k => {
+        if (k.toLowerCase().includes(uEmail)) delete store.login_rate_limits[k];
+      });
+    }
+    saveLocalStore(store);
+    return Boolean(userToDel || deletedId);
   },
 
   // Rate Limiting (Brute-Force Protection via login_rate_limits)
@@ -1420,6 +1558,28 @@ const db = {
     saveLocalStore(store);
 
     return { success: true, user: { id: user.id, email: user.email, name: user.name } };
+  },
+
+  async getPasswordReset(email) {
+    const normalized = (email || '').trim().toLowerCase();
+    const p = initPool();
+    if (p) {
+      try {
+        await ensureSchema();
+        const res = await p.query(
+          `SELECT * FROM password_resets 
+           WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))
+           ORDER BY created_at DESC LIMIT 1`,
+          [normalized]
+        );
+        return res.rows[0] || null;
+      } catch (err) {
+        console.error('[Campus2Career DB] Cloud getPasswordReset error:', err.message);
+      }
+    }
+    const store = getLocalStore();
+    const entry = (store.password_resets || []).find(pr => pr.email && pr.email.toLowerCase() === normalized);
+    return entry || null;
   },
 
   // Pending Verifications
@@ -2502,15 +2662,22 @@ const db = {
 
   // Retrieve Aggregated Analytics for Radar Chart and Student Dashboard
   async getStudentAnalytics({ user_id, user_email, stream }) {
-    const streamKey = (stream || 'it').toLowerCase();
+    const streamKey = resolveStreamKey(stream);
     const p = initPool();
     let activities = [];
+    let testAttempts = [];
+    let lectureMins = 0;
     let readinessScore = 35;
+    let validUuid = (user_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(user_id))) ? String(user_id) : null;
 
     if (p) {
       try {
         await ensureSchema();
-        const validUuid = (user_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(user_id))) ? String(user_id) : null;
+        if (!validUuid && user_email) {
+          const uRes = await p.query('SELECT id FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) LIMIT 1', [user_email.trim().toLowerCase()]);
+          if (uRes.rows[0]) validUuid = uRes.rows[0].id;
+        }
+
         const res = await p.query(
           `SELECT * FROM student_activity
            WHERE (user_id = $1 OR user_id::text = $2)
@@ -2527,6 +2694,23 @@ const db = {
         );
         if (candRes.rows && candRes.rows[0]) {
           readinessScore = Number(candRes.rows[0].readiness_score) || Number(candRes.rows[0].skill_score) || 35;
+        }
+
+        // Fetch test attempts
+        if (validUuid) {
+          const attRes = await p.query(
+            'SELECT * FROM student_test_attempts WHERE user_id = $1 ORDER BY created_at ASC',
+            [validUuid]
+          );
+          testAttempts = attRes.rows || [];
+
+          const lecRes = await p.query(
+            'SELECT SUM(time_watched_seconds) as total_secs FROM user_completed_lectures WHERE user_id = $1',
+            [validUuid]
+          );
+          if (lecRes.rows[0] && lecRes.rows[0].total_secs) {
+            lectureMins = Math.round(Number(lecRes.rows[0].total_secs) / 60);
+          }
         }
       } catch (err) {
         console.warn('[Campus2Career DB] Cloud getStudentAnalytics notice:', err.message);
@@ -2545,11 +2729,35 @@ const db = {
           readinessScore = Number(cand.readiness_score) || Number(cand.skill_score) || 35;
         }
       }
+      if (testAttempts.length === 0) {
+        testAttempts = (store.student_test_attempts || []).filter(a => (user_id && a.user_id === user_id));
+      }
+      const lecs = (store.user_completed_lectures || []).filter(l => (user_id && l.user_id === user_id) || (user_email && l.user_email === (user_email || '').toLowerCase()));
+      lectureMins = Math.round(lecs.reduce((acc, l) => acc + (Number(l.time_watched_seconds) || 0), 0) / 60);
     }
 
-    const totalMinutes = activities.reduce((sum, a) => sum + (Number(a.time_spent_minutes) || 0), 0);
+    const activityMinutes = activities.reduce((sum, a) => sum + (Number(a.time_spent_minutes) || 0), 0);
+    const totalMinutes = activityMinutes + lectureMins;
     const studyHours = Math.round((totalMinutes / 60) * 10) / 10;
     const completedTopicsList = [...new Set(activities.map(a => a.topic).filter(Boolean))];
+
+    const benchmarksTaken = testAttempts.length;
+    const avgScore = benchmarksTaken > 0
+      ? Math.round(testAttempts.reduce((sum, t) => sum + (Number(t.score) || 0), 0) / benchmarksTaken)
+      : 0;
+
+    // Active learning streak calculation from distinct dates
+    const activeDates = new Set();
+    activities.forEach(a => { if (a.created_at) activeDates.add(new Date(a.created_at).toISOString().split('T')[0]); });
+    testAttempts.forEach(t => { if (t.created_at) activeDates.add(new Date(t.created_at).toISOString().split('T')[0]); });
+    const streakDays = activeDates.size;
+
+    let growthPercent = 0;
+    if (benchmarksTaken >= 2) {
+      const firstScore = Number(testAttempts[0].score) || 0;
+      const lastScore = Number(testAttempts[testAttempts.length - 1].score) || 0;
+      growthPercent = Math.round(lastScore - firstScore);
+    }
 
     // Standard stream disciplines map
     const defaultStreamDisciplines = {
@@ -2560,12 +2768,33 @@ const db = {
         { name: 'Operating Systems & Concurrency', keywords: ['os', 'concurrency', 'process', 'thread', 'memory'] },
         { name: 'Computer Networks & APIs', keywords: ['network', 'tcp', 'http', 'socket', 'ip'] }
       ],
+      cse: [
+        { name: 'Distributed Systems & Raft', keywords: ['distributed', 'raft', 'consensus', 'microservices'] },
+        { name: 'Low-Level OS & Kernel', keywords: ['os', 'kernel', 'memory', 'thread', 'virtual'] },
+        { name: 'High-Throughput Databases', keywords: ['database', 'indexing', 'b-tree', 'wal', 'storage'] },
+        { name: 'Docker & Kubernetes', keywords: ['docker', 'kubernetes', 'k8s', 'container'] },
+        { name: 'APM & Reliability', keywords: ['debugging', 'telemetry', 'tracing', 'profiler'] }
+      ],
       ece: [
         { name: 'Embedded C & RTOS', keywords: ['embedded', 'c', 'rtos', 'freertos', 'arm'] },
         { name: 'Microcontrollers & STM32', keywords: ['microcontroller', 'stm32', 'firmware', 'registers'] },
         { name: 'Hardware Protocols (SPI/I2C/CAN)', keywords: ['protocol', 'spi', 'i2c', 'can', 'uart'] },
         { name: 'VLSI & Circuit Diagnostics', keywords: ['vlsi', 'circuit', 'verilog', 'fpga'] },
         { name: 'Signal Processing & Control', keywords: ['signal', 'dsp', 'filter', 'matlab'] }
+      ],
+      mechanical: [
+        { name: 'SolidWorks & Parametric CAD', keywords: ['cad', 'solidworks', 'part', 'modeling', 'gd&t'] },
+        { name: 'FEA Stress Analysis (ANSYS)', keywords: ['fea', 'ansys', 'stress', 'simulation', 'structural'] },
+        { name: 'CFD Fluid & Thermal Flow', keywords: ['cfd', 'fluid', 'thermal', 'flow', 'navier'] },
+        { name: 'CNC Machining & DFM', keywords: ['cnc', 'machining', 'dfm', 'manufacturing', 'g-code'] },
+        { name: 'Failure Analysis & Reliability', keywords: ['failure', 'fractography', 'vibration', 'reliability'] }
+      ],
+      aids: [
+        { name: 'Generative AI & Vector DBs', keywords: ['genai', 'vector', 'rag', 'embeddings'] },
+        { name: 'Python Concurrency & AsyncIO', keywords: ['python', 'asyncio', 'multiprocessing'] },
+        { name: 'LLM Fine-Tuning & Quantization', keywords: ['llm', 'fine-tuning', 'quantization', 'lora'] },
+        { name: 'Production Model Serving', keywords: ['serving', 'fastapi', 'vllm', 'mlops'] },
+        { name: 'GPU Memory & Latency Profiling', keywords: ['gpu', 'cuda', 'profiling', 'pytorch'] }
       ]
     };
 
@@ -2573,7 +2802,6 @@ const db = {
     let userProgressSkills = [];
     if (p) {
       try {
-        const validUuid = (user_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(user_id))) ? String(user_id) : null;
         if (validUuid) {
           const sspRes = await p.query(
             'SELECT * FROM student_skill_progress WHERE user_id = $1 ORDER BY skill_name ASC',
@@ -2600,7 +2828,6 @@ const db = {
         current_milestone: s.current_milestone,
         next_milestone: s.next_milestone
       }));
-      // Recalculate readiness score as arithmetic mean of skill progress
       readinessScore = Math.round(skillCompetencies.reduce((sum, s) => sum + s.score, 0) / skillCompetencies.length);
     } else if (activities.length === 0) {
       readinessScore = 35;
@@ -2640,11 +2867,17 @@ const db = {
     return {
       study_hours: studyHours,
       total_study_minutes: totalMinutes,
+      streak_days: streakDays,
+      benchmarks_taken: benchmarksTaken,
+      tests_count: benchmarksTaken,
+      avg_exam_score: avgScore,
+      growth_percent: growthPercent,
       completed_topics: completedTopicsList.length,
       topics: completedTopicsList,
       readiness_score: readinessScore,
       skill_competencies: skillCompetencies,
-      activities: activities.slice(0, 20)
+      activities: activities.slice(0, 20),
+      attempts: testAttempts
     };
   },
 
@@ -2773,17 +3006,11 @@ const db = {
 
   // Auto-Seed Default Stream Skills and Candidate Record (No manual CSV imports needed)
   async autoSeedStudentSkills({ user_id, user_email, user_name, stream, base_percentage = 35 }) {
-    const rawStream = (stream || 'it').toString().toLowerCase().trim();
-    let streamKey = 'it';
-    if (rawStream.includes('cse') || rawStream.includes('comp')) streamKey = 'cse';
-    else if (rawStream.includes('ece') || rawStream.includes('elect')) streamKey = 'ece';
-    else if (rawStream.includes('aid') || rawStream.includes('ai') || rawStream.includes('data')) streamKey = 'aids';
-    else if (rawStream.includes('mech')) streamKey = 'mechanical';
-
-    const defaultSkills = DEFAULT_SKILLS_BY_STREAM[streamKey] || DEFAULT_SKILLS_BY_STREAM.it;
-    const p = initPool();
     let resolvedUserId = user_id;
+    let resolvedStream = stream;
+    let resolvedName = user_name;
 
+    const p = initPool();
     if (p) {
       try {
         await ensureSchema();
@@ -2792,11 +3019,36 @@ const db = {
             const uRes = await p.query('SELECT id, name, stream FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) LIMIT 1', [user_email.trim().toLowerCase()]);
             if (uRes.rows[0]) {
               resolvedUserId = uRes.rows[0].id;
-              if (!user_name && uRes.rows[0].name) user_name = uRes.rows[0].name;
+              if (!resolvedName) resolvedName = uRes.rows[0].name;
+              if (!resolvedStream) resolvedStream = uRes.rows[0].stream;
             }
           }
+        } else if (!resolvedStream && resolvedUserId) {
+          const uRes = await p.query('SELECT name, stream FROM users WHERE id = $1 LIMIT 1', [resolvedUserId]);
+          if (uRes.rows[0]) {
+            if (!resolvedName) resolvedName = uRes.rows[0].name;
+            if (!resolvedStream) resolvedStream = uRes.rows[0].stream;
+          }
         }
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud autoSeed user lookup notice:', err.message);
+      }
+    } else {
+      const store = getLocalStore();
+      const u = (store.users || []).find(x => (resolvedUserId && x.id === resolvedUserId) || (user_email && x.email.toLowerCase() === (user_email || '').toLowerCase()));
+      if (u) {
+        if (!resolvedUserId) resolvedUserId = u.id;
+        if (!resolvedName) resolvedName = u.name;
+        if (!resolvedStream) resolvedStream = u.stream;
+      }
+    }
 
+    const streamKey = resolveStreamKey(resolvedStream);
+    const defaultSkills = DEFAULT_SKILLS_BY_STREAM[streamKey] || DEFAULT_SKILLS_BY_STREAM.it;
+
+    if (p) {
+      try {
+        await ensureSchema();
         const validUuid = (resolvedUserId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(resolvedUserId))) ? String(resolvedUserId) : null;
         if (validUuid) {
           for (const s of defaultSkills) {
@@ -2810,13 +3062,13 @@ const db = {
           }
 
           // Also guarantee candidate profile exists in candidates table
-          const nameToUse = user_name || 'Candidate';
+          const nameToUse = resolvedName || 'Candidate';
           const emailToUse = user_email || `${validUuid}@campus2career.org`;
           const skillNames = defaultSkills.map(s => s.name);
           await p.query(
             `INSERT INTO candidates (user_id, name, email, stream, domain, experience_level, skill_score, dynamic_competence_percent, readiness_score, skills)
              VALUES ($1, $2, $3, $4, 'Core Engineering & Architecture', 'Fresher (0-1 yr)', $5, $5, $5, $6)
-             ON CONFLICT (email) DO UPDATE SET user_id = COALESCE(candidates.user_id, EXCLUDED.user_id)`,
+             ON CONFLICT (email) DO UPDATE SET user_id = COALESCE(candidates.user_id, EXCLUDED.user_id), stream = EXCLUDED.stream`,
             [validUuid, nameToUse, emailToUse, streamKey.toUpperCase(), base_percentage, skillNames]
           );
 
@@ -2879,7 +3131,7 @@ const db = {
         cand = {
           id: `cand-${Date.now()}`,
           user_id: effectiveUserId,
-          name: user_name || 'Candidate',
+          name: resolvedName || 'Candidate',
           email: normEmail,
           stream: streamKey.toUpperCase(),
           domain: 'Core Engineering & Architecture',
@@ -2899,20 +3151,38 @@ const db = {
   },
 
   // Get Persisted Student Skill Progress (Auto-initializes if empty)
-  async getStudentSkills({ user_id, user_email, stream }) {
+  async getStudentSkills(idOrParams) {
+    let user_id = null;
+    let user_email = null;
+    let stream = null;
+    if (typeof idOrParams === 'object' && idOrParams !== null) {
+      user_id = idOrParams.user_id || idOrParams.id;
+      user_email = idOrParams.user_email || idOrParams.email;
+      stream = idOrParams.stream;
+    } else if (typeof idOrParams === 'string') {
+      if (idOrParams.includes('@')) {
+        user_email = idOrParams;
+      } else {
+        user_id = idOrParams;
+      }
+    }
     const p = initPool();
     let resolvedUserId = user_id;
+    let resolvedStream = stream;
 
     if (p) {
       try {
         await ensureSchema();
-        if (!resolvedUserId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(resolvedUserId))) {
-          if (user_email) {
-            const uRes = await p.query('SELECT id, stream FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) LIMIT 1', [user_email.trim().toLowerCase()]);
-            if (uRes.rows[0]) {
-              resolvedUserId = uRes.rows[0].id;
-              if (!stream && uRes.rows[0].stream) stream = uRes.rows[0].stream;
-            }
+        if (resolvedUserId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(resolvedUserId))) {
+          if (!resolvedStream) {
+            const uRes = await p.query('SELECT stream FROM users WHERE id = $1 LIMIT 1', [resolvedUserId]);
+            if (uRes.rows[0] && uRes.rows[0].stream) resolvedStream = uRes.rows[0].stream;
+          }
+        } else if (user_email) {
+          const uRes = await p.query('SELECT id, stream FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) LIMIT 1', [user_email.trim().toLowerCase()]);
+          if (uRes.rows[0]) {
+            resolvedUserId = uRes.rows[0].id;
+            if (!resolvedStream && uRes.rows[0].stream) resolvedStream = uRes.rows[0].stream;
           }
         }
 
@@ -2921,19 +3191,22 @@ const db = {
           const res = await p.query(
             `SELECT * FROM student_skill_progress
              WHERE user_id = $1
-             ORDER BY created_at ASC, skill_name ASC`,
+             ORDER BY skill_name ASC`,
             [validUuid]
           );
           if (res.rows && res.rows.length > 0) {
             return res.rows;
           }
 
-          // Auto-seed if 0 skill rows found for user
-          return await this.autoSeedStudentSkills({
-            user_id: validUuid,
-            user_email,
-            stream: stream || 'it'
-          });
+          // Auto-seed strictly using the user's registered stream if known
+          if (resolvedStream) {
+            return await this.autoSeedStudentSkills({
+              user_id: validUuid,
+              user_email,
+              stream: resolvedStream
+            });
+          }
+          return [];
         }
       } catch (err) {
         console.warn('[Campus2Career DB] Cloud getStudentSkills notice:', err.message);
@@ -2943,7 +3216,11 @@ const db = {
     // Local fallback store
     const store = getLocalStore();
     const normEmail = (user_email || '').trim().toLowerCase();
-    const effectiveUserId = resolvedUserId || user_id || (normEmail ? `usr-${normEmail}` : null);
+    const effectiveUser = (store.users || []).find(u => (resolvedUserId && u.id === resolvedUserId) || (normEmail && u.email.toLowerCase() === normEmail));
+    const effectiveUserId = (effectiveUser && effectiveUser.id) || resolvedUserId || user_id || (normEmail ? `usr-${normEmail}` : null);
+    if (effectiveUser && effectiveUser.stream && !resolvedStream) {
+      resolvedStream = effectiveUser.stream;
+    }
 
     let skills = (store.student_skill_progress || []).filter(item => 
       (effectiveUserId && item.user_id === effectiveUserId) ||
@@ -2951,11 +3228,15 @@ const db = {
     );
 
     if (skills.length === 0 && (effectiveUserId || normEmail)) {
-      skills = await this.autoSeedStudentSkills({
-        user_id: effectiveUserId,
-        user_email: normEmail,
-        stream: stream || 'it'
-      });
+      if (resolvedStream) {
+        skills = await this.autoSeedStudentSkills({
+          user_id: effectiveUserId,
+          user_email: normEmail,
+          stream: resolvedStream
+        });
+      } else {
+        skills = [];
+      }
     }
 
     return skills;

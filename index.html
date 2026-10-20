@@ -1769,23 +1769,23 @@
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <div class="bg-white dark:bg-[#0F172A] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <span class="text-xs font-semibold text-slate-500 block">Total Technical Study</span>
-        <span id="growthTotalHours" class="text-3xl font-extrabold text-[#008080] font-mono mt-1 block">5.2 hrs</span>
-        <span class="text-[11px] text-emerald-600 font-semibold" id="growthStudySessionsCount">↑ 8 sessions logged</span>
+        <span id="growthTotalHours" class="text-3xl font-extrabold text-[#008080] font-mono mt-1 block">0.0 hrs</span>
+        <span class="text-[11px] text-slate-500 font-semibold" id="growthStudySessionsCount">0 sessions logged</span>
       </div>
       <div class="bg-white dark:bg-[#0F172A] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 block">Active Learning Streak</span>
-        <span id="growthStreakDays" class="text-3xl font-extrabold text-amber-500 font-mono mt-1 block">6 Days</span>
+        <span id="growthStreakDays" class="text-3xl font-extrabold text-amber-500 font-mono mt-1 block">0 Days</span>
         <span class="text-[11px] text-slate-400 font-medium">Daily commitment</span>
       </div>
       <div class="bg-white dark:bg-[#0F172A] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 block">Benchmarks Taken</span>
-        <span id="growthTestsCount" class="text-3xl font-extrabold text-blue-600 font-mono mt-1 block">4 Tests</span>
-        <span class="text-[11px] text-slate-400 font-medium" id="growthAvgScore">Avg: 85%</span>
+        <span id="growthTestsCount" class="text-3xl font-extrabold text-blue-600 font-mono mt-1 block">0 Tests</span>
+        <span class="text-[11px] text-slate-400 font-medium" id="growthAvgScore">Avg: 0%</span>
       </div>
       <div class="bg-white dark:bg-[#0F172A] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 block">Recruiter Status</span>
-        <span class="text-xl font-extrabold text-emerald-600 font-mono mt-2 block">✓ Verified Ready</span>
-        <span class="text-[11px] text-slate-400 font-medium">Indexed in Top 5%</span>
+        <span class="text-xl font-extrabold text-emerald-600 font-mono mt-2 block" id="growthRecruiterStatus">In Progress</span>
+        <span class="text-[11px] text-slate-400 font-medium" id="growthRecruiterCohort">Level 1 Baseline</span>
       </div>
     </div>
 
@@ -1811,8 +1811,8 @@
           <h3 class="text-base font-bold text-slate-900 dark:text-white">Score Growth Across Attempts (%)</h3>
           <p class="text-xs text-slate-500">Timeline tracking milestones in your tailored skills stack.</p>
         </div>
-        <span class="text-xs font-mono font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-          +48% Growth
+        <span id="growthPercentBadge" class="text-xs font-mono font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+          0% Growth
         </span>
       </div>
       <div class="h-64 relative">
@@ -22433,6 +22433,46 @@ const STREAM_DATA = {
 }
 };
 
+// Stream aliases for flexible normalization
+STREAM_DATA.me = STREAM_DATA.mechanical;
+STREAM_DATA.mech = STREAM_DATA.mechanical;
+STREAM_DATA.ai = STREAM_DATA.aids;
+STREAM_DATA.cs = STREAM_DATA.cse;
+STREAM_DATA.ee = STREAM_DATA.ece;
+
+function normalizeStreamKey(raw) {
+  if (!raw) return 'it';
+  const s = String(raw).trim().toLowerCase();
+  if (s === 'me' || s === 'mech' || s.includes('mechanical')) return 'mechanical';
+  if (s === 'ece' || s === 'ee' || s.includes('electronic')) return 'ece';
+  if (s === 'cse' || s === 'cs' || (s.includes('comp') && !s.includes('data'))) return 'cse';
+  if (s === 'aids' || s === 'ai' || s.includes('artif') || s.includes('data')) return 'aids';
+  if (s === 'it' || s.includes('information')) return 'it';
+  if (typeof STREAM_DATA !== 'undefined' && STREAM_DATA[s]) return s;
+  return 'it';
+}
+
+function clearUserClientStorage() {
+  try {
+    localStorage.removeItem('c2c_user_analytics');
+    localStorage.removeItem('c2c_cached_skills');
+    localStorage.removeItem('c2c_session_token');
+    localStorage.removeItem(STORAGE_KEY_USER);
+    localStorage.removeItem(STORAGE_KEY_STACK);
+    localStorage.removeItem(STORAGE_KEY_PROGRESS);
+    localStorage.removeItem(STORAGE_KEY_MCQ);
+    localStorage.removeItem(STORAGE_KEY_INVITES);
+    localStorage.removeItem('c2c_login_failed_attempts');
+    localStorage.removeItem('c2c_login_lockout_until');
+    localStorage.removeItem('c2c_active_demo_session');
+  } catch (e) {}
+  try {
+    sessionStorage.clear();
+  } catch (e) {}
+}
+window.clearUserClientStorage = clearUserClientStorage;
+window.normalizeStreamKey = normalizeStreamKey;
+
 
 // scratch/data_reports_v2.js
 // Verified recruiter requirements with explicit domain mapping and capstone requirements
@@ -22588,21 +22628,14 @@ const defaultMarketReports = [
     };
 
     const defaultProgress = {
-      totalStudyMinutes: 312,
-      streakDays: 6,
-      completedResourceIds: [1, 3],
-      learningSessions: [
-        { id: 1, date: '2026-10-09 14:30', title: 'SolidWorks Simulation: Non-linear FEA Stress Analysis', type: 'YouTube Lecture', minutes: 50, impact: '+10% Structural FEA' },
-        { id: 2, date: '2026-10-10 16:15', title: 'ANSYS Fluent: Turbulent Heat Exchanger Conjugate Heat Transfer', type: 'YouTube Lecture', minutes: 60, impact: '+12% CFD' },
-        { id: 3, date: '2026-10-11 11:00', title: 'ASME Y14.5: GD&T Feature Control Frame Tolerancing', type: 'YouTube Lecture', minutes: 45, impact: '+15% GD&T' }
-      ]
+      totalStudyMinutes: 0,
+      streakDays: 0,
+      completedResourceIds: [],
+      learningSessions: []
     };
 
     const defaultMcqHistory = [];
-
-    const defaultInvites = [
-      { id: 1, candidateId: '23IT413', name: 'Aryan Sharma', role: 'Systems Engineering Intern (Java / Cloud)', format: 'System Design & Capstone Defense', date: '2026-10-12', status: 'Interview Scheduled' }
-    ];
+    const defaultInvites = [];
 
         
     /* ========================================================================= */
@@ -23678,14 +23711,15 @@ const defaultMarketReports = [
         window.currentUser = appState.user;
         window.isLoggedIn = appState.isLoggedIn;
 
-        const branchKey = (appState.user && appState.user.branch && STREAM_DATA[appState.user.branch])
-          ? appState.user.branch
-          : (appState.selectedStream || 'it');
+        const rawBranch = (appState.user && (appState.user.stream || appState.user.branch)) || appState.selectedStream || 'it';
+        const branchKey = normalizeStreamKey(rawBranch);
         const stream = STREAM_DATA[branchKey] || STREAM_DATA.it;
         const defPreset = (appState.user && appState.user.activeTrackPreset && stream.presets[appState.user.activeTrackPreset])
           ? appState.user.activeTrackPreset
-          : (appState.selectedPreset || stream.defaultPreset || 'java_cloud');
-        const defSkills = stream.presets[defPreset] ? stream.presets[defPreset].skills : stream.presets.java_cloud.skills;
+          : (appState.selectedPreset && stream.presets[appState.selectedPreset]
+              ? appState.selectedPreset
+              : (stream.defaultPreset || Object.keys(stream.presets)[0]));
+        const defSkills = stream.presets[defPreset] ? stream.presets[defPreset].skills : (stream.presets[stream.defaultPreset] ? stream.presets[stream.defaultPreset].skills : (STREAM_DATA.it.presets.java_cloud ? STREAM_DATA.it.presets.java_cloud.skills : []));
 
         const storedStack = localStorage.getItem(STORAGE_KEY_STACK);
         appState.currentStack = storedStack ? JSON.parse(storedStack) : JSON.parse(JSON.stringify(defSkills));
@@ -24083,14 +24117,16 @@ const defaultMarketReports = [
 
     function updateGrowthSummaryCards() {
       try {
-        const totalMins = (appState.progress && appState.progress.totalStudyMinutes) 
-          || (appState.user && appState.user.totalStudyMinutes) 
+        const studyMins = (appState.user && (Number(appState.user.total_study_minutes) || Number(appState.user.totalStudyMinutes)))
+          || (appState.progress && Number(appState.progress.totalStudyMinutes))
           || 0;
+        const lectureMins = (appState.user && Number(appState.user.total_lecture_minutes)) || 0;
+        const totalMins = studyMins + lectureMins;
         const hours = (totalMins / 60).toFixed(1);
         const sessions = (appState.progress && appState.progress.learningSessions) || [];
         const streak = (appState.progress && appState.progress.streakDays) 
           || (appState.user && appState.user.streakDays) 
-          || 0;
+          || (totalMins > 0 ? 1 : 0);
         const tests = (appState.mcqHistory || (appState.user && appState.user.mcqHistory) || []);
 
         const hEl = document.getElementById('growthTotalHours');
@@ -24098,20 +24134,33 @@ const defaultMarketReports = [
         const strEl = document.getElementById('growthStreakDays');
         const tEl = document.getElementById('growthTestsCount');
         const avgEl = document.getElementById('growthAvgScore');
+        const growthBadge = document.getElementById('growthPercentBadge');
+        const emptyStateBanner = document.getElementById('analyticsEmptyStateBanner');
 
         if (hEl) hEl.innerText = `${hours} hrs`;
-        if (sEl) sEl.innerText = `↑ ${sessions.length} sessions logged`;
+        if (sEl) sEl.innerText = sessions.length > 0 ? `↑ ${sessions.length} sessions logged` : `0 sessions logged`;
         if (strEl) strEl.innerText = `${streak} Days`;
         if (tEl) tEl.innerText = `${tests.length} Tests`;
 
-        if (avgEl) {
-          if (tests.length > 0) {
-            const sum = tests.reduce((acc, t) => acc + (t.score || 0), 0);
-            const avg = Math.round(sum / tests.length);
-            avgEl.innerText = `Avg: ${avg}%`;
-          } else {
-            avgEl.innerText = 'Avg: 0%';
+        if (tests.length > 0) {
+          const sum = tests.reduce((acc, t) => acc + (t.score || 0), 0);
+          const avg = Math.round(sum / tests.length);
+          if (avgEl) avgEl.innerText = `Avg: ${avg}%`;
+          if (growthBadge) {
+            const firstScore = tests[0].score || 0;
+            const lastScore = tests[tests.length - 1].score || 0;
+            const diff = Math.round(lastScore - firstScore);
+            growthBadge.innerText = diff >= 0 ? `+${diff}% Growth` : `${diff}% Growth`;
+            growthBadge.className = "text-xs font-mono font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-300 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800";
           }
+          if (emptyStateBanner) emptyStateBanner.classList.add('hidden');
+        } else {
+          if (avgEl) avgEl.innerText = 'Avg: 0%';
+          if (growthBadge) {
+            growthBadge.innerText = '0% Growth';
+            growthBadge.className = "text-xs font-mono font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700";
+          }
+          if (emptyStateBanner) emptyStateBanner.classList.remove('hidden');
         }
       } catch (err) {
         console.warn('updateGrowthSummaryCards caught error:', err);
@@ -24474,10 +24523,10 @@ const defaultMarketReports = [
 // Complete Stream Engine, Recruiter Input Workstation, and Domain-Tailored Learner Pulse
 
 function getActiveStreamKey() {
-  if (appState.user && appState.user.branch && STREAM_DATA[appState.user.branch]) {
-    return appState.user.branch;
-  }
-  return appState.selectedStream || 'ece';
+  const branch = (appState.user && (appState.user.stream || appState.user.branch)) || appState.selectedStream;
+  const normalized = normalizeStreamKey(branch);
+  if (STREAM_DATA[normalized]) return normalized;
+  return 'it';
 }
 
 function getActiveDomainKey() {
@@ -24727,6 +24776,7 @@ function getActiveDomainKey() {
     }
 
     function applyStreamChange(streamKey, preserveCurrentStack = false) {
+      streamKey = normalizeStreamKey(streamKey);
       if (!STREAM_DATA[streamKey]) return;
       const stream = STREAM_DATA[streamKey];
       appState.selectedStream = streamKey;
@@ -24791,13 +24841,14 @@ function getActiveDomainKey() {
     }
 
     function switchGlobalStream(streamKey, directApply = false) {
+      streamKey = normalizeStreamKey(streamKey);
       if (!STREAM_DATA[streamKey]) return;
 
       // Lock stream to profile for logged-in users (demo / unauthenticated only)
       if (appState.user && !appState.user.isGuest) {
-        const lockedStream = (appState.user.stream || appState.user.branch || '').toLowerCase();
+        const lockedStream = normalizeStreamKey(appState.user.stream || appState.user.branch || '');
         if (lockedStream && lockedStream !== 'all' && streamKey !== lockedStream) {
-          showToast(`Stream is locked to your enrolled profile (${lockedStream.toUpperCase()}).`);
+          showToast(`Stream is locked to your enrolled profile (${(STREAM_DATA[lockedStream] && STREAM_DATA[lockedStream].shortName) || lockedStream.toUpperCase()}).`);
           return;
         }
       }
@@ -24815,6 +24866,7 @@ function getActiveDomainKey() {
     }
 
     function openStreamIntakeWizard(streamKey) {
+      streamKey = normalizeStreamKey(streamKey);
       if (!STREAM_DATA[streamKey]) return;
       const stream = STREAM_DATA[streamKey];
       appState.selectedStream = streamKey;
@@ -28679,6 +28731,7 @@ function onWizardBranchChanged(branchKey) {
       }
 
       // 2. Clear all storages completely
+      clearUserClientStorage();
       try {
         localStorage.clear();
       } catch (e) {}
@@ -30648,7 +30701,9 @@ function onWizardBranchChanged(branchKey) {
         }
 
         const role = isRecruiter ? 'recruiter' : 'learner';
-        const stream = appState.selectedStream || 'it';
+        const navStream = document.getElementById('navStreamSelect') ? document.getElementById('navStreamSelect').value : null;
+        const obStream = document.getElementById('obBranch') ? document.getElementById('obBranch').value : null;
+        const stream = normalizeStreamKey(appState.selectedStream || obStream || navStream || 'it');
 
         const submitBtn = document.getElementById('authSubmitBtn');
         if (submitBtn) {
@@ -30657,10 +30712,19 @@ function onWizardBranchChanged(branchKey) {
         }
 
         try {
+          clearUserClientStorage();
           const res = await fetch('/api/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, username, email, password: pass, role, stream })
+            body: JSON.stringify({ 
+              name, 
+              username, 
+              email, 
+              password: pass, 
+              role, 
+              stream,
+              skills: (Array.isArray(appState.currentStack) && appState.currentStack.length > 0) ? appState.currentStack : null
+            })
           });
           const data = await res.json();
 
@@ -30807,12 +30871,11 @@ function onWizardBranchChanged(branchKey) {
           }
 
           // Credentials Correct: Reset failed attempt counters
-          localStorage.removeItem('c2c_login_failed_attempts');
-          localStorage.removeItem('c2c_login_lockout_until');
+          clearUserClientStorage();
 
           const foundUser = data.user;
           appState.user = foundUser;
-          appState.selectedStream = (foundUser.stream || foundUser.branch || 'it').toLowerCase();
+          appState.selectedStream = normalizeStreamKey(foundUser.stream || foundUser.branch || 'it');
           appState.activeRole = foundUser.role || 'learner';
           appState.mcqHistory = foundUser.mcqHistory || [];
           appState.progress = {
@@ -30905,22 +30968,21 @@ function onWizardBranchChanged(branchKey) {
         }
 
         stopVerificationPolling();
-        localStorage.removeItem('c2c_login_failed_attempts');
-        localStorage.removeItem('c2c_login_lockout_until');
+        clearUserClientStorage();
 
         const verifiedUser = data.user || {
           id: 'user-' + Date.now(),
           name: pendingRegistrationUser.name || 'User',
           email: pendingRegistrationUser.email,
           role: pendingRegistrationUser.role || 'learner',
-          stream: pendingRegistrationUser.stream || null,
-          branch: pendingRegistrationUser.stream || null,
+          stream: normalizeStreamKey(pendingRegistrationUser.stream || 'it'),
+          branch: normalizeStreamKey(pendingRegistrationUser.stream || 'it'),
           skills: null,
           is_verified: true
         };
 
         appState.user = verifiedUser;
-        appState.selectedStream = (verifiedUser.stream || verifiedUser.branch || 'it').toLowerCase();
+        appState.selectedStream = normalizeStreamKey(verifiedUser.stream || verifiedUser.branch || 'it');
         appState.activeRole = verifiedUser.role || 'learner';
         appState.mcqHistory = [];
         appState.progress = {
@@ -31138,9 +31200,10 @@ function onWizardBranchChanged(branchKey) {
           if (data && data.success && data.is_verified && data.user) {
             // Stop polling immediately upon verification
             stopVerificationPolling();
+            clearUserClientStorage();
             const verifiedUser = data.user;
             appState.user = verifiedUser;
-            appState.selectedStream = (verifiedUser.stream || verifiedUser.branch || 'it').toLowerCase();
+            appState.selectedStream = normalizeStreamKey(verifiedUser.stream || verifiedUser.branch || 'it');
             appState.activeRole = verifiedUser.role || 'learner';
             saveStateToStorage();
             updateAuthUI();

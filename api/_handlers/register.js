@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { name, username, email, password, role, stream } = req.body || {};
+    const { name, username, email, password, role, stream, skills, chosenSkills } = req.body || {};
 
     if (!email || !password || !name) {
       return res.status(400).json({ success: false, error: 'Name, email, and password are required.' });
@@ -27,6 +27,7 @@ module.exports = async (req, res) => {
 
     const assignedRole = (role === 'recruiter') ? 'recruiter' : 'learner';
     const normalizedEmail = email.trim().toLowerCase();
+    const rawStream = (stream || 'IT').toString().trim();
 
     // Clean and validate username
     const cleanUsername = (username ? username.trim().toLowerCase() : normalizedEmail.split('@')[0]);
@@ -78,7 +79,7 @@ module.exports = async (req, res) => {
     const password_hash = await bcrypt.hash(password, 10);
 
     // Direct Database Insertion on Registration:
-    // Create or update unverified user (whitelisted accounts bypass duplicate constraints via upsert)
+    // Create or update unverified user with their exact registered stream
     let userRecord;
     try {
       if (isWhitelisted) {
@@ -88,7 +89,7 @@ module.exports = async (req, res) => {
           email: normalizedEmail,
           password_hash,
           role: assignedRole,
-          stream: stream || 'IT',
+          stream: rawStream,
           is_verified: false
         });
       } else {
@@ -98,7 +99,7 @@ module.exports = async (req, res) => {
           email: normalizedEmail,
           password_hash,
           role: assignedRole,
-          stream: stream || 'IT',
+          stream: rawStream,
           is_verified: false
         });
       }
@@ -107,15 +108,37 @@ module.exports = async (req, res) => {
       return res.status(500).json({ success: false, error: err.message });
     }
 
-    // Auto-seed default stream skills and candidate record (No manual CSV imports needed)
+    // Seed chosen skills or auto-seed stream skills
     try {
-      await db.autoSeedStudentSkills({
-        user_id: userRecord.id,
-        user_email: userRecord.email,
-        user_name: userRecord.name,
-        stream: userRecord.stream || stream || 'IT',
-        base_percentage: 35
-      });
+      const skillsToSeed = (Array.isArray(skills) && skills.length > 0) ? skills : ((Array.isArray(chosenSkills) && chosenSkills.length > 0) ? chosenSkills : null);
+      if (skillsToSeed) {
+        await db.syncStudentSkills({
+          user_id: userRecord.id,
+          user_email: userRecord.email,
+          stream: rawStream,
+          skills: skillsToSeed.map(s => {
+            if (typeof s === 'string') {
+              return { skill_name: s, base_percentage: 35, total_score: 35, category: 'Core Skill', status: 'UNVERIFIED BASELINE' };
+            }
+            return {
+              skill_id: s.id || s.skill_id,
+              skill_name: s.name || s.skill_name,
+              category: s.category || 'Core Skill',
+              base_percentage: s.base_percentage || s.baseScore || s.score || 35,
+              total_score: s.total_score || s.score || 35,
+              status: s.status || 'UNVERIFIED BASELINE'
+            };
+          })
+        });
+      } else {
+        await db.autoSeedStudentSkills({
+          user_id: userRecord.id,
+          user_email: userRecord.email,
+          user_name: userRecord.name,
+          stream: rawStream,
+          base_percentage: 35
+        });
+      }
     } catch (seedErr) {
       console.warn('[Registration Auto-Seed Notice]:', seedErr.message);
     }

@@ -45,6 +45,16 @@ module.exports = async (req, res) => {
         });
       }
 
+      // Resolve user's actual registered stream from database if omitted
+      let userRecord = null;
+      if (user_id) userRecord = await db.getUserById(user_id);
+      if (!userRecord && user_email) userRecord = await db.getUserByEmail(user_email);
+      if (userRecord) {
+        user_id = userRecord.id;
+        user_email = userRecord.email;
+        stream = userRecord.stream || stream;
+      }
+
       const skills = await db.getStudentSkills({
         user_id,
         user_email,

@@ -50,6 +50,33 @@ async function getStudentAnalytics(req, res) {
       } catch (e) {}
     }
 
+    if (!userId && !user_email) {
+      return res.status(200).json({
+        success: true,
+        userId: null,
+        user_id: null,
+        skills: [],
+        timeline: [],
+        study_hours: 0,
+        total_study_minutes: 0,
+        streak_days: 0,
+        benchmarks_taken: 0,
+        avg_exam_score: 0,
+        growth_percent: 0,
+        readiness_score: 35,
+        skill_competencies: []
+      });
+    }
+
+    let userRecord = null;
+    if (userId) userRecord = await db.getUserById(userId);
+    if (!userRecord && user_email) userRecord = await db.getUserByEmail(user_email);
+    if (userRecord) {
+      userId = userRecord.id;
+      user_email = userRecord.email;
+      stream = userRecord.stream || stream;
+    }
+
     let skillOverview = [];
     let attemptTimeline = [];
 
@@ -90,15 +117,17 @@ async function getStudentAnalytics(req, res) {
     const analytics = await db.getStudentAnalytics({
       user_id: userId,
       user_email,
-      stream: stream || 'IT'
+      stream
     });
 
     return res.status(200).json({
       success: true,
       userId,
       user_id: userId,
+      stream,
       skills: (skillOverview && skillOverview.length > 0) ? skillOverview : (analytics.skill_competencies || []),
       timeline: attemptTimeline,
+      testAttempts: attemptTimeline || (analytics && analytics.attempts) || [],
       ...analytics
     });
   } catch (err) {

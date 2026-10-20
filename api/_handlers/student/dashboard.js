@@ -35,31 +35,63 @@ module.exports = async (req, res) => {
       stream = q.stream || q.branch || null;
     }
 
+    if (!user_id && !user_email) {
+      return res.status(200).json({
+        success: true,
+        user_id: null,
+        user_email: null,
+        skills: [],
+        analytics: {
+          study_hours: 0,
+          total_study_minutes: 0,
+          streak_days: 0,
+          benchmarks_taken: 0,
+          avg_exam_score: 0,
+          growth_percent: 0,
+          readiness_score: 35,
+          skill_competencies: []
+        }
+      });
+    }
+
+    // Resolve user's actual registered stream from database if omitted or defaulted
+    let userRecord = null;
+    if (user_id) userRecord = await db.getUserById(user_id);
+    if (!userRecord && user_email) userRecord = await db.getUserByEmail(user_email);
+    if (userRecord) {
+      user_id = userRecord.id;
+      user_email = userRecord.email;
+      stream = userRecord.stream || stream;
+    }
+
+    // Strictly fetch user's persisted discipline skills
     let skills = await db.getStudentSkills({
       user_id,
       user_email,
-      stream: stream || 'IT'
+      stream
     });
 
-    if (!skills || skills.length === 0) {
+    // Auto-seed strictly using the user's registered stream if empty
+    if ((!skills || skills.length === 0) && stream) {
       skills = await db.autoSeedStudentSkills({
         user_id,
         user_email,
-        stream: stream || 'IT'
+        stream
       });
     }
 
     const analytics = await db.getStudentAnalytics({
       user_id,
       user_email,
-      stream: stream || 'IT'
+      stream
     });
 
     return res.status(200).json({
       success: true,
       user_id,
       user_email,
-      skills,
+      stream,
+      skills: skills || [],
       analytics
     });
   } catch (err) {
