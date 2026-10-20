@@ -89,6 +89,9 @@ router.all('/mcq/submit', adapt(require('./_handlers/mcq/submit')));
 router.all('/student/log-activity', adapt(require('./_handlers/student/log-activity')));
 router.all('/student/activity', adapt(require('./_handlers/student/activity')));
 router.all('/student/analytics', adapt(require('./_handlers/student/analytics')));
+router.all('/student/skills/sync', adapt(require('./_handlers/student/skills-sync')));
+router.all('/student/skills', adapt(require('./_handlers/student/skills')));
+router.all('/student/dashboard', adapt(require('./_handlers/student/dashboard')));
 router.all('/activity', adapt(require('./_handlers/activity')));
 router.all('/analytics', adapt(require('./_handlers/analytics')));
 

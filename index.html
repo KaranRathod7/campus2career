@@ -23406,6 +23406,7 @@ const defaultMarketReports = [
             sessionStorage.setItem(STORAGE_KEY_USER, JSON.stringify(appState.user));
             localStorage.removeItem(STORAGE_KEY_USER);
             updateAuthUI();
+            if (typeof fetchStudentSkills === 'function') await fetchStudentSkills();
             renderSkillLevelDiagram();
             if (typeof fetchStudentAnalytics === 'function') fetchStudentAnalytics();
             return;
@@ -23529,7 +23530,7 @@ const defaultMarketReports = [
         const tier = getSkillTier(skill.score);
         const skillFusion = getFusionColor(skill.score);
         const card = document.createElement('div');
-        const isSkillVerified = (skill.score >= 80);
+        const isSkillVerified = (skill.score >= 80) || skill.status === 'LIVE VERIFIED' || Boolean(skill.verified);
 
         card.className = "bg-white dark:bg-[#0F172A] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-sm transition-all space-y-4";
         card.innerHTML = `
@@ -23540,11 +23541,11 @@ const defaultMarketReports = [
                 <span class="text-[10px] font-mono px-2 py-0.5 rounded ${skill.category && skill.category.includes('Leadership') ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}">${skill.category || 'Core Skill'}</span>
                 ${isSkillVerified ? `
                   <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800">
-                    <i class="fa-solid fa-circle-check mr-1"></i> VERIFIED READY
+                    <i class="fa-solid fa-circle-check mr-1"></i> LIVE VERIFIED (${skill.score}%)
                   </span>
                 ` : `
                   <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-800">
-                    <i class="fa-solid fa-clock mr-1"></i> UNVERIFIED BASELINE (${skill.score}%)
+                    <i class="fa-solid fa-clock mr-1"></i> ${skill.status || `UNVERIFIED BASELINE (${skill.score}%)`}
                   </span>
                 `}
               </div>
@@ -25231,12 +25232,13 @@ function onWizardBranchChanged(branchKey) {
       const hasSessions = appState.progress && Array.isArray(appState.progress.learningSessions) && appState.progress.learningSessions.length > 0;
       const hasActivity = (studyMins > 0) || hasMcqHistory || hasSessions;
 
-      // 1. If student has active stack, use it with flat 20% baseline if no activity logged
+      // 1. If student has active stack from DB or onboarding, use real evaluated scores
       if (Array.isArray(appState.currentStack) && appState.currentStack.length >= 3) {
         return appState.currentStack.map(s => ({
           name: s.name || s.id || 'Skill',
-          score: hasActivity && Number.isFinite(Number(s.score)) ? Math.max(10, Math.min(100, Number(s.score))) : 20,
-          category: s.category || 'Discipline'
+          score: Number.isFinite(Number(s.score)) ? Math.max(10, Math.min(100, Number(s.score))) : 35,
+          category: s.category || 'Discipline',
+          verified: Boolean(s.status === 'LIVE VERIFIED' || s.score >= 80 || s.verified)
         }));
       }
 
@@ -25794,6 +25796,10 @@ function onWizardBranchChanged(branchKey) {
         saveStateToStorage();
         updateAuthUI();
 
+        if (typeof syncStudentSkills === 'function') {
+          syncStudentSkills(chosenStack);
+        }
+
         renderSkillLevelDiagram();
         runLiveRecalculations();
         updateCharts();
@@ -26117,6 +26123,21 @@ function onWizardBranchChanged(branchKey) {
 
         const data = await res.json();
         if (res.ok && data && data.success) {
+          if (Array.isArray(data.skills) && data.skills.length > 0) {
+            appState.currentStack = data.skills.map(s => ({
+              id: s.skill_id || s.id || (s.skill_name ? s.skill_name.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'skill'),
+              name: s.skill_name,
+              category: s.category || 'Core Skill',
+              score: Number(s.total_score) || Number(s.base_percentage) || 35,
+              baseScore: Number(s.base_percentage) || 35,
+              status: s.status || (Number(s.total_score) >= 80 ? 'LIVE VERIFIED' : 'UNVERIFIED BASELINE'),
+              currentMilestone: s.current_milestone || 'Fundamental syntax & baseline concepts',
+              nextMilestone: s.next_milestone || 'Production architecture & high-throughput concurrency',
+              lectures_completed: Number(s.lectures_completed) || 0
+            }));
+            localStorage.setItem(STORAGE_KEY_STACK, JSON.stringify(appState.currentStack));
+            renderSkillLevelDiagram();
+          }
           if (data.readiness_score !== undefined || data.competence !== undefined) {
             updateLiveCompetenceUI({
               dynamic_competence_percent: data.competence || data.readiness_score,
@@ -26192,6 +26213,84 @@ function onWizardBranchChanged(branchKey) {
         }
       } catch (err) {
         console.warn('[Fetch Student Analytics Warning]', err);
+      }
+    }
+
+    async function fetchStudentSkills() {
+      try {
+        const userEmail = (appState.user && appState.user.email) ? encodeURIComponent(appState.user.email) : '';
+        const userId = (appState.user && appState.user.id) ? encodeURIComponent(appState.user.id) : '';
+        let url = '/api/student/skills';
+        if (userEmail) url += `?user_email=${userEmail}`;
+        if (userId) url += `${userEmail ? '&' : '?'}user_id=${userId}`;
+
+        const res = await fetch(url, {
+          method: 'GET',
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (res.ok && data && data.success && Array.isArray(data.skills) && data.skills.length > 0) {
+          appState.currentStack = data.skills.map(s => ({
+            id: s.skill_id || s.id || (s.skill_name ? s.skill_name.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'skill'),
+            name: s.skill_name,
+            category: s.category || 'Core Skill',
+            score: Number(s.total_score) || Number(s.base_percentage) || 35,
+            baseScore: Number(s.base_percentage) || 35,
+            status: s.status || (Number(s.total_score) >= 80 ? 'LIVE VERIFIED' : 'UNVERIFIED BASELINE'),
+            currentMilestone: s.current_milestone || 'Fundamental syntax & baseline concepts',
+            nextMilestone: s.next_milestone || 'Production architecture & high-throughput concurrency',
+            lectures_completed: Number(s.lectures_completed) || 0
+          }));
+          localStorage.setItem(STORAGE_KEY_STACK, JSON.stringify(appState.currentStack));
+          renderSkillLevelDiagram();
+          if (typeof renderRadarCompetenceDiagram === 'function') {
+            renderRadarCompetenceDiagram();
+          }
+          return data.skills;
+        }
+      } catch (err) {
+        console.warn('[Fetch Student Skills Warning]', err);
+      }
+      return null;
+    }
+
+    async function syncStudentSkills(skillsToSync) {
+      try {
+        const stack = skillsToSync || appState.currentStack;
+        if (!Array.isArray(stack) || stack.length === 0) return;
+
+        const userEmail = (appState.user && appState.user.email) ? appState.user.email : null;
+        const userId = (appState.user && appState.user.id) ? appState.user.id : null;
+        const stream = (appState.user && (appState.user.stream || appState.user.branch)) || appState.selectedStream || 'it';
+
+        const payload = {
+          stream,
+          user_id: userId,
+          user_email: userEmail,
+          skills: stack.map(s => ({
+            skill_id: s.id || (s.name ? s.name.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'skill'),
+            skill_name: s.name,
+            category: s.category || 'Core Skill',
+            base_percentage: s.baseScore !== undefined ? s.baseScore : (s.score || 35),
+            total_score: s.score || 35,
+            status: s.status || (s.score >= 80 ? 'LIVE VERIFIED' : 'UNVERIFIED BASELINE'),
+            current_milestone: s.currentMilestone || 'Fundamental syntax & baseline concepts',
+            next_milestone: s.nextMilestone || 'Production architecture & high-throughput concurrency',
+            lectures_completed: s.lectures_completed || 0
+          }))
+        };
+
+        const res = await fetch('/api/student/skills/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        return data;
+      } catch (err) {
+        console.warn('[Sync Student Skills Warning]', err);
       }
     }
 
@@ -26437,7 +26536,11 @@ function onWizardBranchChanged(branchKey) {
         if (appState.currentStack) {
           appState.currentStack.forEach(s => {
             s.score = calculateCompositeSkillScore(s);
+            if (s.score >= 80) s.status = 'LIVE VERIFIED';
           });
+          if (typeof syncStudentSkills === 'function') {
+            syncStudentSkills(appState.currentStack);
+          }
         }
         
         // Sync to candidate in Database
@@ -27008,6 +27111,12 @@ function onWizardBranchChanged(branchKey) {
 
       if (matchingSkill) {
         matchingSkill.score = calculateCompositeSkillScore(matchingSkill);
+        if (percentage >= 80 || matchingSkill.score >= 80) {
+          matchingSkill.status = 'LIVE VERIFIED';
+        }
+        if (typeof syncStudentSkills === 'function') {
+          syncStudentSkills(appState.currentStack);
+        }
       }
 
       if (!appState.progress) {
@@ -29787,9 +29896,11 @@ function onWizardBranchChanged(branchKey) {
               }
               navigateTo('analyzer');
             }
+            if (typeof fetchStudentSkills === 'function') fetchStudentSkills();
             renderSkillLevelDiagram();
             updateGrowthSummaryCards();
             updateCharts();
+            if (typeof fetchStudentAnalytics === 'function') fetchStudentAnalytics();
             showToast(`Welcome back, ${foundUser.name}!`);
           }
         } catch (err) {
@@ -29878,6 +29989,7 @@ function onWizardBranchChanged(branchKey) {
 
         updateAuthUI();
         closeAuthModal();
+        if (typeof fetchStudentSkills === 'function') fetchStudentSkills();
         if (typeof fetchStudentAnalytics === 'function') fetchStudentAnalytics();
 
         showToast(`✓ Account verified! Welcome to Campus2Career, ${verifiedUser.name}!`);
@@ -30107,6 +30219,8 @@ function onWizardBranchChanged(branchKey) {
               renderSkillLevelDiagram();
               updateGrowthSummaryCards();
               updateCharts();
+              if (typeof fetchStudentSkills === 'function') fetchStudentSkills();
+              if (typeof fetchStudentAnalytics === 'function') fetchStudentAnalytics();
             }
           }
         } catch (err) {

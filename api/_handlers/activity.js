@@ -100,13 +100,19 @@ module.exports = async (req, res) => {
       competence_rating: competenceVal
     });
 
+    let updatedSkills = [];
+    try {
+      updatedSkills = await db.getStudentSkills({ user_id, user_email });
+    } catch (e) {}
+
     return res.status(200).json({
       success: true,
       message: `Activity "${normType}" successfully recorded in student_activity.`,
       activity: result.activity,
       readiness_score: result.readiness_score,
       competence: result.competence_rating,
-      total_study_minutes: result.total_study_minutes
+      total_study_minutes: result.total_study_minutes,
+      skills: updatedSkills
     });
   } catch (err) {
     console.error('[Student Activity Handler Error]', err);
