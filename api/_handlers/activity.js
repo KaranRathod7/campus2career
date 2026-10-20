@@ -84,7 +84,7 @@ module.exports = async (req, res) => {
     const scoreVal = (score !== undefined && score !== null && !isNaN(score)) 
       ? Number(score) 
       : (body.score !== undefined && body.score !== null && !isNaN(body.score) ? Number(body.score) : null);
-    const competenceVal = Math.min(100, Math.max(0, Number(competence !== undefined ? competence : body.competence_rating) || (scoreVal !== null ? scoreVal : 75)));
+    const competenceVal = Math.min(100, Math.max(0, Number(competence !== undefined ? competence : body.competence_rating) || (scoreVal !== null ? scoreVal : 35)));
     const targetStream = (stream || user_stream || 'IT').toUpperCase();
 
     // 3. Insert into student_activity and recalculate readiness score

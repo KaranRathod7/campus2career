@@ -1,0 +1,11 @@
+const fs = require('fs');
+let html = fs.readFileSync('index.html', 'utf8');
+html = html.replace('+${lectureScore}%/15%', '+${bd.videoCredit}%/15%');
+html = html.replace('+${marathonScore}%/3%', '+${bd.marathonBonus}%/3%');
+html = html.replace('+${testScore}%/34%', '+${bd.testBonus}%/34%');
+html = html.replace('${lectureScore > 0', '${bd.videoCredit > 0');
+html = html.replace('${marathonScore > 0', '${bd.marathonBonus > 0');
+html = html.replace('${testScore > 0', '${bd.testBonus > 0');
+html = html.replace('${baseScore}%</strong>', '${bd.baseScore}%</strong>');
+fs.writeFileSync('index.html', html, 'utf8');
+console.log('Updated subtext pill expressions to bd.* successfully!');

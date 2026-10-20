@@ -1343,7 +1343,7 @@
             <div>
               <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Target Stack Readiness Score</span>
               <div class="flex items-baseline space-x-2 mt-1">
-                <span id="overallStackScore" class="text-4xl font-extrabold text-[#008080] font-mono">70%</span>
+                <span id="overallStackScore" class="text-4xl font-extrabold text-[#008080] font-mono">35%</span>
                 <span class="text-xs text-slate-400">Industry Production Fit</span>
               </div>
             </div>
@@ -1352,14 +1352,14 @@
               <svg class="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
                 <path class="text-slate-100 dark:text-slate-800" stroke-width="3.5" stroke="currentColor" fill="none"
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                <path id="competenceProgressRing" class="text-teal-500 transition-all duration-700 ease-out" stroke-dasharray="100, 100" stroke-dashoffset="30" stroke-width="3.5" stroke-linecap="round" stroke="currentColor" fill="none"
+                <path id="competenceProgressRing" class="text-teal-500 transition-all duration-700 ease-out" stroke-dasharray="100, 100" stroke-dashoffset="65" stroke-width="3.5" stroke-linecap="round" stroke="currentColor" fill="none"
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
               </svg>
-              <span id="progressRingPercent" class="absolute text-[11px] font-black font-mono text-slate-800 dark:text-white">70%</span>
+              <span id="progressRingPercent" class="absolute text-[11px] font-black font-mono text-slate-800 dark:text-white">35%</span>
             </div>
           </div>
           <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-            <div id="overallProgressBar" class="bg-[#008080] h-2 rounded-full transition-all duration-500" style="width: 70%"></div>
+            <div id="overallProgressBar" class="bg-[#008080] h-2 rounded-full transition-all duration-500" style="width: 35%"></div>
           </div>
           <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed pt-1" id="overallInsightText">
             Reaching Level 4 (Production Master) in your core discipline skills qualifies you for verified monthly talent cohorts and direct recruiter invitations.
@@ -2569,7 +2569,7 @@ const STREAM_DATA = {
         name: "VLSI Design & Digital ASIC/FPGA Engineer",
         description: "Verilog HDL, FPGA Synthesis, Static Timing Analysis, SystemVerilog, Testbench Verification",
         skills: [
-          { id: 'verilog', name: 'Verilog HDL & RTL Synthesis', score: 65, category: 'Digital Hardware', currentMilestone: 'Blocking vs non-blocking, FSM state machines', nextMilestone: 'Metastability & Dual-flop clock domain synchronizers', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
+          { id: 'verilog', name: 'Verilog HDL & RTL Synthesis', score: 35, base_percentage: 35, category: 'Digital Hardware', currentMilestone: 'Blocking vs non-blocking, FSM state machines', nextMilestone: 'Metastability & Dual-flop clock domain synchronizers', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
           { id: 'fpga', name: 'FPGA Architecture & Vivado', score: 58, category: 'Hardware Synthesis', currentMilestone: 'LUT mappings, Block RAM & pin constraints', nextMilestone: 'Timing closure & Clock Jitter minimization', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
           { id: 'sta', name: 'Static Timing Analysis (STA)', score: 50, category: 'ASIC Signoff', currentMilestone: 'Setup time, Hold time & Clock skew calculations', nextMilestone: 'False paths, Multi-cycle paths & PVT corners', youtubeUrl: 'https://www.youtube.com/watch?v=IP_8QJ5k2I8' },
           { id: 'sys_verilog', name: 'SystemVerilog & UVM Verification', score: 62, category: 'Verification', currentMilestone: 'Constrained random tests & Assertions', nextMilestone: 'UVM Agent drivers, monitors & scoreboards', youtubeUrl: 'https://www.youtube.com/watch?v=9SGDpanrc8U' },
@@ -2582,7 +2582,7 @@ const STREAM_DATA = {
         description: "KiCad PCB Layout, ESP32/BLE/WiFi, Low-Power Design, Signal Integrity, Hardware Debugging",
         skills: [
           { id: 'pcb_kicad', name: 'KiCad & High-Speed PCB Layout', score: 64, category: 'Hardware CAD', currentMilestone: 'Schematic capture, 4-layer stackups & ground planes', nextMilestone: '50-ohm controlled impedance routing & differential pairs', youtubeUrl: 'https://www.youtube.com/watch?v=vaCVh2SAZY4' },
-          { id: 'esp32_iot', name: 'ESP32 & Wireless Firmware (BLE/WiFi)', score: 72, category: 'IoT Firmware', currentMilestone: 'MQTT telemetry, WiFi auto-reconnect & JSON payloads', nextMilestone: 'BLE GATT server notifications & OTA encrypted updates', youtubeUrl: 'https://www.youtube.com/watch?v=8aGhZQkoFbQ' },
+          { id: 'esp32_iot', name: 'ESP32 & Wireless Firmware (BLE/WiFi)', score: 35, base_percentage: 35, category: 'IoT Firmware', currentMilestone: 'MQTT telemetry, WiFi auto-reconnect & JSON payloads', nextMilestone: 'BLE GATT server notifications & OTA encrypted updates', youtubeUrl: 'https://www.youtube.com/watch?v=8aGhZQkoFbQ' },
           { id: 'low_power', name: 'Low-Power Hardware & Energy Harvesting', score: 54, category: 'Power Electronics', currentMilestone: 'Deep sleep modes & RTC timer wakeups', nextMilestone: 'Sub-microamp quiescent current budget & LiPo PMICs', youtubeUrl: 'https://www.youtube.com/watch?v=vaCVh2SAZY4' },
           { id: 'signal_int', name: 'Signal Integrity & EMC Compliance', score: 48, category: 'Hardware Physics', currentMilestone: 'Decoupling capacitor placement & return path loops', nextMilestone: 'Radiated emissions shielding & ESD protection diodes', youtubeUrl: 'https://www.youtube.com/watch?v=y62zj9ozPOM' },
           { id: 'hw_debug', name: 'Oscilloscope & Hardware Debugging', score: 58, category: 'Debugging', currentMilestone: 'Bus decode & power supply ripple measurement', nextMilestone: 'Thermal imaging & high-frequency parasitic diagnosis', youtubeUrl: 'https://www.youtube.com/watch?v=y62zj9ozPOM' }
@@ -2596,7 +2596,7 @@ const STREAM_DATA = {
           { id: 'emb_linux', name: 'Embedded Linux & Yocto/Buildroot', score: 60, category: 'Operating Systems', currentMilestone: 'U-Boot bootloader, Linux kernel compilation & rootfs', nextMilestone: 'Custom Device Tree (DTS) & overlay configuration', youtubeUrl: 'https://www.youtube.com/watch?v=cQP8WApzIQQ' },
           { id: 'cpp_robotics', name: 'Modern C++ (17/20) for Systems', score: 70, category: 'Language', currentMilestone: 'Smart pointers, RAII, move semantics & threads', nextMilestone: 'Lock-free ring buffers & zero-copy IPC', youtubeUrl: 'https://www.youtube.com/watch?v=8aGhZQkoFbQ' },
           { id: 'drivers', name: 'Linux Kernel Character Device Drivers', score: 50, category: 'Driver Dev', currentMilestone: 'Kernel modules, ioctl calls & file_operations', nextMilestone: 'Interrupt handling (top/bottom halves) & DMA mapping', youtubeUrl: 'https://www.youtube.com/watch?v=y62zj9ozPOM' },
-          { id: 'ros2', name: 'ROS2 & Edge Robot Actuation', score: 65, category: 'Robotics', currentMilestone: 'Nodes, Publishers/Subscribers & Services', nextMilestone: 'Real-time cyclonedds QoS & PWM motor PID controllers', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
+          { id: 'ros2', name: 'ROS2 & Edge Robot Actuation', score: 35, base_percentage: 35, category: 'Robotics', currentMilestone: 'Nodes, Publishers/Subscribers & Services', nextMilestone: 'Real-time cyclonedds QoS & PWM motor PID controllers', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
           { id: 'hw_debug', name: 'Logic Analyzer & Bus Diagnostics', score: 55, category: 'Debugging', currentMilestone: 'Packet sniffers & I2C sensor polling', nextMilestone: 'Real-time latency jitter profiling with cyclictest', youtubeUrl: 'https://www.youtube.com/watch?v=y62zj9ozPOM' }
         ]
       }
@@ -3587,8 +3587,8 @@ const STREAM_DATA = {
         name: "Low-Level Systems & OS Engineering",
         description: "C/C++ Systems, Linux POSIX & Concurrency, Memory Safety, Compilers & Linkers, Concurrency Debugging",
         skills: [
-          { id: 'c_systems', name: 'C/C++ Systems Programming', score: 72, category: 'Core Systems', currentMilestone: 'Pointers, dynamic memory & memory layouts', nextMilestone: 'Custom memory allocators & cache-conscious data structures', youtubeUrl: 'https://www.youtube.com/watch?v=y62zj9ozPOM' },
-          { id: 'linux_posix', name: 'Linux Internals & POSIX API', score: 65, category: 'OS Internals', currentMilestone: 'Fork/exec, file descriptors & pipes', nextMilestone: 'Epoll asynchronous event loops & signal safety', youtubeUrl: 'https://www.youtube.com/watch?v=cQP8WApzIQQ' },
+          { id: 'c_systems', name: 'C/C++ Systems Programming', score: 35, base_percentage: 35, category: 'Core Systems', currentMilestone: 'Pointers, dynamic memory & memory layouts', nextMilestone: 'Custom memory allocators & cache-conscious data structures', youtubeUrl: 'https://www.youtube.com/watch?v=y62zj9ozPOM' },
+          { id: 'linux_posix', name: 'Linux Internals & POSIX API', score: 35, base_percentage: 35, category: 'OS Internals', currentMilestone: 'Fork/exec, file descriptors & pipes', nextMilestone: 'Epoll asynchronous event loops & signal safety', youtubeUrl: 'https://www.youtube.com/watch?v=cQP8WApzIQQ' },
           { id: 'concurrency', name: 'Concurrency, Mutexes & Atomics', score: 58, category: 'Concurrency', currentMilestone: 'Pthreads, mutexes & condition variables', nextMilestone: 'Lock-free atomic queues & memory ordering (acquire/release)', youtubeUrl: 'https://www.youtube.com/watch?v=grEKMHGYyns' },
           { id: 'compilers', name: 'Compilers, Linkers & Executables', score: 60, category: 'Toolchain', currentMilestone: 'ELF binaries, static vs dynamic linking', nextMilestone: 'LLVM IR passes & compiler optimizations', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
           { id: 'debug', name: 'Valgrind & Core Dump Debugging', score: 55, category: 'Problem Solving', currentMilestone: 'GDB backtraces & memory leak detection', nextMilestone: 'AddressSanitizer (ASan) & ThreadSanitizer (TSan)', youtubeUrl: 'https://www.youtube.com/watch?v=y62zj9ozPOM' }
@@ -3611,11 +3611,11 @@ const STREAM_DATA = {
         name: "High-Scale Java Enterprise Systems",
         description: "Java & Multithreading, Spring Boot Microservices, PostgreSQL Query Tuning, Kafka Event Streaming, APM Memory Profiling",
         skills: [
-          { id: 'java', name: 'Java & Multithreading', score: 72, category: 'Backend Language', currentMilestone: 'Collections, Streams, Multithreading & OOP', nextMilestone: 'JVM Memory Tuning & Low-latency locks', youtubeUrl: 'https://www.youtube.com/watch?v=grEKMHGYyns' },
-          { id: 'spring', name: 'Spring Boot & Microservices', score: 65, category: 'Architecture', currentMilestone: 'REST APIs, JPA Entities & Dependency Injection', nextMilestone: 'Distributed Sagas & Circuit Breakers', youtubeUrl: 'https://www.youtube.com/watch?v=9SGDpanrc8U' },
-          { id: 'postgres', name: 'PostgreSQL & SQL Tuning', score: 60, category: 'Databases', currentMilestone: 'Complex SQL, Transactions & Foreign Keys', nextMilestone: 'B-Tree Index Tuning with EXPLAIN ANALYZE', youtubeUrl: 'https://www.youtube.com/watch?v=HubezKbFL7E' },
-          { id: 'kafka', name: 'Apache Kafka Event Streaming', score: 58, category: 'Messaging', currentMilestone: 'Topics, Partitions & Consumer groups', nextMilestone: 'Exactly-once semantics (EOS) & consumer rebalancing', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
-          { id: 'debug', name: 'Production Debugging', score: 55, category: 'Problem Solving', currentMilestone: 'Stack trace diagnosis & unit test mocks', nextMilestone: 'Heap dump analysis & connection leak profiling', youtubeUrl: 'https://www.youtube.com/watch?v=y62zj9ozPOM' }
+          { id: 'java', name: 'Java & Multithreading', score: 35, base_percentage: 35, category: 'Backend Language', currentMilestone: 'Collections, Streams, Multithreading & OOP', nextMilestone: 'JVM Memory Tuning & Low-latency locks', youtubeUrl: 'https://www.youtube.com/watch?v=grEKMHGYyns' },
+          { id: 'spring', name: 'Spring Boot & Microservices', score: 35, base_percentage: 35, category: 'Architecture', currentMilestone: 'REST APIs, JPA Entities & Dependency Injection', nextMilestone: 'Distributed Sagas & Circuit Breakers', youtubeUrl: 'https://www.youtube.com/watch?v=9SGDpanrc8U' },
+          { id: 'postgres', name: 'PostgreSQL & SQL Tuning', score: 35, base_percentage: 35, category: 'Databases', currentMilestone: 'Complex SQL, Transactions & Foreign Keys', nextMilestone: 'B-Tree Index Tuning with EXPLAIN ANALYZE', youtubeUrl: 'https://www.youtube.com/watch?v=HubezKbFL7E' },
+          { id: 'kafka', name: 'Apache Kafka Event Streaming', score: 35, base_percentage: 35, category: 'Messaging', currentMilestone: 'Topics, Partitions & Consumer groups', nextMilestone: 'Exactly-once semantics (EOS) & consumer rebalancing', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
+          { id: 'debug', name: 'Production Debugging', score: 35, base_percentage: 35, category: 'Problem Solving', currentMilestone: 'Stack trace diagnosis & unit test mocks', nextMilestone: 'Heap dump analysis & connection leak profiling', youtubeUrl: 'https://www.youtube.com/watch?v=y62zj9ozPOM' }
         ]
       },
       devops: {
@@ -4609,11 +4609,11 @@ const STREAM_DATA = {
         name: "Enterprise Java & Cloud Backend",
         description: "Java & Multithreading, Spring Boot Microservices, PostgreSQL & SQL Tuning, Docker Containers, APM Debugging",
         skills: [
-          { id: 'java', name: 'Java & Multithreading', score: 72, category: 'Backend Language', currentMilestone: 'Collections, Streams, Multithreading & OOP', nextMilestone: 'JVM Memory Tuning & Low-latency locks', youtubeUrl: 'https://www.youtube.com/watch?v=grEKMHGYyns' },
-          { id: 'spring', name: 'Spring Boot & Microservices', score: 65, category: 'Architecture', currentMilestone: 'REST APIs, JPA Entities & Dependency Injection', nextMilestone: 'Distributed Sagas & Circuit Breakers', youtubeUrl: 'https://www.youtube.com/watch?v=9SGDpanrc8U' },
-          { id: 'postgres', name: 'PostgreSQL & SQL Tuning', score: 60, category: 'Databases', currentMilestone: 'Complex SQL, Transactions & Foreign Keys', nextMilestone: 'B-Tree Index Tuning with EXPLAIN ANALYZE', youtubeUrl: 'https://www.youtube.com/watch?v=HubezKbFL7E' },
-          { id: 'docker', name: 'Docker & Containers', score: 78, category: 'Cloud Infra', currentMilestone: 'Multi-stage builds & Distroless images', nextMilestone: 'Kubernetes Pod Deployment & Helm', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
-          { id: 'debug', name: 'Production Debugging', score: 55, category: 'Problem Solving', currentMilestone: 'Stack trace diagnosis & unit test mocks', nextMilestone: 'Heap dump analysis & connection leak profiling', youtubeUrl: 'https://www.youtube.com/watch?v=y62zj9ozPOM' }
+          { id: 'java', name: 'Java & Multithreading', score: 35, base_percentage: 35, category: 'Backend Language', currentMilestone: 'Collections, Streams, Multithreading & OOP', nextMilestone: 'JVM Memory Tuning & Low-latency locks', youtubeUrl: 'https://www.youtube.com/watch?v=grEKMHGYyns' },
+          { id: 'spring', name: 'Spring Boot & Microservices', score: 35, base_percentage: 35, category: 'Architecture', currentMilestone: 'REST APIs, JPA Entities & Dependency Injection', nextMilestone: 'Distributed Sagas & Circuit Breakers', youtubeUrl: 'https://www.youtube.com/watch?v=9SGDpanrc8U' },
+          { id: 'postgres', name: 'PostgreSQL & SQL Tuning', score: 35, base_percentage: 35, category: 'Databases', currentMilestone: 'Complex SQL, Transactions & Foreign Keys', nextMilestone: 'B-Tree Index Tuning with EXPLAIN ANALYZE', youtubeUrl: 'https://www.youtube.com/watch?v=HubezKbFL7E' },
+          { id: 'docker', name: 'Docker & Containers', score: 35, base_percentage: 35, category: 'Cloud Infra', currentMilestone: 'Multi-stage builds & Distroless images', nextMilestone: 'Kubernetes Pod Deployment & Helm', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
+          { id: 'debug', name: 'Production Debugging', score: 35, base_percentage: 35, category: 'Problem Solving', currentMilestone: 'Stack trace diagnosis & unit test mocks', nextMilestone: 'Heap dump analysis & connection leak profiling', youtubeUrl: 'https://www.youtube.com/watch?v=y62zj9ozPOM' }
         ]
       },
       fullstack: {
@@ -4647,7 +4647,7 @@ const STREAM_DATA = {
         skills: [
           { id: 'react', name: 'Next.js 15 & Server Components', score: 78, category: 'Frontend', currentMilestone: 'Streaming SSR, Server Actions & caching layers', nextMilestone: 'Core Web Vitals optimization (INP/LCP)', youtubeUrl: 'https://www.youtube.com/watch?v=8aGhZQkoFbQ' },
           { id: 'nodejs', name: 'Node.js Event Loop & Streams', score: 68, category: 'Backend Runtime', currentMilestone: 'Async/await, EventEmitter & streams', nextMilestone: 'Worker threads & memory heap allocation', youtubeUrl: 'https://www.youtube.com/watch?v=8aGhZQkoFbQ' },
-          { id: 'redis', name: 'Redis Cache & Session Stores', score: 65, category: 'Databases', currentMilestone: 'In-memory key/value & TTL expiry', nextMilestone: 'Cache invalidation strategies & write-through buffers', youtubeUrl: 'https://www.youtube.com/watch?v=HubezKbFL7E' },
+          { id: 'redis', name: 'Redis Cache & Session Stores', score: 35, base_percentage: 35, category: 'Databases', currentMilestone: 'In-memory key/value & TTL expiry', nextMilestone: 'Cache invalidation strategies & write-through buffers', youtubeUrl: 'https://www.youtube.com/watch?v=HubezKbFL7E' },
           { id: 'cicd', name: 'GitHub Actions CI/CD Automation', score: 70, category: 'Delivery', currentMilestone: 'Automated lint, test & docker build workflows', nextMilestone: 'Preview environments & automated rollbacks', youtubeUrl: 'https://www.youtube.com/watch?v=pTFZFxd4hOI' },
           { id: 'debug', name: 'Browser DevTools & Performance', score: 60, category: 'Profiling', currentMilestone: 'Network waterfall inspection & console error tracking', nextMilestone: 'Flamegraphs, memory leak snapshots & CPU throttling', youtubeUrl: 'https://www.youtube.com/watch?v=y62zj9ozPOM' }
         ]
@@ -5631,8 +5631,8 @@ const STREAM_DATA = {
         description: "Python Core & AsyncIO, PyTorch & Transformers, Vector DBs Chroma/Pinecone, RAG Caching & Retrieval, Model Latency Profiling",
         skills: [
           { id: 'python', name: 'Python Core & AsyncIO', score: 80, category: 'Language', currentMilestone: 'Generators, Decorators & Multiprocessing', nextMilestone: 'C-Extension profiling & memory optimization', youtubeUrl: 'https://www.youtube.com/watch?v=8aGhZQkoFbQ' },
-          { id: 'fastapi', name: 'FastAPI & Microservices', score: 72, category: 'Backend Architecture', currentMilestone: 'Pydantic schemas & Async endpoints', nextMilestone: 'High-concurrency worker scaling', youtubeUrl: 'https://www.youtube.com/watch?v=9SGDpanrc8U' },
-          { id: 'vector', name: 'Vector DBs (Chroma/Pinecone)', score: 65, category: '2026 Booming Tech', currentMilestone: 'Embedding generation & semantic search', nextMilestone: 'Hybrid BM25 + Vector retrieval caching', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
+          { id: 'fastapi', name: 'FastAPI & Microservices', score: 35, base_percentage: 35, category: 'Backend Architecture', currentMilestone: 'Pydantic schemas & Async endpoints', nextMilestone: 'High-concurrency worker scaling', youtubeUrl: 'https://www.youtube.com/watch?v=9SGDpanrc8U' },
+          { id: 'vector', name: 'Vector DBs (Chroma/Pinecone)', score: 35, base_percentage: 35, category: '2026 Booming Tech', currentMilestone: 'Embedding generation & semantic search', nextMilestone: 'Hybrid BM25 + Vector retrieval caching', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
           { id: 'postgres_vec', name: 'PostgreSQL & pgvector', score: 58, category: 'Databases', currentMilestone: 'SQL schemas & relational indices', nextMilestone: 'HNSW vector indexing & memory buffers', youtubeUrl: 'https://www.youtube.com/watch?v=HubezKbFL7E' },
           { id: 'debug', name: 'Model Latency & Pipeline Debugging', score: 50, category: 'Problem Solving', currentMilestone: 'Logging & unit tests with pytest', nextMilestone: 'Pipeline latency profiling & token memory leaks', youtubeUrl: 'https://www.youtube.com/watch?v=y62zj9ozPOM' }
         ]
@@ -5657,7 +5657,7 @@ const STREAM_DATA = {
           { id: 'python', name: 'Python & PySpark Big Data', score: 74, category: 'Big Data', currentMilestone: 'DataFrame transforms & RDD actions', nextMilestone: 'Shuffle partition tuning & broadcast joins', youtubeUrl: 'https://www.youtube.com/watch?v=8aGhZQkoFbQ' },
           { id: 'kafka', name: 'Apache Kafka Event Streams', score: 66, category: 'Streaming', currentMilestone: 'Producers, Consumers & Avro schemas', nextMilestone: 'Stream windowing & backpressure handling', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
           { id: 'olap_db', name: 'ClickHouse & PostgreSQL Analytics', score: 60, category: 'Databases', currentMilestone: 'Columnar storage & aggregate queries', nextMilestone: 'MergeTree engine partitioning & primary indices', youtubeUrl: 'https://www.youtube.com/watch?v=HubezKbFL7E' },
-          { id: 'airflow', name: 'Apache Airflow DAG Orchestration', score: 65, category: 'Orchestration', currentMilestone: 'Operators, Sensors & DAG scheduling', nextMilestone: 'Dynamic task mapping & Celery workers', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
+          { id: 'airflow', name: 'Apache Airflow DAG Orchestration', score: 35, base_percentage: 35, category: 'Orchestration', currentMilestone: 'Operators, Sensors & DAG scheduling', nextMilestone: 'Dynamic task mapping & Celery workers', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
           { id: 'debug', name: 'Data Pipeline Bottleneck Profiling', score: 55, category: 'Observability', currentMilestone: 'Task retry telemetry & DAG error alerts', nextMilestone: 'Memory skew analysis & distributed deadlocks', youtubeUrl: 'https://www.youtube.com/watch?v=y62zj9ozPOM' }
         ]
       },
@@ -22411,32 +22411,32 @@ const defaultMarketReports = [
 
     const STACK_PRESETS = {
       java: [
-        { id: 'java', name: 'Java & Multithreading', score: 72, category: 'Backend Language', currentMilestone: 'Collections, Streams, Multithreading & OOP', nextMilestone: 'JVM Memory Tuning & Low-latency locks', youtubeUrl: 'https://www.youtube.com/watch?v=grEKMHGYyns' },
-        { id: 'spring', name: 'Spring Boot & Microservices', score: 65, category: 'Architecture', currentMilestone: 'REST APIs, JPA Entities & Dependency Injection', nextMilestone: 'Distributed Sagas & Circuit Breakers', youtubeUrl: 'https://www.youtube.com/watch?v=9SGDpanrc8U' },
-        { id: 'postgres', name: 'PostgreSQL & SQL Tuning', score: 60, category: 'Databases', currentMilestone: 'Complex SQL, Transactions & Foreign Keys', nextMilestone: 'B-Tree Index Tuning with EXPLAIN ANALYZE', youtubeUrl: 'https://www.youtube.com/watch?v=HubezKbFL7E' },
-        { id: 'docker', name: 'Docker & Containers', score: 78, category: 'Cloud Infra', currentMilestone: 'Multi-stage builds & Distroless images', nextMilestone: 'Kubernetes Pod Deployment & Helm', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
-        { id: 'debug', name: 'Production Debugging', score: 55, category: 'Problem Solving', currentMilestone: 'Stack trace diagnosis & unit test mocks', nextMilestone: 'Heap dump analysis & connection leak profiling', youtubeUrl: 'https://www.youtube.com/watch?v=y62zj9ozPOM' }
+        { id: 'java', name: 'Java & Multithreading', score: 35, base_percentage: 35, category: 'Backend Language', currentMilestone: 'Collections, Streams, Multithreading & OOP', nextMilestone: 'JVM Memory Tuning & Low-latency locks', youtubeUrl: 'https://www.youtube.com/watch?v=grEKMHGYyns' },
+        { id: 'spring', name: 'Spring Boot & Microservices', score: 35, base_percentage: 35, category: 'Architecture', currentMilestone: 'REST APIs, JPA Entities & Dependency Injection', nextMilestone: 'Distributed Sagas & Circuit Breakers', youtubeUrl: 'https://www.youtube.com/watch?v=9SGDpanrc8U' },
+        { id: 'postgres', name: 'PostgreSQL & SQL Tuning', score: 35, base_percentage: 35, category: 'Databases', currentMilestone: 'Complex SQL, Transactions & Foreign Keys', nextMilestone: 'B-Tree Index Tuning with EXPLAIN ANALYZE', youtubeUrl: 'https://www.youtube.com/watch?v=HubezKbFL7E' },
+        { id: 'docker', name: 'Docker & Containers', score: 35, base_percentage: 35, category: 'Cloud Infra', currentMilestone: 'Multi-stage builds & Distroless images', nextMilestone: 'Kubernetes Pod Deployment & Helm', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
+        { id: 'debug', name: 'Production Debugging', score: 35, base_percentage: 35, category: 'Problem Solving', currentMilestone: 'Stack trace diagnosis & unit test mocks', nextMilestone: 'Heap dump analysis & connection leak profiling', youtubeUrl: 'https://www.youtube.com/watch?v=y62zj9ozPOM' }
       ],
       fullstack: [
-        { id: 'react', name: 'React & Next.js', score: 75, category: 'Frontend', currentMilestone: 'Hooks, Server Components & State Management', nextMilestone: 'Performance Profiling & Bundle Optimization', youtubeUrl: 'https://www.youtube.com/watch?v=8aGhZQkoFbQ' },
-        { id: 'nodejs', name: 'Node.js & Express', score: 70, category: 'Backend Runtime', currentMilestone: 'Event loop async patterns & middleware', nextMilestone: 'Cluster Worker threads & stream buffering', youtubeUrl: 'https://www.youtube.com/watch?v=8aGhZQkoFbQ' },
-        { id: 'postgres', name: 'PostgreSQL & SQL Tuning', score: 60, category: 'Databases', currentMilestone: 'Complex SQL & Prisma Schema migrations', nextMilestone: 'Connection pooling & Index optimization', youtubeUrl: 'https://www.youtube.com/watch?v=HubezKbFL7E' },
-        { id: 'docker', name: 'Docker & CI/CD', score: 68, category: 'Delivery', currentMilestone: 'Containerizing Node apps & GitHub Actions', nextMilestone: 'Canary releases & automated integration tests', youtubeUrl: 'https://www.youtube.com/watch?v=pTFZFxd4hOI' },
-        { id: 'debug', name: 'Production Debugging', score: 52, category: 'Problem Solving', currentMilestone: 'Browser DevTools & API network error handling', nextMilestone: 'Memory leak profiling & APM tracing', youtubeUrl: 'https://www.youtube.com/watch?v=y62zj9ozPOM' }
+        { id: 'react', name: 'React & Next.js', score: 35, base_percentage: 35, category: 'Frontend', currentMilestone: 'Hooks, Server Components & State Management', nextMilestone: 'Performance Profiling & Bundle Optimization', youtubeUrl: 'https://www.youtube.com/watch?v=8aGhZQkoFbQ' },
+        { id: 'nodejs', name: 'Node.js & Express', score: 35, base_percentage: 35, category: 'Backend Runtime', currentMilestone: 'Event loop async patterns & middleware', nextMilestone: 'Cluster Worker threads & stream buffering', youtubeUrl: 'https://www.youtube.com/watch?v=8aGhZQkoFbQ' },
+        { id: 'postgres', name: 'PostgreSQL & SQL Tuning', score: 35, base_percentage: 35, category: 'Databases', currentMilestone: 'Complex SQL & Prisma Schema migrations', nextMilestone: 'Connection pooling & Index optimization', youtubeUrl: 'https://www.youtube.com/watch?v=HubezKbFL7E' },
+        { id: 'docker', name: 'Docker & CI/CD', score: 35, base_percentage: 35, category: 'Delivery', currentMilestone: 'Containerizing Node apps & GitHub Actions', nextMilestone: 'Canary releases & automated integration tests', youtubeUrl: 'https://www.youtube.com/watch?v=pTFZFxd4hOI' },
+        { id: 'debug', name: 'Production Debugging', score: 35, base_percentage: 35, category: 'Problem Solving', currentMilestone: 'Browser DevTools & API network error handling', nextMilestone: 'Memory leak profiling & APM tracing', youtubeUrl: 'https://www.youtube.com/watch?v=y62zj9ozPOM' }
       ],
       python: [
-        { id: 'python', name: 'Python Core & AsyncIO', score: 80, category: 'Language', currentMilestone: 'Generators, Decorators & Multiprocessing', nextMilestone: 'C-Extension profiling & memory optimization', youtubeUrl: 'https://www.youtube.com/watch?v=8aGhZQkoFbQ' },
-        { id: 'fastapi', name: 'FastAPI & Microservices', score: 72, category: 'Backend Architecture', currentMilestone: 'Pydantic schemas & Async endpoints', nextMilestone: 'High-concurrency worker scaling', youtubeUrl: 'https://www.youtube.com/watch?v=9SGDpanrc8U' },
-        { id: 'vector', name: 'Vector DBs (Chroma/Pinecone)', score: 65, category: '2026 Booming Tech', currentMilestone: 'Embedding generation & semantic search', nextMilestone: 'Hybrid BM25 + Vector retrieval caching', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
-        { id: 'postgres', name: 'PostgreSQL & pgvector', score: 58, category: 'Databases', currentMilestone: 'SQL schemas & relational indices', nextMilestone: 'HNSW vector indexing & memory buffers', youtubeUrl: 'https://www.youtube.com/watch?v=HubezKbFL7E' },
-        { id: 'debug', name: 'Production Debugging', score: 50, category: 'Problem Solving', currentMilestone: 'Logging & unit tests with pytest', nextMilestone: 'Pipeline latency profiling & memory leaks', youtubeUrl: 'https://www.youtube.com/watch?v=y62zj9ozPOM' }
+        { id: 'python', name: 'Python Core & AsyncIO', score: 35, base_percentage: 35, category: 'Language', currentMilestone: 'Generators, Decorators & Multiprocessing', nextMilestone: 'C-Extension profiling & memory optimization', youtubeUrl: 'https://www.youtube.com/watch?v=8aGhZQkoFbQ' },
+        { id: 'fastapi', name: 'FastAPI & Microservices', score: 35, base_percentage: 35, category: 'Backend Architecture', currentMilestone: 'Pydantic schemas & Async endpoints', nextMilestone: 'High-concurrency worker scaling', youtubeUrl: 'https://www.youtube.com/watch?v=9SGDpanrc8U' },
+        { id: 'vector', name: 'Vector DBs (Chroma/Pinecone)', score: 35, base_percentage: 35, category: '2026 Booming Tech', currentMilestone: 'Embedding generation & semantic search', nextMilestone: 'Hybrid BM25 + Vector retrieval caching', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
+        { id: 'postgres', name: 'PostgreSQL & pgvector', score: 35, base_percentage: 35, category: 'Databases', currentMilestone: 'SQL schemas & relational indices', nextMilestone: 'HNSW vector indexing & memory buffers', youtubeUrl: 'https://www.youtube.com/watch?v=HubezKbFL7E' },
+        { id: 'debug', name: 'Production Debugging', score: 35, base_percentage: 35, category: 'Problem Solving', currentMilestone: 'Logging & unit tests with pytest', nextMilestone: 'Pipeline latency profiling & memory leaks', youtubeUrl: 'https://www.youtube.com/watch?v=y62zj9ozPOM' }
       ],
       cloud: [
-        { id: 'golang', name: 'Go (Golang) Systems', score: 74, category: 'Language', currentMilestone: 'Goroutines, Channels & interfaces', nextMilestone: 'Race detector profiling & lock-free sync', youtubeUrl: 'https://www.youtube.com/watch?v=cQP8WApzIQQ' },
-        { id: 'docker', name: 'Docker & Multi-Stage', score: 82, category: 'Infra', currentMilestone: 'Distroless scratch images & buildx', nextMilestone: 'Rootless container security hardening', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
-        { id: 'k8s', name: 'Kubernetes Orchestration', score: 62, category: '2026 Booming Tech', currentMilestone: 'Deployments, Services & ConfigMaps', nextMilestone: 'Custom Resource Definitions & HPA autoscaling', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
-        { id: 'redis', name: 'Redis Cache & Locks', score: 68, category: 'Databases', currentMilestone: 'Key-value expiry & pub/sub events', nextMilestone: 'Redlock distributed locks & atomic pipelines', youtubeUrl: 'https://www.youtube.com/watch?v=HubezKbFL7E' },
-        { id: 'debug', name: 'Production Debugging', score: 60, category: 'Problem Solving', currentMilestone: 'Pprof CPU/Memory profiling', nextMilestone: 'Linux eBPF tracing & core dump inspection', youtubeUrl: 'https://www.youtube.com/watch?v=y62zj9ozPOM' }
+        { id: 'golang', name: 'Go (Golang) Systems', score: 35, base_percentage: 35, category: 'Language', currentMilestone: 'Goroutines, Channels & interfaces', nextMilestone: 'Race detector profiling & lock-free sync', youtubeUrl: 'https://www.youtube.com/watch?v=cQP8WApzIQQ' },
+        { id: 'docker', name: 'Docker & Multi-Stage', score: 35, base_percentage: 35, category: 'Infra', currentMilestone: 'Distroless scratch images & buildx', nextMilestone: 'Rootless container security hardening', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
+        { id: 'k8s', name: 'Kubernetes Orchestration', score: 35, base_percentage: 35, category: '2026 Booming Tech', currentMilestone: 'Deployments, Services & ConfigMaps', nextMilestone: 'Custom Resource Definitions & HPA autoscaling', youtubeUrl: 'https://www.youtube.com/watch?v=cuHDQhDhvPE' },
+        { id: 'redis', name: 'Redis Cache & Locks', score: 35, base_percentage: 35, category: 'Databases', currentMilestone: 'Key-value expiry & pub/sub events', nextMilestone: 'Redlock distributed locks & atomic pipelines', youtubeUrl: 'https://www.youtube.com/watch?v=HubezKbFL7E' },
+        { id: 'debug', name: 'Production Debugging', score: 35, base_percentage: 35, category: 'Problem Solving', currentMilestone: 'Pprof CPU/Memory profiling', nextMilestone: 'Linux eBPF tracing & core dump inspection', youtubeUrl: 'https://www.youtube.com/watch?v=y62zj9ozPOM' }
       ]
     };
 
@@ -22463,12 +22463,7 @@ const defaultMarketReports = [
       ]
     };
 
-    const defaultMcqHistory = [
-      { id: 1, date: '2026-09-28', module: 'Baseline Diagnostic', score: 48, passed: false },
-      { id: 2, date: '2026-10-04', module: 'Database Optimization', score: 72, passed: false },
-      { id: 3, date: '2026-10-09', module: 'Production Debugging', score: 85, passed: true },
-      { id: 4, date: '2026-10-12', module: 'Java & Architecture', score: 92, passed: true }
-    ];
+    const defaultMcqHistory = [];
 
     const defaultInvites = [
       { id: 1, candidateId: '23IT413', name: 'Aryan Sharma', role: 'Systems Engineering Intern (Java / Cloud)', format: 'System Design & Capstone Defense', date: '2026-10-12', status: 'Interview Scheduled' }
@@ -23424,6 +23419,16 @@ const defaultMarketReports = [
 
         const storedStack = localStorage.getItem(STORAGE_KEY_STACK);
         appState.currentStack = storedStack ? JSON.parse(storedStack) : JSON.parse(JSON.stringify(defSkills));
+        // Sanitize legacy stored skills against dynamic score calculation
+        if (Array.isArray(appState.currentStack)) {
+          const hasVerifiedTests = appState.mcqHistory && appState.mcqHistory.some(h => h.passed && h.score >= 80);
+          appState.currentStack.forEach(s => {
+            const bd = calculateSkillBreakdown(s);
+            if (!hasVerifiedTests && !s.verified && s.status !== 'LIVE VERIFIED') {
+              s.score = bd.total;
+            }
+          });
+        }
 
         const storedProgress = localStorage.getItem(STORAGE_KEY_PROGRESS);
         appState.progress = storedProgress ? JSON.parse(storedProgress) : JSON.parse(JSON.stringify(defaultProgress));
@@ -23613,18 +23618,30 @@ const defaultMarketReports = [
 
       // Render Active Stack Pills
       appState.currentStack.forEach((skill, idx) => {
+        const bd = calculateSkillBreakdown(skill);
+
+        // Dynamically compute the total score on the fly
+        const baseScore = Number(skill.base_percentage || skill.base || bd.baseScore || 35);
+        const lectureScore = Number(skill.lecture_score !== undefined ? skill.lecture_score : (bd.videoCredit || 0));
+        const marathonScore = Number(skill.marathon_score !== undefined ? skill.marathon_score : (bd.marathonBonus || 0));
+        const testScore = Number(skill.test_score !== undefined ? skill.test_score : (bd.testBonus || 0));
+
+        const calculatedTotal = Math.min(100, Math.max(20, baseScore + lectureScore + marathonScore + testScore));
+
+        // Keep skill.score strictly in sync with dynamic total
+        skill.score = calculatedTotal;
+
         if (pillsContainer) {
           const pill = document.createElement('span');
           pill.className = "px-2.5 py-1 rounded-lg text-xs font-bold bg-teal-50 text-[#008080] border border-teal-200 flex items-center";
-          pill.innerHTML = `<span>${skill.name}</span> <span class="ml-1.5 text-[10px] opacity-75">(${skill.score}%)</span>`;
+          pill.innerHTML = `<span>${skill.name}</span> <span class="ml-1.5 text-[10px] opacity-75">(${calculatedTotal}%)</span>`;
           pillsContainer.appendChild(pill);
         }
 
-        const bd = calculateSkillBreakdown(skill);
-        const tier = getSkillTier(skill.score);
-        const skillFusion = getFusionColor(skill.score);
+        const tier = getSkillTier(calculatedTotal);
+        const skillFusion = getFusionColor(calculatedTotal);
         const card = document.createElement('div');
-        const isSkillVerified = (skill.score >= 80) || skill.status === 'LIVE VERIFIED' || Boolean(skill.verified);
+        const isSkillVerified = (calculatedTotal >= 80) || skill.status === 'LIVE VERIFIED' || Boolean(skill.verified);
 
         card.className = "bg-white dark:bg-[#0F172A] p-3 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-sm transition-all space-y-4";
         card.innerHTML = `
@@ -23635,11 +23652,11 @@ const defaultMarketReports = [
                 <span class="text-[10px] font-mono px-2 py-0.5 rounded ${skill.category && skill.category.includes('Leadership') ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}">${skill.category || 'Core Skill'}</span>
                 ${isSkillVerified ? `
                   <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800">
-                    <i class="fa-solid fa-circle-check mr-1"></i> LIVE VERIFIED (${skill.score}%)
+                    <i class="fa-solid fa-circle-check mr-1"></i> LIVE VERIFIED (${calculatedTotal}%)
                   </span>
                 ` : `
                   <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-800">
-                    <i class="fa-solid fa-clock mr-1"></i> ${skill.status || `UNVERIFIED BASELINE (${skill.score}%)`}
+                    <i class="fa-solid fa-clock mr-1"></i> ${skill.status && !skill.status.includes('(') ? `${skill.status} (${calculatedTotal}%)` : (skill.status || `UNVERIFIED BASELINE (${calculatedTotal}%)`)}
                   </span>
                 `}
               </div>
@@ -23651,7 +23668,7 @@ const defaultMarketReports = [
             <!-- Level Gauge Badge (Prominent Big Font Percentage) -->
             <div class="flex items-center space-x-2 shrink-0">
               <span class="text-xl sm:text-2xl font-mono font-black ${tier.badgeBg} px-3 py-1 rounded-xl border shadow-xs tracking-tight">
-                ${skill.score}%
+                ${calculatedTotal}%
               </span>
             </div>
           </div>
@@ -23659,7 +23676,7 @@ const defaultMarketReports = [
           <!-- Progress Bar with milestone ticks and fusion color -->
           <div>
             <div class="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden flex">
-              <div class="h-full rounded-full transition-all duration-500" style="width: ${skill.score}%; background-color: ${skillFusion.hex}"></div>
+              <div class="h-full rounded-full transition-all duration-500" style="width: ${calculatedTotal}%; background-color: ${skillFusion.hex}"></div>
             </div>
             <div class="flex flex-wrap justify-between gap-x-2 text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-1">
               <span>Beginner (20%)</span>
@@ -23681,7 +23698,7 @@ const defaultMarketReports = [
               <span class="${bd.testBonus > 0 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''}">Diagnostic: <strong>+${bd.testBonus}%/34%</strong></span>
             </div>
             <div class="font-bold text-slate-800 dark:text-slate-200 text-xs">
-              Total Score: <span class="text-[#008080] dark:text-teal-300 font-black">${skill.score}%</span>
+              Total Score: <span class="text-[#008080] dark:text-teal-300 font-black">${calculatedTotal}%</span>
             </div>
           </div>
 
@@ -23702,7 +23719,7 @@ const defaultMarketReports = [
             <div class="text-[11px] font-medium text-slate-500 flex items-center">
               <i class="fa-solid fa-lock text-slate-400 mr-1.5 text-[10px]"></i>
               <span>Baseline Level:</span>
-              <span class="ml-1 font-bold ${tier.twText}">${tier.name} (${skill.score}%)</span>
+              <span class="ml-1 font-bold ${tier.twText}">${tier.name} (${calculatedTotal}%)</span>
               <span class="ml-1.5 text-[10px] text-slate-400 italic hidden sm:inline">(Locked &bull; Evaluated via 10-MCQ)</span>
             </div>
 
@@ -23726,8 +23743,16 @@ const defaultMarketReports = [
       const overallInsightEl = document.getElementById('overallInsightText');
 
       if (overallScoreEl && appState.currentStack.length > 0) {
-        const rawAvg = Math.round(appState.currentStack.reduce((acc, s) => acc + (s.score || 35), 0) / appState.currentStack.length);
-        const finalScore = rawAvg;
+        // Arithmetic mean of all active skills' calculated totals
+        const totalSum = appState.currentStack.reduce((acc, s) => {
+          const b = calculateSkillBreakdown(s);
+          const bScore = Number(s.base_percentage || s.base || b.baseScore || 35);
+          const lScore = Number(s.lecture_score !== undefined ? s.lecture_score : (b.videoCredit || 0));
+          const mScore = Number(s.marathon_score !== undefined ? s.marathon_score : (b.marathonBonus || 0));
+          const tScore = Number(s.test_score !== undefined ? s.test_score : (b.testBonus || 0));
+          return acc + Math.min(100, Math.max(20, bScore + lScore + mScore + tScore));
+        }, 0);
+        const finalScore = Math.round(totalSum / appState.currentStack.length);
         const overallFusion = getFusionColor(finalScore);
 
         overallScoreEl.innerText = `${finalScore}%`;
@@ -23751,12 +23776,10 @@ const defaultMarketReports = [
         }
 
         if (overallInsightEl) {
-          if (appState.user && appState.user.dynamic_competence_percent !== undefined) {
-            overallInsightEl.innerHTML = `Dynamic competence: <strong>${finalScore}%</strong> based on verified study time, lecture hours, and benchmark exams. Reaching Level 4 (&ge;75%) qualifies you for top verified talent cohorts.`;
-          } else if (hasVerifiedTests) {
-            overallInsightEl.innerHTML = `Your verified score is <strong>${displayScore}%</strong>. Verified scores &ge;80% in all core skills qualify you for verified monthly talent cohorts and direct recruiter invitations.`;
+          if (hasVerifiedTests) {
+            overallInsightEl.innerHTML = `Your verified score is <strong>${finalScore}%</strong>. Verified scores &ge;80% in all core skills qualify you for verified monthly talent cohorts and direct recruiter invitations.`;
           } else {
-            overallInsightEl.innerHTML = `Your score is calibrated at an unverified baseline of <strong>${displayScore}%</strong>. Take 10-MCQ benchmark exams to verify competence and unlock higher verified tiers.`;
+            overallInsightEl.innerHTML = `Your score is calibrated at an unverified baseline of <strong>${finalScore}%</strong>. Take 10-MCQ benchmark exams to verify competence and unlock higher verified tiers.`;
           }
         }
       }
@@ -23855,14 +23878,21 @@ const defaultMarketReports = [
 
     function runLiveRecalculations() {
       if (!appState.currentStack || appState.currentStack.length === 0) return;
-      const totalScore = appState.currentStack.reduce((acc, s) => acc + s.score, 0);
-      const avg = Math.round(totalScore / appState.currentStack.length);
+      const totalSum = appState.currentStack.reduce((acc, s) => {
+        const b = calculateSkillBreakdown(s);
+        const bScore = Number(s.base_percentage || s.base || b.baseScore || 35);
+        const lScore = Number(s.lecture_score !== undefined ? s.lecture_score : (b.videoCredit || 0));
+        const mScore = Number(s.marathon_score !== undefined ? s.marathon_score : (b.marathonBonus || 0));
+        const tScore = Number(s.test_score !== undefined ? s.test_score : (b.testBonus || 0));
+        const tot = Math.min(100, Math.max(20, bScore + lScore + mScore + tScore));
+        s.score = tot;
+        return acc + tot;
+      }, 0);
+      const avg = Math.round(totalSum / appState.currentStack.length);
 
       const hasVerifiedTests = appState.mcqHistory && appState.mcqHistory.some(h => h.passed && h.score >= 80);
       const displayScore = hasVerifiedTests ? avg : Math.min(avg, 48);
-      const compScore = (appState.user && appState.user.dynamic_competence_percent !== undefined)
-        ? Math.round(Number(appState.user.dynamic_competence_percent))
-        : displayScore;
+      const compScore = displayScore;
       const fusion = getFusionColor(compScore);
 
       const scoreEl = document.getElementById('overallStackScore');
@@ -23888,6 +23918,13 @@ const defaultMarketReports = [
       if (ringPercentEl) {
         ringPercentEl.innerText = `${compScore}%`;
         ringPercentEl.style.color = fusion.hex;
+      }
+      if (insightEl) {
+        if (hasVerifiedTests) {
+          insightEl.innerHTML = `Your verified score is <strong>${compScore}%</strong>. Verified scores &ge;80% in all core skills qualify you for verified monthly talent cohorts and direct recruiter invitations.`;
+        } else {
+          insightEl.innerHTML = `Your score is calibrated at an unverified baseline of <strong>${compScore}%</strong>. Take 10-MCQ benchmark exams to verify competence and unlock higher verified tiers.`;
+        }
       }
 
       const topSkill = [...appState.currentStack].sort((a,b) => b.score - a.score)[0];
@@ -27186,7 +27223,9 @@ function onWizardBranchChanged(branchKey) {
       // 2. Marathon revision bonus (+3%)
       const streamKey = getActiveStreamKey();
       const hasMarathon = Boolean(appState.progress && appState.progress.completedMarathons && appState.progress.completedMarathons[streamKey]);
-      const marathonBonus = hasMarathon ? 3 : 0;
+      const marathonBonus = (skill.marathon_score !== undefined && skill.marathon_score !== null)
+        ? Math.min(3, Math.max(0, Number(skill.marathon_score)))
+        : (hasMarathon ? 3 : 0);
 
       // 3. Benchmark test adjustment
       const skillTests = (appState.mcqHistory || []).filter(h => 
@@ -31048,7 +31087,9 @@ function onWizardBranchChanged(branchKey) {
       const completedList = (appState.progress && appState.progress.completedLessonsBySkill && (appState.progress.completedLessonsBySkill[skillId] || appState.progress.completedLessonsBySkill[skill.name])) || [];
       const dbLecturesCount = Number(skill.lectures_completed) || 0;
       const completedLessonsCount = Math.min(15, Math.max(completedList.length, dbLecturesCount));
-      const videoCredit = Math.min(15, completedLessonsCount); // Linear 1% per unique completed lecture, max 15%
+      const videoCredit = (skill.lecture_score !== undefined && skill.lecture_score !== null)
+        ? Math.min(15, Math.max(0, Number(skill.lecture_score)))
+        : Math.min(15, completedLessonsCount); // Linear 1% per unique completed lecture, max 15%
 
       // 3. Marathons / Labs (3% Weight): Dedicated hands-on practice sessions / timed marathons. Fresh account = +0%, max +3%.
       const streamKey = getActiveStreamKey();

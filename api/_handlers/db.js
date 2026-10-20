@@ -416,7 +416,7 @@ async function ensureSchema() {
           experience_level VARCHAR(100),
           skill_score NUMERIC(5,2) DEFAULT 90,
           dynamic_competence_percent NUMERIC(5,2) DEFAULT 90,
-          readiness_score NUMERIC(5,2) DEFAULT 75,
+          readiness_score NUMERIC(5,2) DEFAULT 35,
           skills TEXT[],
           capstone_proof TEXT,
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -424,7 +424,7 @@ async function ensureSchema() {
       `);
       const candCols = [
         "ALTER TABLE candidates ADD COLUMN IF NOT EXISTS user_id UUID;",
-        "ALTER TABLE candidates ADD COLUMN IF NOT EXISTS readiness_score NUMERIC(5,2) DEFAULT 75;"
+        "ALTER TABLE candidates ADD COLUMN IF NOT EXISTS readiness_score NUMERIC(5,2) DEFAULT 35;"
       ];
       for (const cCol of candCols) {
         try { await p.query(cCol); } catch (e) {}
@@ -440,7 +440,7 @@ async function ensureSchema() {
           activity_type VARCHAR(50) NOT NULL,
           score NUMERIC(5,2),
           time_spent_minutes INT DEFAULT 0,
-          competence_rating NUMERIC(5,2) DEFAULT 75,
+          competence_rating NUMERIC(5,2) DEFAULT 35,
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
       `);
@@ -1572,7 +1572,7 @@ const db = {
 
     const p = initPool();
     let insertedActivity = null;
-    let readinessScore = 75;
+    let readinessScore = 35;
 
     if (p) {
       try {
@@ -1797,7 +1797,7 @@ const db = {
     const streamKey = (stream || 'it').toLowerCase();
     const p = initPool();
     let activities = [];
-    let readinessScore = 75;
+    let readinessScore = 35;
 
     if (p) {
       try {
@@ -1818,7 +1818,7 @@ const db = {
           [validUuid, (user_email || '').toLowerCase()]
         );
         if (candRes.rows && candRes.rows[0]) {
-          readinessScore = Number(candRes.rows[0].readiness_score) || Number(candRes.rows[0].skill_score) || 75;
+          readinessScore = Number(candRes.rows[0].readiness_score) || Number(candRes.rows[0].skill_score) || 35;
         }
       } catch (err) {
         console.warn('[Campus2Career DB] Cloud getStudentAnalytics notice:', err.message);
@@ -1834,7 +1834,7 @@ const db = {
       if (store.candidates) {
         const cand = store.candidates.find(c => (user_id && c.user_id === user_id) || (user_email && c.email && c.email.toLowerCase() === (user_email || '').toLowerCase()));
         if (cand) {
-          readinessScore = Number(cand.readiness_score) || Number(cand.skill_score) || 75;
+          readinessScore = Number(cand.readiness_score) || Number(cand.skill_score) || 35;
         }
       }
     }
@@ -1892,6 +1892,10 @@ const db = {
         current_milestone: s.current_milestone,
         next_milestone: s.next_milestone
       }));
+      // Recalculate readiness score as arithmetic mean of skill progress
+      readinessScore = Math.round(skillCompetencies.reduce((sum, s) => sum + s.score, 0) / skillCompetencies.length);
+    } else if (activities.length === 0) {
+      readinessScore = 35;
     } else {
       const disciplines = defaultStreamDisciplines[streamKey] || defaultStreamDisciplines.it;
       skillCompetencies = disciplines.map(disc => {
