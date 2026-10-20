@@ -426,8 +426,8 @@
         <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 tracking-wider">
           <i class="fa-solid fa-graduation-cap mr-1"></i> B.TECH EXCLUSIVE
         </span>
-        <span class="font-medium tracking-wide text-slate-200 text-[11px] sm:text-xs">
-          Built for <strong class="text-teal-300">B.Tech Undergrads &amp; Tech Recruiters</strong>: Master core discipline skills alongside essential real-world engineering and management workflows.
+        <span class="font-medium tracking-wide text-slate-200 text-[11px] sm:text-xs truncate sm:overflow-visible">
+          Built for <strong class="text-teal-300">B.Tech Undergrads &amp; Tech Recruiters</strong><span class="hidden md:inline">: Master core discipline skills alongside essential real-world engineering and management workflows.</span>
         </span>
       </div>
       <div class="flex items-center space-x-3 text-[11px] text-slate-400">
@@ -447,14 +447,14 @@
       <div class="flex items-center justify-between h-16 gap-1.5 sm:gap-2.5 min-w-0">
         
         <!-- Brand Logo & Title (Occupies <= 40% on mobile viewports) -->
-        <div class="flex items-center space-x-2 sm:space-x-2.5 shrink-0 max-w-[40%] sm:max-w-none min-w-0">
-          <div class="flex items-center space-x-2 sm:space-x-2.5 cursor-pointer select-none min-w-0" onclick="navigateTo('home')">
+        <div class="flex items-center space-x-2 sm:space-x-2.5 shrink-0">
+          <div class="flex items-center space-x-2 sm:space-x-2.5 cursor-pointer select-none" onclick="navigateTo('home')">
             <div class="w-8 h-8 rounded-lg bg-[#0B132B] dark:bg-slate-800 flex items-center justify-center text-teal-400 font-extrabold text-sm shadow-md border border-teal-500/30 shrink-0">
               <i class="fa-solid fa-microchip text-teal-400 text-sm"></i>
             </div>
-            <div class="min-w-0">
-              <div class="flex items-center space-x-1.5 truncate">
-                <span class="font-extrabold text-sm sm:text-[15px] tracking-tight text-slate-900 dark:text-white truncate">Campus<span class="text-[#008080] dark:text-teal-400">2Career</span></span>
+            <div class="shrink-0">
+              <div class="flex items-center space-x-1.5">
+                <span class="font-extrabold text-sm sm:text-[15px] tracking-tight text-slate-900 dark:text-white whitespace-nowrap">Campus<span class="text-[#008080] dark:text-teal-400">2Career</span></span>
                 <span class="text-[8px] px-1 py-0.2 rounded bg-teal-50 dark:bg-teal-950 text-[#008080] dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800 uppercase hidden sm:inline-block" id="navVersionBadge">v5.5 FOCUS</span>
               </div>
               <p class="text-[9px] text-slate-400 dark:text-slate-500 leading-none mt-0.5 hidden 2xl:block">Personalized Core Skill Competence Engine</p>
@@ -557,25 +557,25 @@
               <i class="fa-solid fa-graduation-cap text-amber-600 dark:text-amber-400 text-xs"></i>
               <span>Demo</span>
             </button>
-            <button type="button" onclick="openAuthModal('signin')" class="text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-2xs shrink-0 whitespace-nowrap min-h-[40px] flex items-center justify-center">
+            <button type="button" onclick="openAuthModal('signin')" class="text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white px-2 sm:px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-2xs shrink-0 whitespace-nowrap min-h-[36px] sm:min-h-[40px] flex items-center justify-center">
               Log In
             </button>
-            <button onclick="openAuthModal('signup')" class="hidden sm:inline-flex text-xs bg-[#008080] hover:bg-[#006666] text-white font-bold px-3 sm:px-3.5 py-1.5 rounded-lg shadow-sm transition-all shrink-0 whitespace-nowrap items-center space-x-1">
+            <button type="button" onclick="openAuthModal('signup')" class="text-xs bg-[#008080] hover:bg-[#006666] text-white font-bold px-2 sm:px-3.5 py-1.5 rounded-lg shadow-sm transition-all shrink-0 whitespace-nowrap min-h-[36px] sm:min-h-[40px] flex items-center space-x-1">
               <i class="fa-solid fa-user-plus text-[10px]"></i>
               <span>Sign Up</span>
             </button>
           </div>
 
           <div id="authActionsLoggedIn" class="hidden items-center space-x-1 sm:space-x-1.5 shrink-0">
-            <div class="flex items-center space-x-1.5 px-2 sm:px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-xs cursor-pointer shrink-0" onclick="navigateTo(appState.activeRole === 'recruiter' ? 'recruiter-candidates' : 'growth')">
+            <div class="flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-xs cursor-pointer shrink-0" onclick="navigateTo(appState.activeRole === 'recruiter' ? 'recruiter-candidates' : 'growth')">
               <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-              <span id="userPillName" class="font-bold text-slate-800 dark:text-slate-200 max-w-[75px] sm:max-w-[110px] truncate">Aryan S.</span>
+              <span id="userPillName" class="font-bold text-slate-800 dark:text-slate-200 max-w-[65px] sm:max-w-[110px] truncate">Aryan S.</span>
               <span id="userPillRoleBadge" class="hidden xs:inline-block ml-1 px-1.5 py-0.2 rounded text-[10px] font-bold uppercase tracking-wider bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200">Learner</span>
             </div>
-            <!-- Prominent Explicit Log Out Button (Header on >=640px, Drawer on mobile) -->
-            <button type="button" onclick="handleLogout()" id="navLogoutBtn" title="Log Out / End Session" class="hidden sm:inline-flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-900/80 transition-all shadow-2xs shrink-0 cursor-pointer">
+            <!-- Prominent Explicit Log Out Button (Visible on both mobile & desktop) -->
+            <button type="button" onclick="handleLogout()" id="navLogoutBtn" title="Log Out / End Session" class="inline-flex items-center space-x-1 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-900/80 transition-all shadow-2xs shrink-0 cursor-pointer min-h-[36px]">
               <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
-              <span class="font-bold">Log Out</span>
+              <span class="font-bold hidden xs:inline sm:inline">Log Out</span>
             </button>
           </div>
 
@@ -610,7 +610,7 @@
           </select>
         </div>
 
-        <button type="button" onclick="openRecruiterAuthModal(); toggleMobileNav(false);" class="px-2.5 py-1 rounded-lg text-xs font-semibold text-[#008080] dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 flex items-center space-x-1">
+        <button type="button" id="mobileDrawerRecruiterBtn" onclick="openRecruiterAuthModal(); toggleMobileNav(false);" class="px-2.5 py-1 rounded-lg text-xs font-semibold text-[#008080] dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 flex items-center space-x-1">
           <i class="fa-solid fa-briefcase text-[10px]"></i>
           <span>Recruiter Access</span>
         </button>
@@ -640,7 +640,7 @@
         </button>
         <button onclick="navigateTo('events'); toggleMobileNav(false);" class="auth-required-mobile-tab w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold text-xs transition-all min-h-[44px]">
           <i class="fa-solid fa-calendar-star text-amber-500 text-sm w-5"></i>
-          <span>Recruiter Market Pulse &amp; Seminars</span>
+          <span id="mobileSeminarsTabLabel">Engineering Seminars</span>
         </button>
       </nav>
 
@@ -2282,7 +2282,7 @@
 
   <!-- SHARE WITH FRIENDS MODAL (Modern Share Sheet) -->
   <div id="shareModal" class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="bg-white dark:bg-[#0F172A] rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden p-6 space-y-5">
+    <div class="bg-white dark:bg-[#0F172A] rounded-3xl max-w-md w-full max-w-[calc(100vw-32px)] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden p-4 sm:p-6 space-y-4 sm:space-y-5">
       <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
         <div class="flex items-center space-x-2">
           <div class="w-9 h-9 rounded-xl bg-teal-100 dark:bg-teal-950/80 text-[#008080] dark:text-teal-400 flex items-center justify-center font-bold text-base shadow-xs">
@@ -2302,7 +2302,7 @@
       <div class="space-y-1.5">
         <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">Copy Platform Link</label>
         <div class="flex items-center bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 p-1.5 focus-within:ring-2 focus-within:ring-[#008080]">
-          <input type="text" id="sharePlatformUrlInput" readonly value="http://localhost:8000/index.html" class="flex-1 bg-transparent text-xs text-slate-800 dark:text-slate-200 px-2 py-1 outline-none font-mono select-all">
+          <input type="text" id="sharePlatformUrlInput" readonly value="https://campus2career-pi.vercel.app/" class="flex-1 bg-transparent text-xs text-slate-800 dark:text-slate-200 px-2 py-1 outline-none font-mono select-all truncate min-w-0">
           <button id="copyShareBtn" onclick="copyPlatformShareLink()" class="px-3.5 py-1.5 bg-[#008080] hover:bg-[#006666] text-white rounded-lg text-xs font-bold transition-all flex items-center space-x-1 shrink-0 shadow-xs">
             <i class="fa-solid fa-copy text-xs"></i>
             <span id="copyShareBtnText">Copy Link</span>
@@ -4749,7 +4749,7 @@ const STREAM_DATA = {
     ],
     quizModules: {
       it_java: {
-        title: "Java & Production Architecture",
+        title: "Java & Multithreading",
         questions: [
           {
             q: "In Java concurrency, why is using an ExecutorService thread pool preferred over manually creating new Thread() objects for each incoming request?",
@@ -4957,6 +4957,141 @@ const STREAM_DATA = {
             correct: 0,
             explanation: "Java uses parent-first delegation: a ClassLoader delegates loading to its parent before attempting to load the class itself, ensuring core Java classes cannot be hijacked.",
             coreConcept: "Java ClassLoader delegation model protects core JDK runtime."
+          }
+        ]
+      },
+      it_spring: {
+        title: "Spring Boot & Microservices",
+        questions: [
+          {
+            q: "When architecting an idempotent payment API endpoint in Spring Boot, what design guarantees safe retries from clients?",
+            options: [
+              "Client passes a unique Idempotency-Key header; server atomically records it in a fast key-value store (e.g. Redis) or DB with conditional insert before processing",
+              "Using HTTP GET for payments instead of POST",
+              "Relying on TCP retry packets to deduplicate payment requests automatically",
+              "Configuring the database connection pool size to 1"
+            ],
+            correct: 0,
+            explanation: "Idempotency keys generated by clients allow the backend to atomically check if a transaction with that key has already begun or succeeded, returning cached results on retry without duplicate debit.",
+            whyOthersWrong: "GET requests must be safe and not cause state mutations (Option B). TCP operates at the transport layer and does not deduplicate application-level API retries (Option C). A pool of size 1 destroys concurrency (Option D).",
+            coreConcept: "Every mission-critical payment or booking POST API must require a client-generated Idempotency-Key header."
+          },
+          {
+            q: "In modern Spring Boot microservices, why is Constructor Injection strongly favored over Field Injection (@Autowired on class fields)?",
+            options: [
+              "Constructor injection makes dependencies explicit, enforces immutability via 'final' fields, prevents NPEs at startup, and allows clean POJO unit testing without Spring context",
+              "Field injection causes the JVM to consume 10x more heap memory",
+              "Spring Boot 3 removes support for @Autowired entirely",
+              "Constructor injection automatically encrypts all service classes in bytecode"
+            ],
+            correct: 0,
+            explanation: "Constructor injection ensures all required dependencies must be provided at object instantiation. Making fields 'final' guarantees thread safety and allows unit tests to inject mock dependencies easily without reflection.",
+            whyOthersWrong: "Field injection does not consume 10x memory (Option B). @Autowired is still supported (Option C). Constructor injection has nothing to do with bytecode encryption (Option D).",
+            coreConcept: "Always use Constructor Injection with final fields (or Lombok @RequiredArgsConstructor) for Spring beans."
+          },
+          {
+            q: "What is the primary performance benefit of marking a service method with @Transactional(readOnly = true) in Spring / Hibernate?",
+            options: [
+              "Hibernate flushes all entities to the database twice as fast",
+              "Hibernate disables dirty-checking snapshot persistence and sets the JDBC connection to read-only, optimizing memory and enabling read-replica routing",
+              "It locks the entire database table against concurrent writes",
+              "It allows methods to run without a database connection"
+            ],
+            correct: 1,
+            explanation: "With readOnly = true, Hibernate skips creating snapshot copies of retrieved entities in the Persistence Context for dirty checking upon commit, saving CPU/memory and allowing Spring's routing DataSource to direct queries to read replicas.",
+            whyOthersWrong: "Read-only transactions do not flush writes (Option A). They avoid write locks rather than locking tables (Option C). A database connection is still required (Option D).",
+            coreConcept: "Annotate all read-only database query methods with @Transactional(readOnly = true) for reduced memory overhead and read-replica routing."
+          },
+          {
+            q: "In a microservice dependency chain, what problem does a Circuit Breaker (e.g. Resilience4j) solve when a downstream service becomes unresponsive?",
+            options: [
+              "It automatically upgrades the downstream service's RAM and CPU",
+              "It converts all failed HTTP calls into asynchronous emails",
+              "It immediately fails-fast or serves fallbacks once error thresholds are met, preventing upstream thread pool exhaustion and cascading system collapse",
+              "It restarts the physical host machine"
+            ],
+            correct: 2,
+            explanation: "When downstream latency or error rates exceed a threshold, the Circuit Breaker trips to OPEN state, short-circuiting calls immediately rather than holding threads open waiting for timeouts, preventing catastrophic thread starvation.",
+            whyOthersWrong: "Circuit breakers cannot allocate physical infrastructure (Option A). They do not send emails (Option B). They operate within the application process, not machine reboots (Option D).",
+            coreConcept: "Wrap all inter-service remote HTTP/gRPC calls in Circuit Breakers with fast timeouts and fallback handlers."
+          },
+          {
+            q: "What causes a LazyInitializationException when returning a JPA entity with lazy collections in a Spring REST Controller?",
+            options: [
+              "Accessing an uninitialized lazy collection outside the active Hibernate Session / @Transactional boundary",
+              "Having more than 100 rows in the database table",
+              "The database server running out of disk space",
+              "Using PostgreSQL instead of MySQL"
+            ],
+            correct: 0,
+            explanation: "Lazy-loaded collections use dynamic bytecode proxies. When the service method completes and the Hibernate Session closes, any attempt by Jackson or controller code to serialize uninitialized collections triggers LazyInitializationException.",
+            whyOthersWrong: "Table row count does not cause this exception (Option B). Disk space errors manifest as SQLExceptions (Option C). It occurs in Hibernate regardless of database vendor (Option D).",
+            coreConcept: "Avoid returning raw JPA entities from controllers: query using JOIN FETCH or project directly into tailored DTO records."
+          },
+          {
+            q: "In Kubernetes containerized deployments of Spring Boot, what is the critical difference between the /actuator/health/liveness and /actuator/health/readiness probes?",
+            options: [
+              "Liveness checks if the JVM process is alive/unfrozen (failing triggers Pod restart); Readiness checks if the application is ready to accept HTTP traffic (failing removes Pod from Service load balancer)",
+              "Liveness is for frontend apps, while Readiness is for backend microservices",
+              "They are identical aliases for the exact same health check",
+              "Readiness restarts the entire Kubernetes cluster node"
+            ],
+            correct: 0,
+            explanation: "Kubernetes uses liveness probes to catch deadlocks and restart stuck pods. Readiness probes verify that caches are warm, DB connections are ready, and traffic can be safely routed without dropping requests.",
+            whyOthersWrong: "Both are designed for containerized microservices (Option B). They have distinct Kubernetes lifecycle semantics (Option C). Readiness only modifies Service endpoint routing, never node reboots (Option D).",
+            coreConcept: "Configure separate liveness and readiness probes in Spring Boot Actuator for zero-downtime Kubernetes rolling updates."
+          },
+          {
+            q: "In a distributed microservice architecture, how do TraceId and SpanId (via Micrometer Tracing / OpenTelemetry) correlate user requests across 10 different services?",
+            options: [
+              "By injecting W3C TraceContext headers ('traceparent') into outgoing HTTP/gRPC requests, which each downstream service logs alongside its local operations",
+              "By storing all application logs in a single shared CSV file on a network drive",
+              "By forcing all microservices to run in the same JVM process",
+              "By using the user's plain-text credit card number as a logging key"
+            ],
+            correct: 0,
+            explanation: "TraceContext standards propagate a unique TraceId throughout the entire distributed call graph. Every microservice includes this TraceId in its MDC (Mapped Diagnostic Context) logs, enabling unified search in Grafana Tempo, Zipkin, or Jaeger.",
+            whyOthersWrong: "Shared CSV files fail at scale due to file write locking (Option B). Microservices run as independent processes (Option C). Storing sensitive payment data in logs violates PCI-DSS security compliance (Option D).",
+            coreConcept: "Correlate distributed microservice logs across HTTP boundaries using W3C TraceContext traceparent headers and OpenTelemetry."
+          },
+          {
+            q: "Why is Optimistic Locking with @Version preferred over Pessimistic Locking (SELECT FOR UPDATE) in high-throughput Spring web applications?",
+            options: [
+              "Optimistic locking holds zero database row locks during user thought-time, checking for version mismatch only at commit time, which avoids DB deadlock and connection pool starvation",
+              "Pessimistic locking is not supported by PostgreSQL or Oracle",
+              "Optimistic locking guarantees 100% of conflicting writes succeed simultaneously",
+              "Optimistic locking deletes older rows automatically"
+            ],
+            correct: 0,
+            explanation: "Optimistic locking uses a version integer column. The application reads without locking rows. At update time, 'WHERE id = ? AND version = ?' is executed; if another transaction updated first, an OptimisticLockingFailureException is raised and can be retried.",
+            whyOthersWrong: "All major RDBMS support pessimistic row locking (Option B). Conflicting writes must fail or retry, not overwrite (Option C). Rows are never deleted (Option D).",
+            coreConcept: "Use JPA @Version optimistic locking for high-concurrency read-heavy workloads to prevent DB row lock contention."
+          },
+          {
+            q: "What common architectural pitfall causes a method annotated with @Async in a Spring Service to execute synchronously on the caller's thread?",
+            options: [
+              "Calling the @Async method directly from another method inside the same Spring bean class, bypassing the Spring CGLIB proxy",
+              "The server having more than 8 CPU cores",
+              "Using Java 17 or higher",
+              "Returning a CompletableFuture instead of void"
+            ],
+            correct: 0,
+            explanation: "Spring manages asynchronous execution by wrapping beans in dynamic proxies. When method A calls method B in the same class ('this.methodB()'), the call goes directly to the raw object, completely bypassing the Spring proxy interceptor.",
+            whyOthersWrong: "More CPU cores enhance async performance (Option B). Java 17 fully supports @Async (Option C). Returning CompletableFuture is standard practice for asynchronous results (Option D).",
+            coreConcept: "Spring @Async and @Transactional annotations only intercept calls originating from outside the bean through its proxy."
+          },
+          {
+            q: "In a stateless microservice gateway using Spring Security, how should authentication be verified on incoming requests?",
+            options: [
+              "A OncePerRequestFilter extracts and validates the cryptographic JWT from the Authorization: Bearer header, populates SecurityContextHolder for the request lifecycle, with SessionCreationPolicy.STATELESS",
+              "By storing the user's password in a server-side HttpSession cookie",
+              "By disabling all security filters entirely with permitAll()",
+              "By querying LDAP on every static CSS file request"
+            ],
+            correct: 0,
+            explanation: "Stateless architectures avoid server-side sessions. Each request carries a signed JWT. The filter cryptographically verifies signature, expiration, and claims, populating Spring's SecurityContext for the current thread without session affinity.",
+            whyOthersWrong: "Storing raw passwords in cookies is a critical security vulnerability (Option B). permitAll removes all authentication (Option C). LDAP querying on static assets causes extreme latency (Option D).",
+            coreConcept: "Enforce SessionCreationPolicy.STATELESS in Spring Security and validate signed JWTs in a OncePerRequestFilter."
           }
         ]
       },
@@ -22845,6 +22980,141 @@ const defaultMarketReports = [
             }
           ]
         },
+        spring: {
+          title: "Spring Boot & Microservices",
+          questions: [
+          {
+                    "q": "When architecting an idempotent payment API endpoint in Spring Boot, what design guarantees safe retries from clients?",
+                    "options": [
+                              "Client passes a unique Idempotency-Key header; server atomically records it in a fast key-value store (e.g. Redis) or DB with conditional insert before processing",
+                              "Using HTTP GET for payments instead of POST",
+                              "Relying on TCP retry packets to deduplicate payment requests automatically",
+                              "Configuring the database connection pool size to 1"
+                    ],
+                    "correct": 0,
+                    "explanation": "Idempotency keys generated by clients allow the backend to atomically check if a transaction with that key has already begun or succeeded, returning cached results on retry without duplicate debit.",
+                    "whyOthersWrong": "GET requests must be safe and not cause state mutations (Option B). TCP operates at the transport layer and does not deduplicate application-level API retries (Option C). A pool of size 1 destroys concurrency (Option D).",
+                    "coreConcept": "Every mission-critical payment or booking POST API must require a client-generated Idempotency-Key header."
+          },
+          {
+                    "q": "In modern Spring Boot microservices, why is Constructor Injection strongly favored over Field Injection (@Autowired on class fields)?",
+                    "options": [
+                              "Constructor injection makes dependencies explicit, enforces immutability via 'final' fields, prevents NPEs at startup, and allows clean POJO unit testing without Spring context",
+                              "Field injection causes the JVM to consume 10x more heap memory",
+                              "Spring Boot 3 removes support for @Autowired entirely",
+                              "Constructor injection automatically encrypts all service classes in bytecode"
+                    ],
+                    "correct": 0,
+                    "explanation": "Constructor injection ensures all required dependencies must be provided at object instantiation. Making fields 'final' guarantees thread safety and allows unit tests to inject mock dependencies easily without reflection.",
+                    "whyOthersWrong": "Field injection does not consume 10x memory (Option B). @Autowired is still supported (Option C). Constructor injection has nothing to do with bytecode encryption (Option D).",
+                    "coreConcept": "Always use Constructor Injection with final fields (or Lombok @RequiredArgsConstructor) for Spring beans."
+          },
+          {
+                    "q": "What is the primary performance benefit of marking a service method with @Transactional(readOnly = true) in Spring / Hibernate?",
+                    "options": [
+                              "Hibernate flushes all entities to the database twice as fast",
+                              "Hibernate disables dirty-checking snapshot persistence and sets the JDBC connection to read-only, optimizing memory and enabling read-replica routing",
+                              "It locks the entire database table against concurrent writes",
+                              "It allows methods to run without a database connection"
+                    ],
+                    "correct": 1,
+                    "explanation": "With readOnly = true, Hibernate skips creating snapshot copies of retrieved entities in the Persistence Context for dirty checking upon commit, saving CPU/memory and allowing Spring's routing DataSource to direct queries to read replicas.",
+                    "whyOthersWrong": "Read-only transactions do not flush writes (Option A). They avoid write locks rather than locking tables (Option C). A database connection is still required (Option D).",
+                    "coreConcept": "Annotate all read-only database query methods with @Transactional(readOnly = true) for reduced memory overhead and read-replica routing."
+          },
+          {
+                    "q": "In a microservice dependency chain, what problem does a Circuit Breaker (e.g. Resilience4j) solve when a downstream service becomes unresponsive?",
+                    "options": [
+                              "It automatically upgrades the downstream service's RAM and CPU",
+                              "It converts all failed HTTP calls into asynchronous emails",
+                              "It immediately fails-fast or serves fallbacks once error thresholds are met, preventing upstream thread pool exhaustion and cascading system collapse",
+                              "It restarts the physical host machine"
+                    ],
+                    "correct": 2,
+                    "explanation": "When downstream latency or error rates exceed a threshold, the Circuit Breaker trips to OPEN state, short-circuiting calls immediately rather than holding threads open waiting for timeouts, preventing catastrophic thread starvation.",
+                    "whyOthersWrong": "Circuit breakers cannot allocate physical infrastructure (Option A). They do not send emails (Option B). They operate within the application process, not machine reboots (Option D).",
+                    "coreConcept": "Wrap all inter-service remote HTTP/gRPC calls in Circuit Breakers with fast timeouts and fallback handlers."
+          },
+          {
+                    "q": "What causes a LazyInitializationException when returning a JPA entity with lazy collections in a Spring REST Controller?",
+                    "options": [
+                              "Accessing an uninitialized lazy collection outside the active Hibernate Session / @Transactional boundary",
+                              "Having more than 100 rows in the database table",
+                              "The database server running out of disk space",
+                              "Using PostgreSQL instead of MySQL"
+                    ],
+                    "correct": 0,
+                    "explanation": "Lazy-loaded collections use dynamic bytecode proxies. When the service method completes and the Hibernate Session closes, any attempt by Jackson or controller code to serialize uninitialized collections triggers LazyInitializationException.",
+                    "whyOthersWrong": "Table row count does not cause this exception (Option B). Disk space errors manifest as SQLExceptions (Option C). It occurs in Hibernate regardless of database vendor (Option D).",
+                    "coreConcept": "Avoid returning raw JPA entities from controllers: query using JOIN FETCH or project directly into tailored DTO records."
+          },
+          {
+                    "q": "In Kubernetes containerized deployments of Spring Boot, what is the critical difference between the /actuator/health/liveness and /actuator/health/readiness probes?",
+                    "options": [
+                              "Liveness checks if the JVM process is alive/unfrozen (failing triggers Pod restart); Readiness checks if the application is ready to accept HTTP traffic (failing removes Pod from Service load balancer)",
+                              "Liveness is for frontend apps, while Readiness is for backend microservices",
+                              "They are identical aliases for the exact same health check",
+                              "Readiness restarts the entire Kubernetes cluster node"
+                    ],
+                    "correct": 0,
+                    "explanation": "Kubernetes uses liveness probes to catch deadlocks and restart stuck pods. Readiness probes verify that caches are warm, DB connections are ready, and traffic can be safely routed without dropping requests.",
+                    "whyOthersWrong": "Both are designed for containerized microservices (Option B). They have distinct Kubernetes lifecycle semantics (Option C). Readiness only modifies Service endpoint routing, never node reboots (Option D).",
+                    "coreConcept": "Configure separate liveness and readiness probes in Spring Boot Actuator for zero-downtime Kubernetes rolling updates."
+          },
+          {
+                    "q": "In a distributed microservice architecture, how do TraceId and SpanId (via Micrometer Tracing / OpenTelemetry) correlate user requests across 10 different services?",
+                    "options": [
+                              "By injecting W3C TraceContext headers ('traceparent') into outgoing HTTP/gRPC requests, which each downstream service logs alongside its local operations",
+                              "By storing all application logs in a single shared CSV file on a network drive",
+                              "By forcing all microservices to run in the same JVM process",
+                              "By using the user's plain-text credit card number as a logging key"
+                    ],
+                    "correct": 0,
+                    "explanation": "TraceContext standards propagate a unique TraceId throughout the entire distributed call graph. Every microservice includes this TraceId in its MDC (Mapped Diagnostic Context) logs, enabling unified search in Grafana Tempo, Zipkin, or Jaeger.",
+                    "whyOthersWrong": "Shared CSV files fail at scale due to file write locking (Option B). Microservices run as independent processes (Option C). Storing sensitive payment data in logs violates PCI-DSS security compliance (Option D).",
+                    "coreConcept": "Correlate distributed microservice logs across HTTP boundaries using W3C TraceContext traceparent headers and OpenTelemetry."
+          },
+          {
+                    "q": "Why is Optimistic Locking with @Version preferred over Pessimistic Locking (SELECT FOR UPDATE) in high-throughput Spring web applications?",
+                    "options": [
+                              "Optimistic locking holds zero database row locks during user thought-time, checking for version mismatch only at commit time, which avoids DB deadlock and connection pool starvation",
+                              "Pessimistic locking is not supported by PostgreSQL or Oracle",
+                              "Optimistic locking guarantees 100% of conflicting writes succeed simultaneously",
+                              "Optimistic locking deletes older rows automatically"
+                    ],
+                    "correct": 0,
+                    "explanation": "Optimistic locking uses a version integer column. The application reads without locking rows. At update time, 'WHERE id = ? AND version = ?' is executed; if another transaction updated first, an OptimisticLockingFailureException is raised and can be retried.",
+                    "whyOthersWrong": "All major RDBMS support pessimistic row locking (Option B). Conflicting writes must fail or retry, not overwrite (Option C). Rows are never deleted (Option D).",
+                    "coreConcept": "Use JPA @Version optimistic locking for high-concurrency read-heavy workloads to prevent DB row lock contention."
+          },
+          {
+                    "q": "What common architectural pitfall causes a method annotated with @Async in a Spring Service to execute synchronously on the caller's thread?",
+                    "options": [
+                              "Calling the @Async method directly from another method inside the same Spring bean class, bypassing the Spring CGLIB proxy",
+                              "The server having more than 8 CPU cores",
+                              "Using Java 17 or higher",
+                              "Returning a CompletableFuture instead of void"
+                    ],
+                    "correct": 0,
+                    "explanation": "Spring manages asynchronous execution by wrapping beans in dynamic proxies. When method A calls method B in the same class ('this.methodB()'), the call goes directly to the raw object, completely bypassing the Spring proxy interceptor.",
+                    "whyOthersWrong": "More CPU cores enhance async performance (Option B). Java 17 fully supports @Async (Option C). Returning CompletableFuture is standard practice for asynchronous results (Option D).",
+                    "coreConcept": "Spring @Async and @Transactional annotations only intercept calls originating from outside the bean through its proxy."
+          },
+          {
+                    "q": "In a stateless microservice gateway using Spring Security, how should authentication be verified on incoming requests?",
+                    "options": [
+                              "A OncePerRequestFilter extracts and validates the cryptographic JWT from the Authorization: Bearer header, populates SecurityContextHolder for the request lifecycle, with SessionCreationPolicy.STATELESS",
+                              "By storing the user's password in a server-side HttpSession cookie",
+                              "By disabling all security filters entirely with permitAll()",
+                              "By querying LDAP on every static CSS file request"
+                    ],
+                    "correct": 0,
+                    "explanation": "Stateless architectures avoid server-side sessions. Each request carries a signed JWT. The filter cryptographically verifies signature, expiration, and claims, populating Spring's SecurityContext for the current thread without session affinity.",
+                    "whyOthersWrong": "Storing raw passwords in cookies is a critical security vulnerability (Option B). permitAll removes all authentication (Option C). LDAP querying on static assets causes extreme latency (Option D).",
+                    "coreConcept": "Enforce SessionCreationPolicy.STATELESS in Spring Security and validate signed JWTs in a OncePerRequestFilter."
+          }
+]
+        },
         db: {
           title: "Database Management & Indexing",
           questions: [
@@ -23729,7 +23999,7 @@ const defaultMarketReports = [
             </div>
 
             <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-              <button onclick="openSkillResourceViewer('${skill.id}')" class="w-full sm:w-auto min-h-[44px] px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold shadow-xs flex items-center justify-center space-x-1.5 cursor-pointer">
+              <button onclick="openSkillResourceViewer('${skill.id}', 'en', 0, '${encodeURIComponent(skill.name)}')" class="w-full sm:w-auto min-h-[44px] px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold shadow-xs flex items-center justify-center space-x-1.5 cursor-pointer">
                 <i class="fa-brands fa-youtube"></i>
                 <span>Study Video Playlist</span>
               </button>
@@ -24656,22 +24926,33 @@ function renderMcqModulesForStream() {
   if (tabsContainer) {
     tabsContainer.innerHTML = '';
     const modKeys = Object.keys(appState.quizModules);
-    modKeys.forEach((key, idx) => {
+    
+    // Choose active key: maintain current activeQuizModule if it exists in this stream
+    const activeKey = (appState.activeQuizModule && appState.quizModules[appState.activeQuizModule])
+      ? appState.activeQuizModule
+      : (modKeys.length > 0 ? modKeys[0] : null);
+
+    modKeys.forEach((key) => {
       const mod = appState.quizModules[key];
       const btn = document.createElement('button');
       btn.id = `modBtn-${key}`;
+      const isActive = (key === activeKey);
       btn.className = `px-3.5 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
-        idx === 0
-          ? 'bg-[#008080] text-white border-[#008080]'
+        isActive
+          ? 'bg-[#008080] text-white border-[#008080] shadow-xs'
           : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
       }`;
       btn.innerText = mod.title;
-      btn.onclick = () => switchQuizModule(key);
+      btn.onclick = () => {
+        appState.targetSkillName = null;
+        appState.targetSkillId = null;
+        switchQuizModule(key);
+      };
       tabsContainer.appendChild(btn);
     });
 
-    if (modKeys.length > 0) {
-      switchQuizModule(modKeys[0]);
+    if (activeKey) {
+      switchQuizModule(activeKey);
     }
   }
 }
@@ -25643,6 +25924,7 @@ function onWizardBranchChanged(branchKey) {
         function openOnboardingModal(branchOverride = null) {
       document.getElementById('onboardingModal').classList.remove('hidden');
       document.getElementById('onboardingModal').classList.add('flex');
+      lockBodyScroll(true);
       appState.currentWizardStep = 1;
 
       const branch = branchOverride || (appState.user && appState.user.branch) || appState.selectedStream || 'it';
@@ -25658,6 +25940,7 @@ function onWizardBranchChanged(branchKey) {
     function closeOnboardingModal() {
       document.getElementById('onboardingModal').classList.add('hidden');
       document.getElementById('onboardingModal').classList.remove('flex');
+      lockBodyScroll(false);
 
       // Revert navbar stream selector to active stream if modal cancelled
       const activeStream = getActiveStreamKey();
@@ -26024,14 +26307,29 @@ function onWizardBranchChanged(branchKey) {
       }
     }
 
-    function getSkillCurriculum(skillId) {
-      if (SKILL_CURRICULA[skillId]) return SKILL_CURRICULA[skillId];
-      // Try alias / prefix matching
+    function getSkillCurriculum(skillId, skillName) {
+      if (!skillId && !skillName) return SKILL_CURRICULA['emb_c'] || Object.values(SKILL_CURRICULA)[0];
+      if (skillId && SKILL_CURRICULA[skillId]) return SKILL_CURRICULA[skillId];
       const keys = Object.keys(SKILL_CURRICULA);
-      const cleanId = String(skillId).toLowerCase().replace(/[^a-z0-9]/g, '');
-      const match = keys.find(k => k === cleanId || cleanId.includes(k) || k.includes(cleanId));
+      const cleanId = String(skillId || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      let match = cleanId ? keys.find(k => k === cleanId || cleanId.includes(k) || k.includes(cleanId)) : null;
       if (match) return SKILL_CURRICULA[match];
-      // Default to core skill
+
+      if (skillName) {
+        const sLower = skillName.toLowerCase();
+        if (sLower.includes('spring')) return SKILL_CURRICULA['spring'] || SKILL_CURRICULA['java'];
+        if (sLower.includes('docker') || sLower.includes('container')) return SKILL_CURRICULA['docker'];
+        if (sLower.includes('postgres') || sLower.includes('sql') || sLower.includes('database')) return SKILL_CURRICULA['postgres'];
+        if (sLower.includes('java') || sLower.includes('multithreading')) return SKILL_CURRICULA['java'];
+        if (sLower.includes('debug')) return SKILL_CURRICULA['debug'];
+        if (sLower.includes('c++') || sLower.includes('firmware') || sLower.includes('embedded c')) return SKILL_CURRICULA['emb_c'];
+        if (sLower.includes('arm') || sLower.includes('stm32')) return SKILL_CURRICULA['arm_stm32'];
+        if (sLower.includes('rtos') || sLower.includes('freertos')) return SKILL_CURRICULA['freertos'];
+        if (sLower.includes('react') || sLower.includes('next')) return SKILL_CURRICULA['react'];
+        if (sLower.includes('node')) return SKILL_CURRICULA['nodejs'];
+        if (sLower.includes('python')) return SKILL_CURRICULA['python'];
+        if (sLower.includes('pytorch')) return SKILL_CURRICULA['pytorch'];
+      }
       return SKILL_CURRICULA['emb_c'] || Object.values(SKILL_CURRICULA)[0];
     }
 
@@ -26070,8 +26368,12 @@ function onWizardBranchChanged(branchKey) {
       openSkillResourceViewer(activeModalSkillId, activeModalTrack, 0);
     }
 
-    function openSkillResourceViewer(skillId, track = 'en', lessonIdx = 0) {
-      const curric = getSkillCurriculum(skillId);
+    function openSkillResourceViewer(skillId, track = 'en', lessonIdx = 0, encodedSkillName = '') {
+      let skillName = '';
+      if (encodedSkillName) {
+        try { skillName = decodeURIComponent(encodedSkillName); } catch (e) { skillName = encodedSkillName; }
+      }
+      const curric = getSkillCurriculum(skillId, skillName);
       if (!curric) return;
 
       activeModalSkillId = curric.id;
@@ -26203,6 +26505,7 @@ function onWizardBranchChanged(branchKey) {
 
       document.getElementById('resourceModal').classList.remove('hidden');
       document.getElementById('resourceModal').classList.add('flex');
+      lockBodyScroll(true);
     }
 
     function switchModalTrack(track) {
@@ -26795,6 +27098,7 @@ function onWizardBranchChanged(branchKey) {
         resModal.classList.add('hidden');
         resModal.classList.remove('flex');
       }
+      lockBodyScroll(false);
     }
 
     function saveAndCompleteResource() {
@@ -27061,6 +27365,71 @@ function onWizardBranchChanged(branchKey) {
       });
     }
 
+    function findMatchingQuizModuleKey(modules, skillId, skillName) {
+      if (!modules) return null;
+      const modKeys = Object.keys(modules);
+      const sId = (skillId || '').toLowerCase().trim();
+      const sNm = (skillName || '').toLowerCase().trim();
+
+      // 1. Exact key match
+      if (modules[skillId]) return skillId;
+      if (modules[sId]) return sId;
+
+      // 2. Stream-prefixed key match (e.g. it_docker, ece_firmware)
+      const streamPrefixed = modKeys.find(k => k.endsWith('_' + sId) || k === sId);
+      if (streamPrefixed) return streamPrefixed;
+
+      // 3. Keyword heuristic on skillName / skillId
+      if (sId.includes('spring') || sNm.includes('spring')) {
+        const k = modKeys.find(m => m.includes('spring'));
+        if (k) return k;
+      }
+      if (sId.includes('docker') || sNm.includes('docker') || sNm.includes('container')) {
+        const k = modKeys.find(m => m.includes('docker'));
+        if (k) return k;
+      }
+      if (sId.includes('debug') || sNm.includes('debug') || sNm.includes('profiling')) {
+        const k = modKeys.find(m => m.includes('debug'));
+        if (k) return k;
+      }
+      if (sId.includes('postgres') || sId.includes('db') || sNm.includes('sql') || sNm.includes('database')) {
+        const k = modKeys.find(m => m.includes('db') || m.includes('postgres') || m.includes('sql'));
+        if (k) return k;
+      }
+      if (sId.includes('java') || sNm.includes('java')) {
+        const k = modKeys.find(m => m.includes('java') && !m.includes('spring'));
+        if (k) return k;
+      }
+      if (sNm.includes('rtos') || sId.includes('rtos')) {
+        const k = modKeys.find(m => m.includes('rtos'));
+        if (k) return k;
+      }
+      if (sNm.includes('firmware') || sNm.includes('arm') || sId.includes('firmware') || sId.includes('emb_c')) {
+        const k = modKeys.find(m => m.includes('firmware') || m.includes('emb'));
+        if (k) return k;
+      }
+      if (sNm.includes('rag') || sNm.includes('genai') || sNm.includes('vector') || sNm.includes('llm')) {
+        const k = modKeys.find(m => m.includes('rag') || m.includes('genai'));
+        if (k) return k;
+      }
+      if (sNm.includes('distributed') || sId.includes('distributed') || sNm.includes('consensus') || sNm.includes('raft')) {
+        const k = modKeys.find(m => m.includes('distributed'));
+        if (k) return k;
+      }
+
+      // 4. Module title match
+      if (sNm) {
+        const sWords = sNm.split(/[\s,&-]+/).filter(w => w.length > 2);
+        const k = modKeys.find(key => {
+          const title = ((modules[key] && modules[key].title) || '').toLowerCase();
+          return sWords.some(w => title.includes(w));
+        });
+        if (k) return k;
+      }
+
+      return null;
+    }
+
     function startQuizForSkill(skillId, encodedSkillName) {
       let skillName = '';
       try {
@@ -27071,65 +27440,45 @@ function onWizardBranchChanged(branchKey) {
       appState.targetSkillId = skillId;
       appState.targetSkillName = skillName;
 
-      // Ensure stream quiz modules are populated
-      const streamKey = getActiveStreamKey();
-      if ((!appState.quizModules || Object.keys(appState.quizModules).length === 0) && typeof STREAM_DATA !== 'undefined' && STREAM_DATA[streamKey] && STREAM_DATA[streamKey].quizModules) {
-        appState.quizModules = JSON.parse(JSON.stringify(STREAM_DATA[streamKey].quizModules));
+      let targetModKey = null;
+      let targetStreamKey = (typeof getActiveStreamKey === 'function') ? getActiveStreamKey() : (appState.selectedStream || 'it');
+
+      // Check current stream's quiz modules first
+      if (typeof STREAM_DATA !== 'undefined' && STREAM_DATA[targetStreamKey] && STREAM_DATA[targetStreamKey].quizModules) {
+        targetModKey = findMatchingQuizModuleKey(STREAM_DATA[targetStreamKey].quizModules, skillId, skillName);
       }
 
-      // Find best matching module
-      let matchedModKey = null;
-      const modKeys = Object.keys(appState.quizModules || {});
-
-      // 1. Direct key match
-      if (appState.quizModules[skillId]) {
-        matchedModKey = skillId;
-      }
-
-      // 2. Contains skillId
-      if (!matchedModKey && skillId) {
-        matchedModKey = modKeys.find(k => k.toLowerCase().includes(skillId.toLowerCase()) || skillId.toLowerCase().includes(k.toLowerCase()));
-      }
-
-      // 3. Keyword heuristic on skillName / skillId
-      if (!matchedModKey && (skillId || skillName)) {
-        const sId = (skillId || '').toLowerCase();
-        const sNm = (skillName || '').toLowerCase();
-        if (sId.includes('docker') || sNm.includes('docker') || sNm.includes('container')) {
-          matchedModKey = modKeys.find(k => k.includes('docker')) || 'it_docker' || 'docker';
-        } else if (sId.includes('debug') || sNm.includes('debug') || sNm.includes('profiling')) {
-          matchedModKey = modKeys.find(k => k.includes('debug')) || 'it_debug' || 'debug';
-        } else if (sId.includes('postgres') || sId.includes('db') || sNm.includes('sql') || sNm.includes('database')) {
-          matchedModKey = modKeys.find(k => k.includes('db')) || 'it_db' || 'db';
-        } else if (sId.includes('spring') || sId.includes('java') || sNm.includes('java') || sNm.includes('spring')) {
-          matchedModKey = modKeys.find(k => k.includes('java')) || 'it_java' || 'java';
-        } else if (sNm.includes('rtos') || sId.includes('rtos')) {
-          matchedModKey = modKeys.find(k => k.includes('rtos')) || 'ece_rtos';
-        } else if (sNm.includes('firmware') || sNm.includes('arm') || sId.includes('firmware')) {
-          matchedModKey = modKeys.find(k => k.includes('firmware')) || 'ece_firmware';
-        } else if (sNm.includes('rag') || sNm.includes('genai') || sNm.includes('vector')) {
-          matchedModKey = modKeys.find(k => k.includes('rag')) || 'aids_rag';
-        } else if (sNm.includes('distributed') || sId.includes('distributed')) {
-          matchedModKey = modKeys.find(k => k.includes('distributed')) || 'cse_distributed';
+      // If not in current stream, search across all streams in STREAM_DATA
+      if (!targetModKey && typeof STREAM_DATA !== 'undefined') {
+        for (const [sKey, sData] of Object.entries(STREAM_DATA)) {
+          if (sData.quizModules) {
+            const mKey = findMatchingQuizModuleKey(sData.quizModules, skillId, skillName);
+            if (mKey) {
+              targetModKey = mKey;
+              targetStreamKey = sKey;
+              break;
+            }
+          }
         }
       }
 
-      // 4. Module title match
-      if (!matchedModKey && skillName) {
-        const sWords = skillName.toLowerCase().split(/[\s,&-]+/).filter(w => w.length > 2);
-        matchedModKey = modKeys.find(k => {
-          const title = ((appState.quizModules[k] && appState.quizModules[k].title) || '').toLowerCase();
-          return sWords.some(w => title.includes(w));
-        });
+      // Update active stream to the stream holding this quiz module
+      if (targetStreamKey) {
+        appState.selectedStream = targetStreamKey;
+        if (typeof STREAM_DATA !== 'undefined' && STREAM_DATA[targetStreamKey] && STREAM_DATA[targetStreamKey].quizModules) {
+          appState.quizModules = JSON.parse(JSON.stringify(STREAM_DATA[targetStreamKey].quizModules));
+        }
       }
 
-      if (matchedModKey && appState.quizModules[matchedModKey]) {
-        switchQuizModule(matchedModKey);
+      const modKeys = Object.keys(appState.quizModules || {});
+      if (targetModKey && appState.quizModules[targetModKey]) {
+        appState.activeQuizModule = targetModKey;
       } else if (modKeys.length > 0) {
-        switchQuizModule(modKeys[0]);
+        appState.activeQuizModule = modKeys[0];
       }
 
       navigateTo('mcq');
+      switchQuizModule(appState.activeQuizModule);
       showToast(`Starting 10-MCQ Benchmark Exam: ${skillName}`);
     }
 
@@ -27159,8 +27508,18 @@ function onWizardBranchChanged(branchKey) {
 
       const titleEl = document.getElementById('quizActiveModuleTitle');
       if (titleEl && appState.quizModules[modKey]) {
-        titleEl.innerText = `Module: ${appState.quizModules[modKey].title} (${appState.testMode === 20 ? '20-Q Benchmark (20m)' : '10-MCQ Track (10m)'})`;
+        const testTitle = appState.targetSkillName 
+          ? `Benchmark Assessment: ${appState.targetSkillName}` 
+          : `Benchmark Assessment: ${appState.quizModules[modKey].title}`;
+        titleEl.innerText = `${testTitle} (${appState.testMode === 20 ? '20-Q Benchmark (20m)' : '10-MCQ Track (10m)'})`;
       }
+
+      // Highlight active tab in mcqModuleTabs
+      document.querySelectorAll('#mcqModuleTabs button').forEach(btn => {
+        btn.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg border transition-all bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100";
+      });
+      const activeTabBtn = document.getElementById(`modBtn-${modKey}`) || document.getElementById(`qmod-${modKey}`);
+      if (activeTabBtn) activeTabBtn.className = "px-3.5 py-1.5 text-xs font-semibold rounded-lg border transition-all bg-[#008080] text-white border-[#008080] shadow-xs";
 
       document.getElementById('quizResultBox').classList.add('hidden');
       document.getElementById('quizContainer').classList.remove('hidden');
@@ -28057,14 +28416,43 @@ function onWizardBranchChanged(branchKey) {
       });
     }
 
+    function getPlatformShareUrl() {
+      if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http') && !window.location.origin.includes('localhost') && !window.location.origin.includes('127.0.0.1')) {
+        return window.location.origin + (window.location.pathname === '/' ? '' : window.location.pathname);
+      }
+      return 'https://campus2career-pi.vercel.app/';
+    }
+
+    function lockBodyScroll(lock) {
+      if (lock) {
+        lockBodyScroll(true);
+      } else {
+        const anyOpen = document.querySelector('#authModal.flex, #shareModal.flex, #recruiterAuthModal.flex, #mcqModal.flex, #diagnosticModal.flex, #databaseViewerModal.flex, #adminAuthModal.flex, #resourceModal.flex, #onboardingModal.flex, #mobileNavDrawer:not(.hidden)');
+        if (!anyOpen) {
+          lockBodyScroll(false);
+        }
+      }
+    }
+
     function openShareModal() {
-      document.getElementById('shareModal').classList.remove('hidden');
-      document.getElementById('shareModal').classList.add('flex');
+      const url = getPlatformShareUrl();
+      const input = document.getElementById('sharePlatformUrlInput');
+      if (input) input.value = url;
+      const modal = document.getElementById('shareModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+      lockBodyScroll(true);
     }
 
     function closeShareModal() {
-      document.getElementById('shareModal').classList.add('hidden');
-      document.getElementById('shareModal').classList.remove('flex');
+      const modal = document.getElementById('shareModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      lockBodyScroll(false);
     }
 
     function copyShareLink(link) {
@@ -28140,14 +28528,68 @@ function onWizardBranchChanged(branchKey) {
 
       updateNavStreamLabel(activeStream);
 
-      // Core learning panel tabs always remain accessible on desktop and mobile
+      const isAuthenticated = !!(appState.user && appState.user.name && !appState.user.isGuest);
+      const isStudent = (appState.user && appState.user.role !== 'recruiter');
+      const isRecruiter = (appState.user && appState.user.role === 'recruiter');
+
+      // Core learning panel tabs on desktop
       if (authTabs) {
         authTabs.classList.remove('hidden');
         authTabs.classList.add('flex');
       }
-      document.querySelectorAll('.auth-required-mobile-tab').forEach(b => b.classList.remove('hidden'));
 
-      const isAuthenticated = !!(appState.user && appState.user.name && !appState.user.isGuest);
+      // Hide deep internal learning links in mobile drawer for unauthenticated guests
+      document.querySelectorAll('.auth-required-mobile-tab').forEach(b => {
+        if (isAuthenticated) {
+          b.classList.remove('hidden');
+        } else {
+          b.classList.add('hidden');
+        }
+      });
+
+      // Strict Role Separation: Recruiter Console in header
+      const headerRecruiterBtn = document.getElementById('headerRecruiterAccessBtn');
+      if (headerRecruiterBtn) {
+        if (isStudent) {
+          headerRecruiterBtn.classList.add('hidden');
+        } else if (isRecruiter) {
+          headerRecruiterBtn.classList.remove('hidden');
+        } else {
+          headerRecruiterBtn.classList.remove('hidden');
+        }
+      }
+
+      // Strict Role Separation: Mobile drawer recruiter button
+      const mobileDrawerRecruiterBtn = document.getElementById('mobileDrawerRecruiterBtn');
+      if (mobileDrawerRecruiterBtn) {
+        if (isStudent) {
+          mobileDrawerRecruiterBtn.classList.add('hidden');
+        } else {
+          mobileDrawerRecruiterBtn.classList.remove('hidden');
+        }
+      }
+
+      // Strict Role Separation: Mobile drawer recruiter links
+      const mobileRecruiterLinks = document.getElementById('mobileRecruiterLinks');
+      if (mobileRecruiterLinks) {
+        if (isRecruiter) {
+          mobileRecruiterLinks.classList.remove('hidden');
+        } else {
+          mobileRecruiterLinks.classList.add('hidden');
+        }
+      }
+
+      // Strict Role Separation: Desktop Recruiter vs Learner items
+      const navRecruiterItems = document.getElementById('navRecruiterItems');
+      const navLearnerItems = document.getElementById('navLearnerItems');
+      if (isRecruiter) {
+        if (navRecruiterItems) navRecruiterItems.style.display = 'flex';
+        if (navLearnerItems) navLearnerItems.style.display = 'none';
+      } else {
+        if (navRecruiterItems) navRecruiterItems.style.display = 'none';
+        if (navLearnerItems) navLearnerItems.style.display = 'flex';
+      }
+
       const navStreamContainer = document.getElementById('navStreamSelectorContainer');
 
       if (isAuthenticated) {
@@ -28606,7 +29048,7 @@ function onWizardBranchChanged(branchKey) {
           icon.classList.remove('fa-bars');
           icon.classList.add('fa-xmark');
         }
-        document.body.style.overflow = 'hidden';
+        lockBodyScroll(true);
       } else {
         drawer.classList.add('hidden');
         if (backdrop) backdrop.classList.add('hidden');
@@ -28614,7 +29056,7 @@ function onWizardBranchChanged(branchKey) {
           icon.classList.remove('fa-xmark');
           icon.classList.add('fa-bars');
         }
-        document.body.style.overflow = '';
+        lockBodyScroll(false);
       }
     }
 
@@ -29225,7 +29667,7 @@ function onWizardBranchChanged(branchKey) {
     // SHARE MODAL APP SHARING & COPY LINK
     function copyPlatformShareLink() {
       const input = document.getElementById('sharePlatformUrlInput');
-      const shareUrl = window.location.origin ? (window.location.origin + window.location.pathname) : 'http://localhost:8000/index.html';
+      const shareUrl = getPlatformShareUrl();
       if (input) input.value = shareUrl;
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -29256,7 +29698,7 @@ function onWizardBranchChanged(branchKey) {
     }
 
     function shareViaApp(app) {
-      const currentUrl = window.location.origin ? (window.location.origin + window.location.pathname) : 'http://localhost:8000/index.html';
+      const currentUrl = getPlatformShareUrl();
       const shareText = "Check out Campus2Career — Engineering Benchmark & Skill Diagnostic Platform for B.Tech students & recruiters: ";
       const encodedUrl = encodeURIComponent(currentUrl);
       const encodedText = encodeURIComponent(shareText);

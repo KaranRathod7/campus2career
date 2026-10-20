@@ -23,15 +23,18 @@ module.exports = async (req, res) => {
     try {
       let user_id = null;
       let user_email = null;
+      let stream = null;
 
       const auth = verifyUser(req);
       if (auth.valid && auth.user) {
         user_id = auth.user.id;
         user_email = auth.user.email;
+        stream = auth.user.stream || auth.user.branch || null;
       } else {
         const q = req.query || {};
         user_email = (q.user_email || q.email || '').trim().toLowerCase() || null;
         user_id = q.user_id || null;
+        stream = q.stream || q.branch || null;
       }
 
       if (!user_id && !user_email) {
@@ -44,7 +47,8 @@ module.exports = async (req, res) => {
 
       const skills = await db.getStudentSkills({
         user_id,
-        user_email
+        user_email,
+        stream
       });
 
       return res.status(200).json({

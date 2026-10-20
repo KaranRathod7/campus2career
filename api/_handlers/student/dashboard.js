@@ -27,12 +27,12 @@ module.exports = async (req, res) => {
     if (auth.valid && auth.user) {
       user_id = auth.user.id;
       user_email = auth.user.email;
-      stream = auth.user.stream;
+      stream = auth.user.stream || auth.user.branch || null;
     } else {
       const q = req.query || {};
       user_email = (q.user_email || q.email || '').trim().toLowerCase() || null;
       user_id = q.user_id || null;
-      stream = q.stream || null;
+      stream = q.stream || q.branch || null;
     }
 
     let skills = await db.getStudentSkills({
