@@ -84,6 +84,8 @@ router.all('/smtp-config', adapt(require('./_handlers/smtp-config')));
 
 // MCQ Diagnostic & Benchmark Submissions
 router.all('/mcq/submit', adapt(require('./_handlers/mcq/submit')));
+router.all('/tests/submit', adapt(require('./_handlers/tests/submit')));
+router.all('/student/tests/submit', adapt(require('./_handlers/tests/submit')));
 
 // Student Activity Pipeline & Live Stopwatch Tracking
 router.all('/student/log-activity', adapt(require('./_handlers/student/log-activity')));

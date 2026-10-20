@@ -27299,8 +27299,45 @@ function onWizardBranchChanged(branchKey) {
         passed
       });
 
-      // Server-Side Diagnostic Benchmark Evaluation & Cryptographic Credential
+      // Record test attempt via /api/tests/submit & cryptographic credential
       try {
+        const testPayload = {
+          userId: appState.user ? (appState.user.id || appState.user.email) : null,
+          user_id: appState.user ? (appState.user.id || appState.user.email) : null,
+          skillName: matchingSkill ? matchingSkill.name : mod.title,
+          skill_name: matchingSkill ? matchingSkill.name : mod.title,
+          testTitle: mod.title,
+          test_title: mod.title,
+          score: percentage,
+          totalQuestions: qList.length,
+          total_questions: qList.length,
+          correctAnswers: correctCount,
+          correct_answers: correctCount,
+          breakdown: {
+            mode: appState.testMode || 10,
+            answers: appState.quizAnswers,
+            stream: (appState.user && appState.user.branch) || appState.selectedStream || 'it'
+          }
+        };
+
+        fetch('/api/tests/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(testPayload)
+        }).then(r => r.json()).then(resData => {
+          if (resData && resData.summary && matchingSkill) {
+            if (resData.summary.total_score !== undefined) {
+              matchingSkill.score = Number(resData.summary.total_score);
+            }
+            if (resData.summary.status) {
+              matchingSkill.status = resData.summary.status;
+            }
+            renderSkillLevelDiagram();
+            runLiveRecalculations();
+          }
+        }).catch(() => {});
+
         fetch('/api/mcq/submit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

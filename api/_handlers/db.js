@@ -134,6 +134,8 @@ function getLocalStore() {
   if (fs.existsSync(LOCAL_STORE_FILE)) {
     try {
       inMemoryStore = JSON.parse(fs.readFileSync(LOCAL_STORE_FILE, 'utf-8'));
+      delete inMemoryStore.student_activity_logs;
+      if (!inMemoryStore.student_test_attempts) inMemoryStore.student_test_attempts = [];
       if (!inMemoryStore.student_skill_progress) inMemoryStore.student_skill_progress = [];
     if (!inMemoryStore.user_completed_lectures) inMemoryStore.user_completed_lectures = [];
     if (!inMemoryStore.user_completed_lectures) inMemoryStore.user_completed_lectures = [];
@@ -521,6 +523,135 @@ async function ensureSchema() {
           );
         `);
         await p.query('CREATE INDEX IF NOT EXISTS idx_completed_lectures_user ON user_completed_lectures (user_id, skill_name);');
+      } catch (e) {}
+
+      // 10. Clean Up & Consolidate: Drop empty/deprecated student_activity_logs
+      try {
+        await p.query("DROP TABLE IF EXISTS student_activity_logs CASCADE;");
+      } catch (e) {}
+
+      // 11. Student Test Attempts Table (History Log for Line Charts & Performance)
+      try {
+        await p.query(`
+          CREATE TABLE IF NOT EXISTS student_test_attempts (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id UUID,
+            skill_name VARCHAR(150) NOT NULL,
+            test_title VARCHAR(255),
+            score NUMERIC(5,2) NOT NULL,
+            total_questions INT DEFAULT 0,
+            correct_answers INT DEFAULT 0,
+            metadata JSONB DEFAULT '{}',
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+        await p.query('CREATE INDEX IF NOT EXISTS idx_student_test_attempts_user_skill ON student_test_attempts (user_id, skill_name);');
+        await p.query('CREATE INDEX IF NOT EXISTS idx_student_test_attempts_created_at ON student_test_attempts (created_at ASC);');
+
+        // Extra column verification
+        const attemptCols = [
+          "ALTER TABLE student_test_attempts ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';",
+          "ALTER TABLE student_test_attempts ADD COLUMN IF NOT EXISTS total_questions INT DEFAULT 0;",
+          "ALTER TABLE student_test_attempts ADD COLUMN IF NOT EXISTS correct_answers INT DEFAULT 0;",
+          "ALTER TABLE student_skill_progress ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT false;",
+          "ALTER TABLE student_skill_progress ADD COLUMN IF NOT EXISTS last_tested_at TIMESTAMP WITH TIME ZONE;"
+        ];
+        for (const ac of attemptCols) {
+          try { await p.query(ac); } catch (e) {}
+        }
+      } catch (e) {}
+
+      // 12. PostgreSQL Trigger: Auto-populate student_skill_progress summary on test attempt insert
+      try {
+        await p.query(`
+          CREATE OR REPLACE FUNCTION trg_update_student_skill_progress()
+          RETURNS TRIGGER AS $
+          DECLARE
+            v_base_percentage NUMERIC(5,2);
+            v_new_total NUMERIC(5,2);
+            v_new_status VARCHAR(50);
+          BEGIN
+            SELECT COALESCE(base_percentage, 35)
+            INTO v_base_percentage
+            FROM student_skill_progress
+            WHERE (user_id = NEW.user_id OR user_id::text = NEW.user_id::text) AND LOWER(skill_name) = LOWER(NEW.skill_name)
+            LIMIT 1;
+
+            IF v_base_percentage IS NULL THEN
+              v_base_percentage := 35;
+            END IF;
+
+            IF NEW.score >= 80 THEN
+              v_new_status := 'LIVE VERIFIED';
+              v_new_total := LEAST(100, GREATEST(v_base_percentage, NEW.score));
+            ELSE
+              v_new_status := 'UNVERIFIED BASELINE';
+              v_new_total := LEAST(100, GREATEST(v_base_percentage, ROUND(v_base_percentage + (NEW.score * 0.2))));
+            END IF;
+
+            INSERT INTO student_skill_progress (
+              user_id,
+              skill_name,
+              category,
+              base_percentage,
+              total_score,
+              status,
+              verified,
+              last_tested_at,
+              updated_at
+            ) VALUES (
+              NEW.user_id,
+              NEW.skill_name,
+              'Core Skill',
+              v_base_percentage,
+              v_new_total,
+              v_new_status,
+              (NEW.score >= 80),
+              NEW.created_at,
+              CURRENT_TIMESTAMP
+            )
+            ON CONFLICT (user_id, skill_name) DO UPDATE SET
+              total_score = EXCLUDED.total_score,
+              status = EXCLUDED.status,
+              verified = EXCLUDED.verified,
+              last_tested_at = EXCLUDED.last_tested_at,
+              updated_at = CURRENT_TIMESTAMP;
+
+            RETURN NEW;
+          END;
+          $ LANGUAGE plpgsql;
+
+          DROP TRIGGER IF EXISTS trg_after_test_attempt_insert ON student_test_attempts;
+          CREATE TRIGGER trg_after_test_attempt_insert
+          AFTER INSERT ON student_test_attempts
+          FOR EACH ROW
+          EXECUTE FUNCTION trg_update_student_skill_progress();
+        `);
+      } catch (e) {}
+
+      // 13. Enable Row Level Security (RLS) on student_test_attempts and student_skill_progress
+      try {
+        await p.query(`
+          ALTER TABLE student_test_attempts ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE student_skill_progress ENABLE ROW LEVEL SECURITY;
+
+          DO \$\$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'student_test_attempts' AND policyname = 'student_test_attempts_select_own') THEN
+              CREATE POLICY student_test_attempts_select_own ON student_test_attempts FOR SELECT USING (auth.uid() = user_id OR auth.uid() IS NULL);
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'student_skill_progress' AND policyname = 'student_skill_progress_select_own') THEN
+              CREATE POLICY student_skill_progress_select_own ON student_skill_progress FOR SELECT USING (auth.uid() = user_id OR auth.uid() IS NULL);
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'student_test_attempts' AND policyname = 'student_test_attempts_insert_own') THEN
+              CREATE POLICY student_test_attempts_insert_own ON student_test_attempts FOR INSERT WITH CHECK (auth.uid() = user_id OR auth.uid() IS NULL);
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'student_skill_progress' AND policyname = 'student_skill_progress_all_own') THEN
+              CREATE POLICY student_skill_progress_all_own ON student_skill_progress FOR ALL USING (auth.uid() = user_id OR auth.uid() IS NULL);
+            END IF;
+          END
+          \$\$;
+        `);
       } catch (e) {}
 
       // 7. Seed Admin if not present
@@ -1555,6 +1686,188 @@ const db = {
       avg_exam_score: 0,
       dynamic_competence_percent: 25.0
     };
+  },
+
+  // Supabase SDK Client Factory
+  getSupabaseClient() {
+    const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY;
+    if (url && key) {
+      try {
+        const { createClient } = require('@supabase/supabase-js');
+        return createClient(url, key);
+      } catch (e) {
+        console.warn('[Campus2Career Supabase Client Load Warning]', e.message);
+      }
+    }
+    return null;
+  },
+
+  // Record student test attempt in student_test_attempts and update student_skill_progress
+  async recordTestAttempt({ user_id, skill_name, test_title, score, total_questions, correct_answers, metadata }) {
+    const validUuid = (user_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(user_id))) ? String(user_id) : null;
+    const cleanSkill = (skill_name || 'Core Skill').trim();
+    const cleanTitle = (test_title || `${cleanSkill} Assessment`).trim();
+    const numScore = Math.min(100, Math.max(0, Number(score) || 0));
+    const totalQ = Math.max(0, Number(total_questions) || 0);
+    const correctA = Math.max(0, Number(correct_answers) || 0);
+    const metaObj = (metadata && typeof metadata === 'object') ? metadata : {};
+
+    const p = initPool();
+    let attempt = null;
+    let summary = null;
+
+    if (p) {
+      try {
+        await ensureSchema();
+        const res = await p.query(
+          `INSERT INTO student_test_attempts (user_id, skill_name, test_title, score, total_questions, correct_answers, metadata)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING *`,
+          [validUuid, cleanSkill, cleanTitle, numScore, totalQ, correctA, JSON.stringify(metaObj)]
+        );
+        attempt = res.rows[0];
+
+        // Fetch updated progress summary from student_skill_progress
+        const progRes = await p.query(
+          `SELECT * FROM student_skill_progress
+           WHERE (user_id = $1 OR user_id::text = $2) AND LOWER(skill_name) = LOWER($3)
+           LIMIT 1`,
+          [validUuid || '00000000-0000-0000-0000-000000000000', String(user_id), cleanSkill]
+        );
+        if (progRes.rows && progRes.rows[0]) {
+          summary = progRes.rows[0];
+        } else {
+          // If trigger didn't catch or row wasn't present, upsert manually
+          const isVerified = numScore >= 80;
+          const statusStr = isVerified ? 'LIVE VERIFIED' : 'UNVERIFIED BASELINE';
+          const upRes = await p.query(
+            `INSERT INTO student_skill_progress (user_id, skill_name, category, base_percentage, total_score, status, verified, last_tested_at)
+             VALUES ($1, $2, 'Core Skill', 35, $3, $4, $5, CURRENT_TIMESTAMP)
+             ON CONFLICT (user_id, skill_name) DO UPDATE SET
+               total_score = EXCLUDED.total_score,
+               status = EXCLUDED.status,
+               verified = EXCLUDED.verified,
+               last_tested_at = CURRENT_TIMESTAMP
+             RETURNING *`,
+            [validUuid, cleanSkill, numScore, statusStr, isVerified]
+          );
+          summary = upRes.rows[0];
+        }
+
+        return { attempt, summary };
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud recordTestAttempt notice (falling back to local):', err.message);
+      }
+    }
+
+    // In-Memory / Local Store Fallback
+    const store = getLocalStore();
+    if (!store.student_test_attempts) store.student_test_attempts = [];
+    if (!store.student_skill_progress) store.student_skill_progress = [];
+
+    attempt = {
+      id: `attempt-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+      user_id: user_id || 'anonymous',
+      skill_name: cleanSkill,
+      test_title: cleanTitle,
+      score: numScore,
+      total_questions: totalQ,
+      correct_answers: correctA,
+      metadata: metaObj,
+      created_at: new Date().toISOString()
+    };
+    store.student_test_attempts.push(attempt);
+
+    // Update / upsert local skill progress
+    let skillProg = store.student_skill_progress.find(s => 
+      ((user_id && s.user_id === user_id) || (s.user_id === attempt.user_id)) && 
+      s.skill_name.toLowerCase() === cleanSkill.toLowerCase()
+    );
+
+    const isVerified = numScore >= 80;
+    const statusStr = isVerified ? 'LIVE VERIFIED' : 'UNVERIFIED BASELINE';
+
+    if (skillProg) {
+      skillProg.total_score = isVerified ? Math.max(skillProg.total_score || 35, numScore) : (skillProg.total_score || 35);
+      skillProg.status = isVerified ? 'LIVE VERIFIED' : (skillProg.status || statusStr);
+      skillProg.verified = isVerified || Boolean(skillProg.verified);
+      skillProg.last_tested_at = attempt.created_at;
+      skillProg.updated_at = new Date().toISOString();
+      summary = skillProg;
+    } else {
+      summary = {
+        id: `ssp-${Date.now()}`,
+        user_id: user_id || 'anonymous',
+        skill_name: cleanSkill,
+        category: 'Core Skill',
+        base_percentage: 35,
+        total_score: numScore,
+        status: statusStr,
+        verified: isVerified,
+        last_tested_at: attempt.created_at,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      store.student_skill_progress.push(summary);
+    }
+
+    saveLocalStore(store);
+    return { attempt, summary };
+  },
+
+  // Get test attempts timeline for analytics
+  async getStudentTestAttempts(user_id) {
+    const validUuid = (user_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(user_id))) ? String(user_id) : null;
+    const p = initPool();
+    if (p) {
+      try {
+        await ensureSchema();
+        const res = await p.query(
+          `SELECT skill_name, test_title, score, created_at
+           FROM student_test_attempts
+           WHERE user_id = $1 OR user_id::text = $2
+           ORDER BY created_at ASC`,
+          [validUuid || '00000000-0000-0000-0000-000000000000', String(user_id)]
+        );
+        return res.rows || [];
+      } catch (e) {
+        console.warn('[Campus2Career DB] getStudentTestAttempts fallback:', e.message);
+      }
+    }
+    const store = getLocalStore();
+    return (store.student_test_attempts || [])
+      .filter(a => user_id && (a.user_id === user_id || String(a.user_id) === String(user_id)))
+      .map(a => ({
+        skill_name: a.skill_name,
+        test_title: a.test_title,
+        score: a.score,
+        created_at: a.created_at
+      }))
+      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  },
+
+  // Get skill progress overview for analytics
+  async getStudentSkillProgress(user_id) {
+    const validUuid = (user_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(user_id))) ? String(user_id) : null;
+    const p = initPool();
+    if (p) {
+      try {
+        await ensureSchema();
+        const res = await p.query(
+          `SELECT * FROM student_skill_progress
+           WHERE user_id = $1 OR user_id::text = $2
+           ORDER BY skill_name ASC`,
+          [validUuid || '00000000-0000-0000-0000-000000000000', String(user_id)]
+        );
+        return res.rows || [];
+      } catch (e) {
+        console.warn('[Campus2Career DB] getStudentSkillProgress fallback:', e.message);
+      }
+    }
+    const store = getLocalStore();
+    return (store.student_skill_progress || [])
+      .filter(s => user_id && (s.user_id === user_id || String(s.user_id) === String(user_id)));
   },
 
   // Record Student Study Activity & Update Readiness Score in Candidates Table
