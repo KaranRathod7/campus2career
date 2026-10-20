@@ -64,6 +64,20 @@
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
     ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
+    /* Top Navigation Container Invisible Horizontal Scrollbar */
+    .nav-container::-webkit-scrollbar {
+      display: none;
+    }
+    .nav-container {
+      -ms-overflow-style: none;  /* IE and Edge */
+      scrollbar-width: none;  /* Firefox */
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .nav-tab-btn {
+      flex-shrink: 0;
+    }
+
     /* Admin Suite Navigation Tabs Horizontal Scroller */
     #adminSuiteNavTabs {
       scrollbar-width: thin;
@@ -341,64 +355,64 @@
     <div class="max-w-[1720px] w-full mx-auto px-2 sm:px-4 lg:px-6">
       <div class="flex items-center justify-between h-16 gap-1.5 sm:gap-2.5 min-w-0">
         
-        <!-- Brand Logo & Admin Button (Admin placed just right of Campus2Career) -->
-        <div class="flex items-center space-x-2.5 sm:space-x-3 shrink-0">
+        <!-- Brand Logo & Title -->
+        <div class="flex items-center space-x-2 sm:space-x-2.5 shrink-0">
           <div class="flex items-center space-x-2 sm:space-x-2.5 cursor-pointer select-none" onclick="navigateTo('home')">
-            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#0B132B] dark:bg-slate-800 flex items-center justify-center text-teal-400 font-extrabold text-lg sm:text-xl shadow-md border border-teal-500/30 shrink-0">
-              <i class="fa-solid fa-microchip text-teal-400 text-base sm:text-lg"></i>
+            <div class="w-8 h-8 rounded-lg bg-[#0B132B] dark:bg-slate-800 flex items-center justify-center text-teal-400 font-extrabold text-sm shadow-md border border-teal-500/30 shrink-0">
+              <i class="fa-solid fa-microchip text-teal-400 text-sm"></i>
             </div>
             <div>
               <div class="flex items-center space-x-1.5">
-                <span class="font-extrabold text-base sm:text-lg tracking-tight text-slate-900 dark:text-white">Campus<span class="text-[#008080] dark:text-teal-400">2Career</span></span>
-                <span class="text-[9px] px-1.5 py-0.5 rounded bg-teal-50 dark:bg-teal-950 text-[#008080] dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800 uppercase" id="navVersionBadge">v5.5 FOCUS</span>
+                <span class="font-extrabold text-sm sm:text-[15px] tracking-tight text-slate-900 dark:text-white">Campus<span class="text-[#008080] dark:text-teal-400">2Career</span></span>
+                <span class="text-[8px] px-1 py-0.2 rounded bg-teal-50 dark:bg-teal-950 text-[#008080] dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800 uppercase hidden sm:inline-block" id="navVersionBadge">v5.5 FOCUS</span>
               </div>
-              <p class="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 leading-none hidden lg:block">Personalized Core Skill Competence Engine</p>
+              <p class="text-[9px] text-slate-400 dark:text-slate-500 leading-none mt-0.5 hidden 2xl:block">Personalized Core Skill Competence Engine</p>
             </div>
+          </div>
         </div>
 
-        <!-- Desktop Navigation Items (Learner Mode) - Hidden on mobile (<768px), visible on md+ -->
-        <nav id="navLearnerItems" class="hidden md:flex items-center space-x-0.5 shrink">
+        <!-- Desktop Navigation Items (Edge-to-Edge Invisible Scrollbar Container) -->
+        <div class="nav-container hidden md:flex items-center min-w-0 flex-1 mx-2 overflow-x-auto whitespace-nowrap">
+          <!-- Desktop Navigation Items (Learner Mode) -->
+          <nav id="navLearnerItems" class="hidden md:flex items-center space-x-1 min-w-0">
+            <!-- Home button is always visible even when logged out -->
+            <button onclick="navigateTo('home')" id="navBtn-home" class="nav-tab-btn shrink-0 px-2 py-1 text-xs font-semibold rounded-lg text-[#008080] bg-teal-50 dark:bg-teal-950/60 dark:text-teal-300 border-b-2 border-[#008080] transition-all whitespace-nowrap">
+              <i class="fa-solid fa-house mr-1"></i> Home
+            </button>
+            
+            <!-- Navigation tabs: Learn, Revision, MCQs, Analytics, Seminars -->
+            <div id="authenticatedNavTabs" class="flex items-center space-x-1 shrink-0">
+              <button onclick="navigateTo('analyzer')" id="navBtn-analyzer" class="nav-tab-btn shrink-0 px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all whitespace-nowrap">
+                <i class="fa-solid fa-graduation-cap mr-1 text-[#008080] dark:text-teal-400"></i> Learn
+              </button>
+              <button onclick="navigateTo('resources')" id="navBtn-resources" class="nav-tab-btn shrink-0 px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all whitespace-nowrap">
+                <i class="fa-solid fa-fire text-amber-500 mr-1"></i> Revision
+                <span id="trackerCounterNav" class="ml-1 px-1 py-0.2 bg-teal-100 dark:bg-teal-900 text-[#008080] dark:text-teal-300 text-[9px] rounded-full font-bold">2</span>
+              </button>
+              <button onclick="navigateTo('mcq')" id="navBtn-mcq" class="nav-tab-btn shrink-0 px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all whitespace-nowrap">
+                <i class="fa-solid fa-vial-circle-check mr-1"></i> MCQs
+              </button>
+              <button onclick="navigateTo('growth')" id="navBtn-growth" class="nav-tab-btn shrink-0 px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all whitespace-nowrap">
+                <i class="fa-solid fa-chart-line mr-1"></i> Analytics
+              </button>
+              <button onclick="navigateTo('events')" id="navBtn-events" class="nav-tab-btn shrink-0 px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all whitespace-nowrap">
+                <i class="fa-solid fa-calendar-star mr-1"></i> Seminars
+              </button>
+            </div>
+          </nav>
 
-          <!-- Home button is always visible even when logged out -->
-          <button onclick="navigateTo('home')" id="navBtn-home" class="nav-tab-btn px-2.5 py-1.5 text-xs font-semibold rounded-lg text-[#008080] bg-teal-50 dark:bg-teal-950/60 dark:text-teal-300 border-b-2 border-[#008080] transition-all whitespace-nowrap">
-            <i class="fa-solid fa-house mr-1"></i> Home
-          </button>
-          
-          <!-- Navigation tabs: Learn, Revision, MCQs, Analytics, Seminars -->
-          <div id="authenticatedNavTabs" class="flex items-center space-x-0.5">
-            <button onclick="navigateTo('analyzer')" id="navBtn-analyzer" class="nav-tab-btn px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all whitespace-nowrap">
-              <i class="fa-solid fa-graduation-cap mr-1 text-[#008080] dark:text-teal-400"></i> Learn
+          <!-- Desktop Navigation Items (Recruiter Mode) -->
+          <nav id="navRecruiterItems" class="hidden md:flex items-center space-x-1 shrink-0" style="display: none;">
+            <button onclick="navigateTo('recruiter-candidates')" id="navBtn-recruiter-candidates" class="nav-tab-btn shrink-0 px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all whitespace-nowrap">
+              <i class="fa-solid fa-user-check mr-1"></i> Candidates
+              <span class="ml-1 px-1 py-0.2 bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-300 text-[9px] rounded-full font-bold">14,821</span>
             </button>
-            <button onclick="navigateTo('resources')" id="navBtn-resources" class="nav-tab-btn px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all whitespace-nowrap">
-              <i class="fa-solid fa-fire text-amber-500 mr-1"></i> Revision
-              <span id="trackerCounterNav" class="ml-1 px-1.5 py-0.2 bg-teal-100 dark:bg-teal-900 text-[#008080] dark:text-teal-300 text-[10px] rounded-full font-bold">2</span>
+            <button onclick="navigateTo('recruiter-invites')" id="navBtn-recruiter-invites" class="nav-tab-btn shrink-0 px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all whitespace-nowrap">
+              <i class="fa-solid fa-paper-plane mr-1"></i> Invitations
+              <span id="recruiterInvitesCountBadge" class="ml-1 px-1 py-0.2 bg-teal-100 dark:bg-teal-900 text-[#008080] dark:text-teal-300 text-[9px] rounded-full font-bold">1</span>
             </button>
-            <button onclick="navigateTo('mcq')" id="navBtn-mcq" class="nav-tab-btn px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all whitespace-nowrap">
-              <i class="fa-solid fa-vial-circle-check mr-1"></i> MCQs
-            </button>
-            <button onclick="navigateTo('growth')" id="navBtn-growth" class="nav-tab-btn px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all whitespace-nowrap">
-              <i class="fa-solid fa-chart-line mr-1"></i> Analytics
-            </button>
-            <button onclick="navigateTo('events')" id="navBtn-events" class="nav-tab-btn px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all whitespace-nowrap">
-              <i class="fa-solid fa-calendar-star mr-1"></i> Seminars
-            </button>
-          </div>
-        </nav>
-
-        <!-- Desktop Navigation Items (Recruiter Mode) - Hidden on mobile (<768px), visible on md+ -->
-        <nav id="navRecruiterItems" class="hidden md:flex items-center space-x-1 shrink">
-          <button onclick="navigateTo('recruiter-market')" id="navBtn-recruiter-market" class="nav-tab-btn px-2.5 py-1.5 text-xs font-semibold rounded-lg text-[#008080] bg-teal-50 dark:bg-teal-950/60 dark:text-teal-300 border-b-2 border-[#008080] transition-all whitespace-nowrap">
-            <i class="fa-solid fa-bullhorn mr-1 text-[#008080]"></i> Signals
-          </button>
-          <button onclick="navigateTo('recruiter-candidates')" id="navBtn-recruiter-candidates" class="nav-tab-btn px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all whitespace-nowrap">
-            <i class="fa-solid fa-user-check mr-1"></i> Candidates
-            <span class="ml-1 px-1.5 py-0.2 bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-300 text-[10px] rounded-full font-bold">14,821</span>
-          </button>
-          <button onclick="navigateTo('recruiter-invites')" id="navBtn-recruiter-invites" class="nav-tab-btn px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all whitespace-nowrap">
-            <i class="fa-solid fa-paper-plane mr-1"></i> Invitations
-            <span id="recruiterInvitesCountBadge" class="ml-1 px-1.5 py-0.2 bg-teal-100 dark:bg-teal-900 text-[#008080] dark:text-teal-300 text-[10px] rounded-full font-bold">1</span>
-          </button>
-        </nav>
+          </nav>
+        </div>
 
         <!-- Global Stream Selector Pill (CLICKABLE ANYWHERE ON THE PILL) -->
         <div id="navStreamSelectorContainer" class="relative hidden lg:flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-[#1E293B] dark:hover:bg-slate-700 rounded-xl border border-slate-300 dark:border-slate-700 text-xs shadow-2xs transition-all shrink-0 cursor-pointer" title="Click anywhere to change engineering stream">
@@ -23781,8 +23795,8 @@ const defaultMarketReports = [
       const mobileRecruiter = document.getElementById('mobileRecruiterLinks');
 
       if (role === 'recruiter') {
-        if (learnerNav) { learnerNav.classList.add('hidden'); learnerNav.classList.remove('xl:flex'); }
-        if (recruiterNav) { recruiterNav.classList.remove('hidden'); recruiterNav.classList.add('xl:flex'); }
+        if (learnerNav) { learnerNav.style.display = 'none'; learnerNav.classList.add('hidden'); learnerNav.classList.remove('flex', 'xl:flex'); }
+        if (recruiterNav) { recruiterNav.style.display = ''; recruiterNav.classList.remove('hidden'); recruiterNav.classList.add('flex'); }
         if (roleBadge) {
           roleBadge.innerText = 'Recruiter';
           roleBadge.className = 'ml-1 px-1.5 py-0.2 rounded text-[10px] font-bold uppercase tracking-wider bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200';
@@ -23790,8 +23804,8 @@ const defaultMarketReports = [
         if (mobileLearner) mobileLearner.classList.add('hidden');
         if (mobileRecruiter) mobileRecruiter.classList.remove('hidden');
       } else {
-        if (learnerNav) { learnerNav.classList.remove('hidden'); learnerNav.classList.add('xl:flex'); }
-        if (recruiterNav) { recruiterNav.classList.add('hidden'); recruiterNav.classList.remove('xl:flex'); }
+        if (learnerNav) { learnerNav.style.display = ''; learnerNav.classList.remove('hidden'); learnerNav.classList.add('flex'); }
+        if (recruiterNav) { recruiterNav.style.display = 'none'; recruiterNav.classList.add('hidden'); recruiterNav.classList.remove('flex', 'xl:flex'); }
         if (roleBadge) {
           roleBadge.innerText = 'Learner';
           roleBadge.className = 'ml-1 px-1.5 py-0.2 rounded text-[10px] font-bold uppercase tracking-wider bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200';
