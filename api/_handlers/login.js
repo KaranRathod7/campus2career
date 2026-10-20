@@ -103,6 +103,7 @@ module.exports = async (req, res) => {
       user: {
         id: user.id,
         name: user.name,
+        username: user.username || null,
         email: user.email,
         role: user.role,
         stream: user.stream || null,

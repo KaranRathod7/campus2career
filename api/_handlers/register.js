@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { name, email, password, role, stream } = req.body || {};
+    const { name, username, email, password, role, stream } = req.body || {};
 
     if (!email || !password || !name) {
       return res.status(400).json({ success: false, error: 'Name, email, and password are required.' });
@@ -28,7 +28,34 @@ module.exports = async (req, res) => {
     const assignedRole = (role === 'recruiter') ? 'recruiter' : 'learner';
     const normalizedEmail = email.trim().toLowerCase();
 
+    // Clean and validate username
+    const cleanUsername = (username ? username.trim().toLowerCase() : normalizedEmail.split('@')[0]);
+    if (!cleanUsername) {
+      return res.status(400).json({ success: false, error: 'Username is required.' });
+    }
+    if (!/^[a-zA-Z0-9_.-]{3,30}$/.test(cleanUsername)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Username must be 3-30 characters long and contain only letters, numbers, underscores, dots, or dashes.' 
+      });
+    }
+
     const isWhitelisted = (normalizedEmail === 'theyareop@gmail.com');
+
+    // Check if username already exists
+    try {
+      const existingUserByUsername = await db.getUserByUsername(cleanUsername);
+      if (existingUserByUsername && existingUserByUsername.email.toLowerCase() !== normalizedEmail) {
+        return res.status(409).json({
+          success: false,
+          error: 'username_taken',
+          message: 'This username is already taken. Please choose another username.'
+        });
+      }
+    } catch (err) {
+      console.error('[DB Username Lookup Error]:', err.message, err.detail);
+      return res.status(500).json({ success: false, error: err.message });
+    }
 
     // Check if user already exists
     let existing;
@@ -57,6 +84,7 @@ module.exports = async (req, res) => {
       if (isWhitelisted) {
         userRecord = await db.upsertUser({
           name: name.trim(),
+          username: cleanUsername,
           email: normalizedEmail,
           password_hash,
           role: assignedRole,
@@ -66,6 +94,7 @@ module.exports = async (req, res) => {
       } else {
         userRecord = await db.createUser({
           name: name.trim(),
+          username: cleanUsername,
           email: normalizedEmail,
           password_hash,
           role: assignedRole,
@@ -114,6 +143,7 @@ module.exports = async (req, res) => {
       success: true,
       message: `Verification code and 1-click link dispatched to ${normalizedEmail} via Brevo!`,
       email: normalizedEmail,
+      username: cleanUsername,
       role: assignedRole,
       delivered: emailResult.success,
       emailStatus: emailResult.error || 'Dispatched via Brevo'

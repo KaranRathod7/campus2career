@@ -88,6 +88,9 @@ router.all('/mcq/submit', adapt(require('./_handlers/mcq/submit')));
 // Student Activity Pipeline & Live Stopwatch Tracking
 router.all('/student/log-activity', adapt(require('./_handlers/student/log-activity')));
 router.all('/student/activity', adapt(require('./_handlers/student/activity')));
+router.all('/student/analytics', adapt(require('./_handlers/student/analytics')));
+router.all('/activity', adapt(require('./_handlers/activity')));
+router.all('/analytics', adapt(require('./_handlers/analytics')));
 
 // Health check
 router.get('/health', (req, res) => res.json({ status: 'ok', service: 'Campus2Career API', time: new Date().toISOString() }));

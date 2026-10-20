@@ -61,11 +61,12 @@
       "id": "usr-1792444753215",
       "name": "Whitelisted Admin",
       "email": "theyareop@gmail.com",
-      "password_hash": "$2b$10$tLzpYWhXZQOb2hZ.uaTDiO0o7F2OKAoBpf731G69YQHBRmyELvTMi",
+      "password_hash": "$2b$10$Z5BaL3tIRNmNeZ/OvTS4AOUJUiKN6FCHFPFyFht/ZCwjiMi9Tavm2",
       "role": "learner",
       "stream": "IT",
       "is_verified": false,
-      "created_at": "2026-10-19T21:19:13.215Z"
+      "created_at": "2026-10-19T21:19:13.215Z",
+      "username": "theyareop"
     },
     {
       "id": "usr-1792444893034",
@@ -166,6 +167,52 @@
       "stream": "IT",
       "is_verified": true,
       "created_at": "2026-10-20T10:13:02.951Z"
+    },
+    {
+      "id": "usr-1792493724278",
+      "name": "Rohan Deshmukh",
+      "username": "stud_724179",
+      "email": "student_1792493724179@campus2career.org",
+      "password_hash": "$2b$10$1vrNmI.Vyf60UJj1NTlsKeqHuNJYw81ZX9NybqcZ7zodR3hrE4XWy",
+      "role": "learner",
+      "stream": "IT",
+      "is_verified": false,
+      "created_at": "2026-10-20T10:55:24.278Z"
+    },
+    {
+      "id": "usr-1792493758635",
+      "name": "Rohan Deshmukh",
+      "username": "stud_758543",
+      "email": "student_1792493758543@campus2career.org",
+      "password_hash": "$2b$10$OpTLig9e0rz2/y8tmc6.duHxiXO/1F/tJbmoNyuJRXCYRQFAztE7e",
+      "role": "learner",
+      "stream": "IT",
+      "is_verified": true,
+      "created_at": "2026-10-20T10:55:58.636Z",
+      "total_study_minutes": 95,
+      "dynamic_competence_percent": 92
+    },
+    {
+      "id": "usr-1792493764746",
+      "name": "Test Student",
+      "username": "test_1792493764655",
+      "email": "test_1792493764655@example.com",
+      "password_hash": "$2b$10$I3n/58txJHeeIfSETWMequCGFDQDKWqLWqB.6EO4omQinVWSprHXG",
+      "role": "learner",
+      "stream": "IT",
+      "is_verified": true,
+      "created_at": "2026-10-20T10:56:04.746Z"
+    },
+    {
+      "id": "usr-1792493775019",
+      "name": "Cross Device Student",
+      "username": "crossdevice_1792493774930",
+      "email": "crossdevice_1792493774930@example.com",
+      "password_hash": "$2b$10$UzbaYJ2Q5O442RWWJABTUOgqpvcC4RnjTdPSisFBNF/8aP7UY4NCi",
+      "role": "learner",
+      "stream": "IT",
+      "is_verified": true,
+      "created_at": "2026-10-20T10:56:15.019Z"
     }
   ],
   "login_attempts": {
@@ -203,12 +250,20 @@
       "created_at": "2026-10-19T21:21:33.037Z"
     },
     {
-      "id": "pv-1792488772055",
+      "id": "pv-1792493724290",
+      "email": "student_1792493724179@campus2career.org",
+      "pin": "876182",
+      "token": "c577451a213d1feab73ca6b8fd25cb0a653189572b8e6354f60d71cfacfa7097",
+      "expires_at": "2026-10-20T11:10:24.290Z",
+      "created_at": "2026-10-20T10:55:24.290Z"
+    },
+    {
+      "id": "pv-1792493765666",
       "email": "theyareop@gmail.com",
-      "pin": "992877",
-      "token": "be00eea9b46d48df1ed2f19144e62142cef7af40900911a80a4ff54b3417647f",
-      "expires_at": "2026-10-20T09:47:52.055Z",
-      "created_at": "2026-10-20T09:32:52.055Z"
+      "pin": "288235",
+      "token": "7c4375296e08a44076f30c68f2503af65e56a0d00356b6d8f2a614aedab580fb",
+      "expires_at": "2026-10-20T11:11:05.666Z",
+      "created_at": "2026-10-20T10:56:05.666Z"
     }
   ],
   "candidates": [
@@ -322,6 +377,22 @@
         "WAL Replication"
       ],
       "capstone_proof": "Custom WAL parsing streaming replicator with B-Tree index fragmentation benchmark suite and buffer cache optimization."
+    },
+    {
+      "id": "cand-1792493759228",
+      "user_id": "usr-1792493758635",
+      "name": "Rohan Deshmukh",
+      "email": "student_1792493758543@campus2career.org",
+      "stream": "IT",
+      "domain": "Data Structures & Algorithms",
+      "experience_level": "Student / Candidate",
+      "skill_score": 87,
+      "dynamic_competence_percent": 92,
+      "readiness_score": 87,
+      "skills": [
+        "Data Structures & Algorithms"
+      ],
+      "created_at": "2026-10-20T10:55:59.228Z"
     }
   ],
   "market_signals": [
@@ -522,5 +593,43 @@
       "submitted_at": "2026-10-19T17:35:17.449Z"
     }
   ],
-  "student_activity_logs": []
+  "student_activity_logs": [],
+  "student_activity": [
+    {
+      "id": "act-1792493759234",
+      "user_id": "usr-1792493758635",
+      "user_email": "student_1792493758543@campus2career.org",
+      "stream": "IT",
+      "topic": "Web Dev & Full-Stack",
+      "activity_type": "revision",
+      "score": 88,
+      "time_spent_minutes": 30,
+      "competence_rating": 88,
+      "created_at": "2026-10-20T10:55:59.234Z"
+    },
+    {
+      "id": "act-1792493759231",
+      "user_id": "usr-1792493758635",
+      "user_email": "student_1792493758543@campus2career.org",
+      "stream": "IT",
+      "topic": "Database Systems & SQL",
+      "activity_type": "quiz",
+      "score": 92,
+      "time_spent_minutes": 20,
+      "competence_rating": 92,
+      "created_at": "2026-10-20T10:55:59.231Z"
+    },
+    {
+      "id": "act-1792493759228",
+      "user_id": "usr-1792493758635",
+      "user_email": "student_1792493758543@campus2career.org",
+      "stream": "IT",
+      "topic": "Data Structures & Algorithms",
+      "activity_type": "timer",
+      "score": null,
+      "time_spent_minutes": 45,
+      "competence_rating": 70,
+      "created_at": "2026-10-20T10:55:59.228Z"
+    }
+  ]
 }

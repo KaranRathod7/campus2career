@@ -63,6 +63,7 @@ module.exports = async (req, res) => {
       user: dbUser ? {
         id: dbUser.id,
         name: dbUser.name,
+        username: dbUser.username || null,
         email: dbUser.email,
         role: dbUser.role,
         stream: dbUser.stream,

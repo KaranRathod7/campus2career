@@ -1,8 +1,8 @@
 // Campus2Career Student Activity Pipeline Endpoint
-// POST /api/student/activity or /api/student/log-activity
-// Tracks live stopwatch study sessions, video masterclass watch minutes, and benchmark exams
-const logActivityHandler = require('./log-activity');
+// POST /api/student/activity
+// Persists student activity directly to Supabase/PostgreSQL
+const activityHandler = require('../activity');
 
 module.exports = async (req, res) => {
-  return logActivityHandler(req, res);
+  return activityHandler(req, res);
 };

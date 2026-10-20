@@ -23407,6 +23407,7 @@ const defaultMarketReports = [
             localStorage.removeItem(STORAGE_KEY_USER);
             updateAuthUI();
             renderSkillLevelDiagram();
+            if (typeof fetchStudentAnalytics === 'function') fetchStudentAnalytics();
             return;
           }
         }
@@ -24283,6 +24284,15 @@ function getActiveDomainKey() {
         list.push(id);
         appState.progress.totalStudyMinutes += 30;
         showToast("Great work! Milestone verified and +30m study logged.");
+        if (typeof sendStudentActivity === 'function') {
+          sendStudentActivity({
+            activity_type: 'revision',
+            topic: `Roadmap Milestone: ${id}`,
+            score: 85,
+            time_spent_minutes: 30,
+            competence: 85
+          });
+        }
       }
       saveStateToStorage();
       renderPersonalizedRoadmap();
@@ -25205,6 +25215,15 @@ function onWizardBranchChanged(branchKey) {
     }
 
     function getStarterRadarSkills() {
+      if (appState.studentAnalytics && Array.isArray(appState.studentAnalytics.skill_competencies) && appState.studentAnalytics.skill_competencies.length >= 3) {
+        return appState.studentAnalytics.skill_competencies.map(s => ({
+          name: s.name,
+          score: Math.max(10, Math.min(100, Number(s.score) || 20)),
+          category: 'Discipline',
+          verified: Boolean(s.verified)
+        }));
+      }
+
       const studyMins = (appState.user && (Number(appState.user.total_study_minutes) || Number(appState.user.totalStudyMinutes)))
         || (appState.progress && Number(appState.progress.totalStudyMinutes))
         || 0;
@@ -26067,20 +26086,29 @@ function onWizardBranchChanged(branchKey) {
     /* ========================================================================= */
     /* STUDENT ACTIVITY PIPELINE & DYNAMIC COMPETENCE TRACKING                   */
     /* ========================================================================= */
-    async function logStudentActivityToServer(activityType, durationMins, scoreVal, moduleName) {
+    async function sendStudentActivity({ activity_type, topic, score, time_spent_minutes, competence }) {
       try {
         const userEmail = (appState.user && appState.user.email) ? appState.user.email : null;
-        const payload = {
-          activity_type: activityType,
-          duration_minutes: durationMins ? Number(durationMins) : 0,
-          score: (scoreVal !== undefined && scoreVal !== null) ? Number(scoreVal) : null,
-          module_name: moduleName || 'Core Curriculum Module'
-        };
-        if (userEmail) {
-          payload.user_email = userEmail;
-        }
+        const userId = (appState.user && appState.user.id) ? appState.user.id : null;
+        const userStream = (appState.user && (appState.user.stream || appState.user.branch)) || appState.selectedStream || 'IT';
 
-        const res = await fetch('/api/student/log-activity', {
+        let normType = (activity_type || 'timer').toLowerCase();
+        if (normType === 'study_timer' || normType === 'study') normType = 'timer';
+        if (normType === 'lecture_timer' || normType === 'lecture' || normType === 'masterclass') normType = 'revision';
+        if (normType === 'exam' || normType === 'mcq') normType = 'quiz';
+
+        const payload = {
+          activity_type: normType,
+          topic: topic || 'Core Engineering Track',
+          score: (score !== undefined && score !== null) ? Number(score) : null,
+          time_spent_minutes: time_spent_minutes ? Number(time_spent_minutes) : 0,
+          competence: (competence !== undefined && competence !== null) ? Number(competence) : (score !== undefined && score !== null ? Number(score) : 75),
+          stream: userStream,
+          user_id: userId,
+          user_email: userEmail
+        };
+
+        const res = await fetch('/api/student/activity', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -26088,17 +26116,98 @@ function onWizardBranchChanged(branchKey) {
         });
 
         const data = await res.json();
-        if (res.ok && data && data.success && data.competence) {
-          updateLiveCompetenceUI(data.competence);
+        if (res.ok && data && data.success) {
+          if (data.readiness_score !== undefined || data.competence !== undefined) {
+            updateLiveCompetenceUI({
+              dynamic_competence_percent: data.competence || data.readiness_score,
+              readiness_score: data.readiness_score,
+              total_study_minutes: data.total_study_minutes
+            });
+          }
+          if (typeof fetchStudentAnalytics === 'function') {
+            fetchStudentAnalytics();
+          }
           return data;
-        } else {
-          console.log('[Student Activity Pipeline Log]', (data && data.error) || 'Recorded in evaluation session');
         }
-        return data;
       } catch (err) {
-        console.warn('[Student Activity Pipeline - Offline/Resilient Mode]', err);
-        return null;
+        console.warn('[Student Activity - Resilient Dispatch Warning]', err);
       }
+    }
+
+    async function fetchStudentAnalytics() {
+      try {
+        const userEmail = (appState.user && appState.user.email) ? encodeURIComponent(appState.user.email) : '';
+        const userId = (appState.user && appState.user.id) ? encodeURIComponent(appState.user.id) : '';
+        const stream = (appState.user && (appState.user.stream || appState.user.branch)) || appState.selectedStream || 'IT';
+
+        let url = `/api/student/analytics?stream=${encodeURIComponent(stream)}`;
+        if (userEmail) url += `&email=${userEmail}`;
+        if (userId) url += `&user_id=${userId}`;
+
+        const res = await fetch(url, {
+          method: 'GET',
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (res.ok && data && data.success) {
+          appState.studentAnalytics = data;
+
+          if (data.readiness_score !== undefined) {
+            const scoreVal = Math.round(data.readiness_score);
+            const fusion = (typeof getFusionColor === 'function') ? getFusionColor(scoreVal) : { hex: '#008080' };
+
+            const scoreEl = document.getElementById('overallStackScore');
+            const ringPercentEl = document.getElementById('progressRingPercent');
+            const ringEl = document.getElementById('competenceProgressRing');
+            const barEl = document.getElementById('overallProgressBar');
+
+            if (scoreEl) {
+              scoreEl.innerText = `${scoreVal}%`;
+              scoreEl.style.color = fusion.hex;
+            }
+            if (ringPercentEl) {
+              ringPercentEl.innerText = `${scoreVal}%`;
+              ringPercentEl.style.color = fusion.hex;
+            }
+            if (ringEl) {
+              const dashOffset = Math.max(0, Math.min(100, 100 - scoreVal));
+              ringEl.style.strokeDashoffset = dashOffset;
+              ringEl.style.color = fusion.hex;
+            }
+            if (barEl) {
+              barEl.style.width = `${scoreVal}%`;
+              barEl.style.backgroundColor = fusion.hex;
+            }
+          }
+
+          if (data.study_hours !== undefined) {
+            const hEl = document.getElementById('growthTotalHours');
+            if (hEl && data.study_hours > 0) hEl.innerText = `${data.study_hours} hrs`;
+          }
+
+          if (typeof renderRadarCompetenceDiagram === 'function') {
+            renderRadarCompetenceDiagram();
+          }
+          return data;
+        }
+      } catch (err) {
+        console.warn('[Fetch Student Analytics Warning]', err);
+      }
+    }
+
+    async function logStudentActivityToServer(activityType, durationMins, scoreVal, moduleName) {
+      let normType = 'timer';
+      if (activityType === 'exam' || activityType === 'quiz' || activityType === 'mcq') normType = 'quiz';
+      else if (activityType === 'lecture_timer' || activityType === 'lecture' || activityType === 'revision') normType = 'revision';
+      else normType = 'timer';
+
+      return sendStudentActivity({
+        activity_type: normType,
+        topic: moduleName,
+        time_spent_minutes: durationMins,
+        score: scoreVal,
+        competence: scoreVal
+      });
     }
 
     function updateLiveCompetenceUI(competence) {
@@ -29360,7 +29469,7 @@ function onWizardBranchChanged(branchKey) {
         if (upTab) upTab.className = "py-2.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all font-semibold";
         if (modalTitle) modalTitle.innerText = "Log In to Campus2Career";
         if (nameField) nameField.classList.add('hidden');
-        if (usernameField) usernameField.classList.remove('hidden');
+        if (usernameField) usernameField.classList.add('hidden');
         if (submitBtn) submitBtn.innerHTML = `<span>Log In to Dashboard &rarr;</span>`;
 
         // Check active brute-force security lockout
@@ -29468,8 +29577,13 @@ function onWizardBranchChanged(branchKey) {
       const pass = passInput ? passInput.value.trim() : '';
 
       if (isSignUp) {
-        if (!name || !email || !pass) {
-          showAuthAlert("Please fill in your name, email, and password to sign up.");
+        if (!name || !username || !email || !pass) {
+          showAuthAlert("Please fill in your full name, username, email, and password to sign up.");
+          triggerAlertShake('authStatusAlert');
+          return;
+        }
+        if (!/^[a-zA-Z0-9_.-]{3,30}$/.test(username)) {
+          showAuthAlert("Username must be 3-30 characters (letters, numbers, underscores, dots, or hyphens).");
           triggerAlertShake('authStatusAlert');
           return;
         }
@@ -29492,7 +29606,7 @@ function onWizardBranchChanged(branchKey) {
           const res = await fetch('/api/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email, password: pass, role, stream })
+            body: JSON.stringify({ name, username, email, password: pass, role, stream })
           });
           const data = await res.json();
 
@@ -29502,6 +29616,11 @@ function onWizardBranchChanged(branchKey) {
           }
 
           if (!res.ok || !data.success) {
+            if (data.error === 'username_taken') {
+              showAuthAlert(data.message || "This username is already taken. Please choose another username.");
+              triggerAlertShake('authStatusAlert');
+              return;
+            }
             if (res.status === 409 || data.error === 'already_registered') {
               const msg = data.message || "This email is already registered. Please log in instead.";
               showAuthAlert(`${msg} <a href="javascript:void(0)" onclick="switchAuthTab('signin'); const em=document.getElementById('authEmailInput'); if(em) em.value='${email}';" class="underline font-extrabold hover:text-rose-900 dark:hover:text-rose-100 ml-1">Log in here &rarr;</a>`);
@@ -29521,6 +29640,7 @@ function onWizardBranchChanged(branchKey) {
 
           pendingRegistrationUser = {
             name: name,
+            username: username,
             email: email,
             role: role,
             stream: stream
@@ -29758,6 +29878,7 @@ function onWizardBranchChanged(branchKey) {
 
         updateAuthUI();
         closeAuthModal();
+        if (typeof fetchStudentAnalytics === 'function') fetchStudentAnalytics();
 
         showToast(`✓ Account verified! Welcome to Campus2Career, ${verifiedUser.name}!`);
 
