@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta http-equiv="X-XSS-Protection" content="1; mode=block">
@@ -51,11 +51,72 @@
   </script>
 
   <style>
-    /* Prevent horizontal overflow on mobile viewports */
-    html, body {
+    /* Prevent horizontal overflow on mobile viewports & Root Box Model */
+    html {
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 100vw;
+      overflow-x: hidden !important;
+      -webkit-text-size-adjust: 100%;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+    }
+    *, *::before, *::after {
+      box-sizing: inherit;
+    }
+    body {
       overflow-x: hidden !important;
       width: 100%;
       max-width: 100vw;
+      margin: 0;
+      padding: 0;
+    }
+    #root, #app, main, .screen-view, #screen-home, #screen-analyzer, #screen-resources, #screen-mcq, #screen-growth, #screen-events {
+      width: 100%;
+      max-width: 100vw;
+      overflow-x: hidden;
+      box-sizing: border-box;
+    }
+
+    /* Radar Chart Container Responsiveness */
+    .radar-chart-container {
+      width: 100% !important;
+      max-width: 100% !important;
+      min-height: 280px;
+      height: 320px;
+      position: relative;
+    }
+
+    /* Mobile Fluid Modals & Form Dialog Boundaries */
+    @media (max-width: 640px) {
+      .modal-dialog,
+      #authModal > div > div,
+      #onboardingModal > div,
+      #deviceBVerifiedModal > div,
+      #shareModal > div,
+      #resourceModal > div,
+      #adminAuthModal > div,
+      #candidateDossierModal > div,
+      #databaseViewerModal > div {
+        width: calc(100% - 24px) !important;
+        max-width: 440px !important;
+        margin: 12px auto !important;
+        max-height: 90vh !important;
+        overflow-y: auto !important;
+      }
+      .card-mobile-compact {
+        padding: 12px !important;
+      }
+    }
+
+    /* Prevent Mobile Browser/iOS Auto-Zoom on Form Focus */
+    @media (max-width: 768px) {
+      input, select, textarea {
+        font-size: 16px !important;
+      }
+      button:not(.btn-compact-allow), a:not(.link-compact-allow) {
+        min-height: 40px;
+      }
     }
 
     /* UI Polish & Custom Scrollbars */
@@ -355,15 +416,15 @@
     <div class="max-w-[1720px] w-full mx-auto px-2 sm:px-4 lg:px-6">
       <div class="flex items-center justify-between h-16 gap-1.5 sm:gap-2.5 min-w-0">
         
-        <!-- Brand Logo & Title -->
-        <div class="flex items-center space-x-2 sm:space-x-2.5 shrink-0">
-          <div class="flex items-center space-x-2 sm:space-x-2.5 cursor-pointer select-none" onclick="navigateTo('home')">
+        <!-- Brand Logo & Title (Occupies <= 40% on mobile viewports) -->
+        <div class="flex items-center space-x-2 sm:space-x-2.5 shrink-0 max-w-[40%] sm:max-w-none min-w-0">
+          <div class="flex items-center space-x-2 sm:space-x-2.5 cursor-pointer select-none min-w-0" onclick="navigateTo('home')">
             <div class="w-8 h-8 rounded-lg bg-[#0B132B] dark:bg-slate-800 flex items-center justify-center text-teal-400 font-extrabold text-sm shadow-md border border-teal-500/30 shrink-0">
               <i class="fa-solid fa-microchip text-teal-400 text-sm"></i>
             </div>
-            <div>
-              <div class="flex items-center space-x-1.5">
-                <span class="font-extrabold text-sm sm:text-[15px] tracking-tight text-slate-900 dark:text-white">Campus<span class="text-[#008080] dark:text-teal-400">2Career</span></span>
+            <div class="min-w-0">
+              <div class="flex items-center space-x-1.5 truncate">
+                <span class="font-extrabold text-sm sm:text-[15px] tracking-tight text-slate-900 dark:text-white truncate">Campus<span class="text-[#008080] dark:text-teal-400">2Career</span></span>
                 <span class="text-[8px] px-1 py-0.2 rounded bg-teal-50 dark:bg-teal-950 text-[#008080] dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800 uppercase hidden sm:inline-block" id="navVersionBadge">v5.5 FOCUS</span>
               </div>
               <p class="text-[9px] text-slate-400 dark:text-slate-500 leading-none mt-0.5 hidden 2xl:block">Personalized Core Skill Competence Engine</p>
@@ -460,36 +521,36 @@
           </button>
 
           <!-- User Profile Status / Auth Triggers -->
-          <div id="authActionsLoggedOut" class="flex items-center space-x-1.5 shrink-0">
-            <!-- 1-Click Interactive Demo Button (Always Visible directly on Left of Log In) -->
-            <button type="button" onclick="quickFacultyLogin()" class="inline-flex items-center space-x-1.5 text-xs font-bold text-amber-900 dark:text-amber-200 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/70 dark:hover:bg-amber-900/80 border border-amber-300 dark:border-amber-700 px-3 py-1.5 rounded-lg shadow-2xs transition-all shrink-0 cursor-pointer" title="Instant 1-Click Demo Platform (Preloaded Verified Account)">
+          <div id="authActionsLoggedOut" class="flex items-center space-x-1 sm:space-x-1.5 shrink-0">
+            <!-- 1-Click Interactive Demo Button (Hidden on compact mobile top bar, available in drawer) -->
+            <button type="button" onclick="quickFacultyLogin()" class="hidden sm:inline-flex items-center space-x-1.5 text-xs font-bold text-amber-900 dark:text-amber-200 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/70 dark:hover:bg-amber-900/80 border border-amber-300 dark:border-amber-700 px-3 py-1.5 rounded-lg shadow-2xs transition-all shrink-0 cursor-pointer" title="Instant 1-Click Demo Platform (Preloaded Verified Account)">
               <i class="fa-solid fa-graduation-cap text-amber-600 dark:text-amber-400 text-xs"></i>
               <span>Demo</span>
             </button>
-            <button type="button" onclick="openAuthModal('signin')" class="text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-2xs shrink-0 whitespace-nowrap">
+            <button type="button" onclick="openAuthModal('signin')" class="text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-2xs shrink-0 whitespace-nowrap min-h-[40px] flex items-center justify-center">
               Log In
             </button>
-            <button onclick="openAuthModal('signup')" class="text-xs bg-[#008080] hover:bg-[#006666] text-white font-bold px-3 sm:px-3.5 py-1.5 rounded-lg shadow-sm transition-all shrink-0 whitespace-nowrap flex items-center space-x-1">
+            <button onclick="openAuthModal('signup')" class="hidden sm:inline-flex text-xs bg-[#008080] hover:bg-[#006666] text-white font-bold px-3 sm:px-3.5 py-1.5 rounded-lg shadow-sm transition-all shrink-0 whitespace-nowrap items-center space-x-1">
               <i class="fa-solid fa-user-plus text-[10px]"></i>
               <span>Sign Up</span>
             </button>
           </div>
 
-          <div id="authActionsLoggedIn" class="hidden items-center space-x-1.5 sm:space-x-2 shrink-0">
-            <div class="flex items-center space-x-1.5 px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-xs cursor-pointer shrink-0" onclick="navigateTo(appState.activeRole === 'recruiter' ? 'recruiter-candidates' : 'growth')">
+          <div id="authActionsLoggedIn" class="hidden items-center space-x-1 sm:space-x-1.5 shrink-0">
+            <div class="flex items-center space-x-1.5 px-2 sm:px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-xs cursor-pointer shrink-0" onclick="navigateTo(appState.activeRole === 'recruiter' ? 'recruiter-candidates' : 'growth')">
               <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-              <span id="userPillName" class="font-bold text-slate-800 dark:text-slate-200 max-w-[80px] sm:max-w-[110px] truncate">Aryan S.</span>
+              <span id="userPillName" class="font-bold text-slate-800 dark:text-slate-200 max-w-[75px] sm:max-w-[110px] truncate">Aryan S.</span>
               <span id="userPillRoleBadge" class="hidden xs:inline-block ml-1 px-1.5 py-0.2 rounded text-[10px] font-bold uppercase tracking-wider bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200">Learner</span>
             </div>
-            <!-- Prominent Explicit Log Out Button -->
-            <button type="button" onclick="handleLogout()" id="navLogoutBtn" title="Log Out / End Session" class="inline-flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-900/80 transition-all shadow-2xs shrink-0 cursor-pointer">
+            <!-- Prominent Explicit Log Out Button (Header on >=640px, Drawer on mobile) -->
+            <button type="button" onclick="handleLogout()" id="navLogoutBtn" title="Log Out / End Session" class="hidden sm:inline-flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-900/80 transition-all shadow-2xs shrink-0 cursor-pointer">
               <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
               <span class="font-bold">Log Out</span>
             </button>
           </div>
 
           <!-- Mobile Hamburger Menu Button (Accessible >=44px Touch Target) -->
-          <button id="mobileMenuToggleBtn" onclick="toggleMobileNav()" class="md:hidden p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-all shrink-0 flex items-center justify-center min-w-[42px] min-h-[42px]" aria-label="Toggle navigation menu" title="Navigation Menu">
+          <button id="mobileMenuToggleBtn" onclick="toggleMobileNav()" class="md:hidden p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-all shrink-0 flex items-center justify-center min-w-[44px] min-h-[44px]" aria-label="Toggle navigation menu" title="Navigation Menu">
             <i id="mobileMenuIcon" class="fa-solid fa-bars text-base"></i>
           </button>
 
@@ -497,6 +558,9 @@
       </div>
     </div>
   </header>
+
+  <!-- MOBILE NAVIGATION BACKDROP OVERLAY -->
+  <div id="mobileNavBackdrop" onclick="toggleMobileNav(false)" class="hidden fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-35 md:hidden transition-opacity"></div>
 
   <!-- MOBILE NAVIGATION DRAWER (Responsive & Touch Friendly) -->
   <div id="mobileNavDrawer" class="hidden md:hidden fixed inset-x-0 top-[100px] sm:top-[104px] z-40 bg-white dark:bg-[#0F172A] border-b border-slate-200 dark:border-slate-800 shadow-2xl p-4 transition-all max-h-[85vh] overflow-y-auto">
@@ -796,7 +860,7 @@
         <div id="authStatusAlert" class="hidden text-xs p-3 rounded-xl font-bold text-center border"></div>
 
         <!-- Standard Login / Signup Fields -->
-        <div id="authStandardFields" class="space-y-3">
+        <div id="authStandardFields" class="space-y-3" onkeydown="handleFormEnterKey(event, this, '#authSubmitBtn')">
           <div id="authNameField">
             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Full Name</label>
             <input type="text" id="authNameInput" placeholder="e.g. Aryan Sharma" class="w-full text-xs p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-[#008080] focus:outline-none">
@@ -828,7 +892,7 @@
         </div>
 
         <!-- Sign Up Verification Step (Code sent to real Email / Campus2Career Mailbox) -->
-        <div id="authVerifyStep" class="hidden space-y-4">
+        <div id="authVerifyStep" class="hidden space-y-4" onkeydown="handleFormEnterKey(event, this, '#authVerifySubmitBtn')">
           <div class="p-4 rounded-2xl bg-teal-50 dark:bg-teal-950/70 border border-teal-200 dark:border-teal-800 text-center space-y-2">
             <div class="w-12 h-12 bg-white dark:bg-slate-800 text-[#008080] dark:text-teal-400 rounded-full flex items-center justify-center mx-auto shadow-sm text-xl">
               <i class="fa-solid fa-envelope-circle-check"></i>
@@ -857,7 +921,7 @@
             <p class="text-[11px] text-slate-500 dark:text-slate-400 text-center">Check your Gmail inbox or spam folder for your 6-digit confirmation code.</p>
           </div>
 
-          <button type="button" onclick="verifyAndCompleteRegistration()" class="w-full py-3 bg-[#008080] hover:bg-[#006666] text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center justify-center space-x-1.5">
+          <button type="button" id="authVerifySubmitBtn" onclick="verifyAndCompleteRegistration()" class="w-full py-3 bg-[#008080] hover:bg-[#006666] text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center justify-center space-x-1.5">
             <span>Verify &amp; Create Account &rarr;</span>
           </button>
 
@@ -877,7 +941,7 @@
         </div>
 
         <!-- Forgot Password Email Reset Panel -->
-        <div id="authForgotPanel" class="hidden space-y-3">
+        <div id="authForgotPanel" class="hidden space-y-3" onkeydown="handleFormEnterKey(event, this, (document.getElementById('forgotOtpSection') && !document.getElementById('forgotOtpSection').classList.contains('hidden')) ? '#forgotResetSubmitBtn' : '#forgotSendCodeBtn')">
           <div class="p-3 rounded-xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-xs text-teal-900 dark:text-teal-200 leading-relaxed">
             <i class="fa-solid fa-envelope-circle-check mr-1 text-[#008080] dark:text-teal-400"></i>
             Enter your registered email. We will send a secure 6-digit verification reset code to your inbox.
@@ -886,7 +950,7 @@
             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Registered Email</label>
             <div class="flex gap-2">
               <input type="email" id="forgotEmailInput" placeholder="you@college.edu" class="flex-1 text-xs p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-[#008080]">
-              <button type="button" onclick="sendPasswordResetEmail()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold whitespace-nowrap">Send Code</button>
+              <button type="button" id="forgotSendCodeBtn" onclick="sendPasswordResetEmail()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold whitespace-nowrap">Send Code</button>
             </div>
           </div>
           <div id="forgotOtpSection" class="hidden space-y-2">
@@ -905,7 +969,7 @@
                 </button>
               </div>
             </div>
-            <button type="button" onclick="verifyAndResetPassword()" class="w-full py-2.5 bg-[#008080] hover:bg-teal-600 text-white rounded-xl text-xs font-bold shadow-md transition-all">
+            <button type="button" id="forgotResetSubmitBtn" onclick="verifyAndResetPassword()" class="w-full py-2.5 bg-[#008080] hover:bg-teal-600 text-white rounded-xl text-xs font-bold shadow-md transition-all">
               Save New Password &amp; Log In &rarr;
             </button>
           </div>
@@ -967,33 +1031,33 @@
         </button>
       </div>
 
-      <!-- Stepper Progress Dots -->
-      <div class="px-6 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs">
-        <div class="flex items-center space-x-2">
-          <span id="dot1" class="w-6 h-6 rounded-full bg-[#008080] text-white flex items-center justify-center text-xs font-bold">1</span>
-          <span class="text-slate-800 font-semibold">Academic Stream</span>
+      <!-- Stepper Progress Dots (Responsive Labels) -->
+      <div class="px-3 sm:px-6 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs">
+        <div class="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+          <span id="dot1" class="w-6 h-6 rounded-full bg-[#008080] text-white flex items-center justify-center text-xs font-bold shrink-0">1</span>
+          <span class="text-slate-800 font-semibold hidden sm:inline">Academic Stream</span>
         </div>
-        <div class="h-0.5 w-6 bg-slate-300"></div>
-        <div class="flex items-center space-x-2">
-          <span id="dot2" class="w-6 h-6 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center text-xs">2</span>
-          <span class="text-slate-500 font-medium">Choose Core Skills</span>
+        <div class="h-0.5 w-3 sm:w-6 bg-slate-300 shrink"></div>
+        <div class="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+          <span id="dot2" class="w-6 h-6 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center text-xs shrink-0">2</span>
+          <span class="text-slate-500 font-medium hidden sm:inline">Choose Core Skills</span>
         </div>
-        <div class="h-0.5 w-6 bg-slate-300"></div>
-        <div class="flex items-center space-x-2">
-          <span id="dot3" class="w-6 h-6 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center text-xs">3</span>
-          <span class="text-slate-500 font-medium">Skill Levels</span>
+        <div class="h-0.5 w-3 sm:w-6 bg-slate-300 shrink"></div>
+        <div class="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+          <span id="dot3" class="w-6 h-6 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center text-xs shrink-0">3</span>
+          <span class="text-slate-500 font-medium hidden sm:inline">Skill Levels</span>
         </div>
-        <div class="h-0.5 w-6 bg-slate-300"></div>
-        <div class="flex items-center space-x-2">
-          <span id="dot4" class="w-6 h-6 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center text-xs">4</span>
-          <span class="text-slate-500 font-medium">View Diagram</span>
+        <div class="h-0.5 w-3 sm:w-6 bg-slate-300 shrink"></div>
+        <div class="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+          <span id="dot4" class="w-6 h-6 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center text-xs shrink-0">4</span>
+          <span class="text-slate-500 font-medium hidden sm:inline">View Diagram</span>
         </div>
       </div>
 
       <div class="p-6 overflow-y-auto flex-1 space-y-5">
         
         <!-- STEP 1: Academic Profile & Stream -->
-        <div id="wizardStep1" class="wizard-pane block space-y-4">
+        <div id="wizardStep1" class="wizard-pane block space-y-4" onkeydown="handleFormEnterKey(event, this, '#wizardNextBtn')">
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">University / Institute</label>
             <input type="text" id="obCollege" placeholder="e.g. Gujarat Technological University / IIT / NIT" class="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#008080]">
@@ -1004,11 +1068,11 @@
               <label class="block text-xs font-bold text-slate-700" id="wizardYearLabel">Current Year of B.Tech</label>
               <span class="text-[10px]" id="wizardYearStatusHint"><span class="text-teal-700 font-semibold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">Required for Students</span></span>
             </div>
-            <div class="grid grid-cols-4 gap-2 text-xs">
-              <button type="button" onclick="selectWizardYear(1)" class="w-year-btn py-2 border rounded-lg text-center font-medium border-slate-200 hover:border-teal-500 text-slate-700 transition-all">1st Year</button>
-              <button type="button" onclick="selectWizardYear(2)" class="w-year-btn py-2 border rounded-lg text-center font-medium border-slate-200 hover:border-teal-500 text-slate-700 transition-all">2nd Year</button>
-              <button type="button" onclick="selectWizardYear(3)" class="w-year-btn py-2 border rounded-lg text-center font-semibold border-[#008080] bg-teal-50 text-[#008080] shadow-2xs transition-all">3rd Year</button>
-              <button type="button" onclick="selectWizardYear(4)" class="w-year-btn py-2 border rounded-lg text-center font-medium border-slate-200 hover:border-teal-500 text-slate-700 transition-all">Final Year</button>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              <button type="button" onclick="selectWizardYear(1)" class="w-year-btn py-2.5 border rounded-lg text-center font-medium border-slate-200 hover:border-teal-500 text-slate-700 transition-all min-h-[40px]">1st Year</button>
+              <button type="button" onclick="selectWizardYear(2)" class="w-year-btn py-2.5 border rounded-lg text-center font-medium border-slate-200 hover:border-teal-500 text-slate-700 transition-all min-h-[40px]">2nd Year</button>
+              <button type="button" onclick="selectWizardYear(3)" class="w-year-btn py-2.5 border rounded-lg text-center font-semibold border-[#008080] bg-teal-50 text-[#008080] shadow-2xs transition-all min-h-[40px]">3rd Year</button>
+              <button type="button" onclick="selectWizardYear(4)" class="w-year-btn py-2.5 border rounded-lg text-center font-medium border-slate-200 hover:border-teal-500 text-slate-700 transition-all min-h-[40px]">Final Year</button>
             </div>
           </div>
 
@@ -1235,7 +1299,7 @@
             <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Radar Competence Diagram</h4>
             <span class="text-[10px] text-teal-700 font-bold font-mono">LIVE VERIFIED</span>
           </div>
-          <div class="h-64 relative">
+          <div class="radar-chart-container relative">
             <canvas id="customRadarChartCanvas"></canvas>
           </div>
           <p class="text-[11px] text-slate-500 text-center">
@@ -23532,7 +23596,7 @@ const defaultMarketReports = [
         const card = document.createElement('div');
         const isSkillVerified = (skill.score >= 80) || skill.status === 'LIVE VERIFIED' || Boolean(skill.verified);
 
-        card.className = "bg-white dark:bg-[#0F172A] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-sm transition-all space-y-4";
+        card.className = "bg-white dark:bg-[#0F172A] p-3 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-sm transition-all space-y-4";
         card.innerHTML = `
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
@@ -23567,11 +23631,11 @@ const defaultMarketReports = [
             <div class="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden flex">
               <div class="h-full rounded-full transition-all duration-500" style="width: ${skill.score}%; background-color: ${skillFusion.hex}"></div>
             </div>
-            <div class="flex justify-between text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-1">
+            <div class="flex flex-wrap justify-between gap-x-2 text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-1">
               <span>Beginner (20%)</span>
               <span>Intermediate (35%)</span>
-              <span>Advanced (48% Baseline)</span>
-              <span>Production Master (100%)</span>
+              <span>Advanced (48%)</span>
+              <span>Master (100%)</span>
             </div>
           </div>
 
@@ -23591,8 +23655,8 @@ const defaultMarketReports = [
             </div>
           </div>
 
-          <!-- Milestones & Diagnostic -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 text-xs">
+          <!-- Milestones & Diagnostic (Stacks vertically on small screens) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
             <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
               <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Current Milestone Achieved:</span>
               <p class="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">${skill.currentMilestone || 'Fundamental syntax & baseline concepts'}</p>
@@ -23603,21 +23667,21 @@ const defaultMarketReports = [
             </div>
           </div>
 
-          <!-- ACTIONS: WATCH PLAYLIST OR VALIDATE IN MCQ (Manual tuning removed - baseline locked) -->
-          <div class="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800">
+          <!-- ACTIONS: Full width touch-friendly buttons on mobile -->
+          <div class="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-t border-slate-100 dark:border-slate-800">
             <div class="text-[11px] font-medium text-slate-500 flex items-center">
               <i class="fa-solid fa-lock text-slate-400 mr-1.5 text-[10px]"></i>
               <span>Baseline Level:</span>
               <span class="ml-1 font-bold ${tier.twText}">${tier.name} (${skill.score}%)</span>
-              <span class="ml-1.5 text-[10px] text-slate-400 italic">(Locked &bull; Evaluated via 10-MCQ)</span>
+              <span class="ml-1.5 text-[10px] text-slate-400 italic hidden sm:inline">(Locked &bull; Evaluated via 10-MCQ)</span>
             </div>
 
-            <div class="flex items-center space-x-2">
-              <button onclick="openSkillResourceViewer('${skill.id}')" class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold shadow-xs flex items-center space-x-1">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+              <button onclick="openSkillResourceViewer('${skill.id}')" class="w-full sm:w-auto min-h-[44px] px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold shadow-xs flex items-center justify-center space-x-1.5 cursor-pointer">
                 <i class="fa-brands fa-youtube"></i>
                 <span>Study Video Playlist</span>
               </button>
-              <button onclick="navigateTo('mcq')" class="px-3.5 py-1 bg-[#008080] hover:bg-[#006666] text-white rounded-lg text-xs font-semibold shadow-xs">
+              <button onclick="navigateTo('mcq')" class="w-full sm:w-auto min-h-[44px] px-3.5 py-2 bg-[#008080] hover:bg-[#006666] text-white rounded-lg text-xs font-semibold shadow-xs flex items-center justify-center cursor-pointer">
                 ${isSkillVerified ? 'Retake 10-MCQ Test' : 'Take 10-MCQ Test &rarr;'}
               </button>
             </div>
@@ -25608,16 +25672,16 @@ function onWizardBranchChanged(branchKey) {
         const currentScore = s.score;
 
         const div = document.createElement('div');
-        div.className = "p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 flex items-center justify-between";
+        div.className = "p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2";
         div.innerHTML = `
           <div>
             <span class="text-xs font-bold text-slate-900 dark:text-white">${s.name}</span>
             <span class="text-[10px] text-slate-400 dark:text-slate-500 block">${s.category || 'Core Skill'}</span>
           </div>
-          <div class="flex items-center space-x-1.5" id="wizardSkillBtns-${idx}">
-            <button type="button" data-score="20" onclick="setWizardSkillScore(${idx}, 20)" class="w-skill-level-btn px-2.5 py-1 rounded-lg text-[10px] ${currentScore <= 25 ? 'bg-red-600 text-white font-bold shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'} transition-all">Basic (20%)</button>
-            <button type="button" data-score="35" onclick="setWizardSkillScore(${idx}, 35)" class="w-skill-level-btn px-2.5 py-1 rounded-lg text-[10px] ${currentScore > 25 && currentScore <= 40 ? 'bg-yellow-400 text-slate-950 font-bold shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'} transition-all">Intermediate (35%)</button>
-            <button type="button" data-score="48" onclick="setWizardSkillScore(${idx}, 48)" class="w-skill-level-btn px-2.5 py-1 rounded-lg text-[10px] ${currentScore > 40 ? 'bg-emerald-600 text-white font-bold shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'} transition-all">Advanced (48%)</button>
+          <div class="flex items-center space-x-1.5 flex-wrap gap-1" id="wizardSkillBtns-${idx}">
+            <button type="button" data-score="20" onclick="setWizardSkillScore(${idx}, 20)" class="w-skill-level-btn px-2.5 py-1.5 rounded-lg text-[10px] ${currentScore <= 25 ? 'bg-red-600 text-white font-bold shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'} transition-all min-h-[36px]">Basic (20%)</button>
+            <button type="button" data-score="35" onclick="setWizardSkillScore(${idx}, 35)" class="w-skill-level-btn px-2.5 py-1.5 rounded-lg text-[10px] ${currentScore > 25 && currentScore <= 40 ? 'bg-yellow-400 text-slate-950 font-bold shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'} transition-all min-h-[36px]">Intermediate (35%)</button>
+            <button type="button" data-score="48" onclick="setWizardSkillScore(${idx}, 48)" class="w-skill-level-btn px-2.5 py-1.5 rounded-lg text-[10px] ${currentScore > 40 ? 'bg-emerald-600 text-white font-bold shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'} transition-all min-h-[36px]">Advanced (48%)</button>
           </div>
         `;
         container.appendChild(div);
@@ -28244,22 +28308,27 @@ function onWizardBranchChanged(branchKey) {
     /* ========================================================================= */
     function toggleMobileNav(forceState) {
       const drawer = document.getElementById('mobileNavDrawer');
+      const backdrop = document.getElementById('mobileNavBackdrop');
       const icon = document.getElementById('mobileMenuIcon');
       if (!drawer) return;
       const isHidden = drawer.classList.contains('hidden');
       const show = (forceState !== undefined) ? forceState : isHidden;
       if (show) {
         drawer.classList.remove('hidden');
+        if (backdrop) backdrop.classList.remove('hidden');
         if (icon) {
           icon.classList.remove('fa-bars');
           icon.classList.add('fa-xmark');
         }
+        document.body.style.overflow = 'hidden';
       } else {
         drawer.classList.add('hidden');
+        if (backdrop) backdrop.classList.add('hidden');
         if (icon) {
           icon.classList.remove('fa-xmark');
           icon.classList.add('fa-bars');
         }
+        document.body.style.overflow = '';
       }
     }
 
@@ -28731,6 +28800,119 @@ function onWizardBranchChanged(branchKey) {
     });
 
   
+    /* ========================================================================= */
+    /* PROGRESSIVE ENTER-KEY FORM NAVIGATION & FINAL SUBMISSION                  */
+    /* ========================================================================= */
+    function handleFormEnterKey(event, formElement, submitButtonSelector) {
+      if (!event || event.key !== 'Enter' || event.shiftKey) return;
+
+      // Do not override multiline textarea behavior
+      if (event.target && event.target.tagName && event.target.tagName.toLowerCase() === 'textarea') return;
+
+      const container = (typeof formElement === 'string') ? document.querySelector(formElement) : formElement;
+      if (!container) return;
+
+      const focusableSelectors = 'input:not([type="hidden"]):not([disabled]), select:not([disabled])';
+      const rawInputs = Array.from(container.querySelectorAll(focusableSelectors));
+
+      // Only consider visible inputs (not hidden and not inside a .hidden container)
+      const inputs = rawInputs.filter(el => {
+        if (el.closest('.hidden')) return false;
+        if (el.offsetParent === null && window.getComputedStyle(el).position !== 'fixed') return false;
+        return true;
+      });
+
+      const currentIndex = inputs.indexOf(event.target);
+
+      if (currentIndex > -1) {
+        event.preventDefault();
+
+        // If there is another input field down the list, smoothly advance focus to it
+        if (currentIndex < inputs.length - 1) {
+          inputs[currentIndex + 1].focus();
+        } else {
+          // On the final input field, programmatically trigger the submission action
+          let submitBtn = null;
+          if (typeof submitButtonSelector === 'string') {
+            submitBtn = container.querySelector(submitButtonSelector) || document.querySelector(submitButtonSelector);
+          } else if (submitButtonSelector && typeof submitButtonSelector.click === 'function') {
+            submitBtn = submitButtonSelector;
+          }
+
+          if (!submitBtn) {
+            submitBtn = container.querySelector('button[type="submit"]') || container.querySelector('button:not([disabled])');
+          }
+
+          if (submitBtn && !submitBtn.disabled) {
+            submitBtn.click();
+          }
+        }
+      }
+    }
+    window.handleFormEnterKey = handleFormEnterKey;
+
+    function initProgressiveFormNavigation() {
+      document.addEventListener('keydown', function(event) {
+        if (!event || event.key !== 'Enter' || event.shiftKey) return;
+        if (!event.target || event.target.tagName.toLowerCase() === 'textarea') return;
+        if (event.target.tagName.toLowerCase() !== 'input' && event.target.tagName.toLowerCase() !== 'select') return;
+
+        // Skip if already handled by inline onkeydown
+        if (event.defaultPrevented) return;
+
+        // 1. Auth Standard Fields (Sign Up & Log In)
+        const authStandard = document.getElementById('authStandardFields');
+        if (authStandard && authStandard.contains(event.target) && !authStandard.closest('.hidden')) {
+          handleFormEnterKey(event, authStandard, '#authSubmitBtn');
+          return;
+        }
+
+        // 2. Auth Verification Step (PIN / Email confirmation code)
+        const authVerify = document.getElementById('authVerifyStep');
+        if (authVerify && authVerify.contains(event.target) && !authVerify.closest('.hidden')) {
+          handleFormEnterKey(event, authVerify, '#authVerifySubmitBtn');
+          return;
+        }
+
+        // 3. Auth Forgot Password Panel
+        const authForgot = document.getElementById('authForgotPanel');
+        if (authForgot && authForgot.contains(event.target) && !authForgot.closest('.hidden')) {
+          const otpSection = document.getElementById('forgotOtpSection');
+          const submitSelector = (otpSection && !otpSection.classList.contains('hidden'))
+            ? '#forgotResetSubmitBtn'
+            : '#forgotSendCodeBtn';
+          handleFormEnterKey(event, authForgot, submitSelector);
+          return;
+        }
+
+        // 4. Admin Auth Modal
+        const adminModal = document.getElementById('adminAuthModal');
+        if (adminModal && adminModal.contains(event.target) && !adminModal.closest('.hidden')) {
+          handleFormEnterKey(event, adminModal, '#adminVerifyBtn');
+          return;
+        }
+
+        // 5. Wizard Step 1 (Onboarding Profile & Stream)
+        const wizardStep1 = document.getElementById('wizardStep1');
+        if (wizardStep1 && wizardStep1.contains(event.target) && !wizardStep1.closest('.hidden')) {
+          handleFormEnterKey(event, wizardStep1, '#wizardNextBtn');
+          return;
+        }
+
+        // 6. Generic Form Fallback
+        const parentForm = event.target.closest('form') || event.target.closest('.modal-pane') || event.target.closest('[role="dialog"]');
+        if (parentForm) {
+          handleFormEnterKey(event, parentForm);
+        }
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initProgressiveFormNavigation);
+    } else {
+      initProgressiveFormNavigation();
+    }
+
     /* ========================================================================= */
     /* USER DATABASE MANAGEMENT & AUTHENTICATION ENGINE                          */
     /* ========================================================================= */
@@ -31564,7 +31746,7 @@ function onWizardBranchChanged(branchKey) {
       </div>
 
       <!-- Shield Form Body -->
-      <div class="p-6 space-y-4">
+      <div class="p-6 space-y-4" onkeydown="handleFormEnterKey(event, this, '#adminVerifyBtn')">
         <div class="p-3 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs text-amber-900 dark:text-amber-200 leading-relaxed flex items-start space-x-2">
           <i class="fa-solid fa-lock text-amber-600 dark:text-amber-400 mt-0.5"></i>
           <div>
@@ -31585,7 +31767,7 @@ function onWizardBranchChanged(branchKey) {
         <div class="space-y-1.5">
           <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">Master Admin Secret Key</label>
           <div class="relative">
-            <input type="password" id="adminSecretKeyInput" onkeydown="if(event.key === 'Enter') verifyAdminPasscode()" placeholder="Enter Sovereign Master Key" class="w-full text-xs p-3 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono">
+            <input type="password" id="adminSecretKeyInput" placeholder="Enter Sovereign Master Key" class="w-full text-xs p-3 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono">
             <button type="button" onclick="togglePasswordVisibility('adminSecretKeyInput', 'adminKeyEyeIcon')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1" title="Show/Hide Key">
               <i id="adminKeyEyeIcon" class="fa-solid fa-eye text-sm"></i>
             </button>
