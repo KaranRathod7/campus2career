@@ -54,23 +54,36 @@ async function submitTestScore(req, res) {
     }
 
     // 1. If Supabase Client is configured with valid credentials, execute via Supabase SDK
-    if (supabase) {
+    const sb = db.getSupabaseClient() || supabase;
+    if (sb) {
       try {
-        const { data: attempt, error: insertError } = await supabase
+        let insertData = {
+          user_id: userId,
+          skill_name: skillName,
+          test_title: testTitle,
+          score: score,
+          score_percentage: score,
+          total_questions: totalQuestions,
+          correct_answers: correctAnswers,
+          metadata: breakdown
+        };
+
+        let { data: attempt, error: insertError } = await sb
           .from('student_test_attempts')
-          .insert([
-            {
-              user_id: userId,
-              skill_name: skillName,
-              test_title: testTitle,
-              score: score,
-              total_questions: totalQuestions,
-              correct_answers: correctAnswers,
-              metadata: breakdown
-            }
-          ])
+          .insert([insertData])
           .select()
           .single();
+
+        if (insertError && (insertError.message.includes('score_percentage') || insertError.message.includes('column'))) {
+          delete insertData.score_percentage;
+          const retryRes = await sb
+            .from('student_test_attempts')
+            .insert([insertData])
+            .select()
+            .single();
+          attempt = retryRes.data;
+          insertError = retryRes.error;
+        }
 
         if (insertError) throw insertError;
 

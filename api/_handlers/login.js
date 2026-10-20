@@ -32,6 +32,13 @@ module.exports = async (req, res) => {
     // 1. Rate limiting check
     const rateStatus = await db.checkRateLimit(ip, normalizedEmail);
     if (rateStatus.isLocked) {
+      await db.recordLoginAttempt({
+        user_id: null,
+        email: normalizedEmail,
+        status: 'FAILED',
+        ip_address: ip,
+        user_agent: req.headers['user-agent'] || 'Unknown'
+      });
       return res.status(429).json({
         success: false,
         error: `Security Alert: Too many failed login attempts. Locked for ${rateStatus.remainingSecs}s.`,
@@ -51,6 +58,13 @@ module.exports = async (req, res) => {
 
     if (!user) {
       const failed = await db.recordFailedAttempt(ip, normalizedEmail);
+      await db.recordLoginAttempt({
+        user_id: null,
+        email: normalizedEmail,
+        status: 'FAILED',
+        ip_address: ip,
+        user_agent: req.headers['user-agent'] || 'Unknown'
+      });
       const remainingAttempts = Math.max(0, 5 - failed.attempts);
       return res.status(401).json({
         success: false,
@@ -66,6 +80,13 @@ module.exports = async (req, res) => {
     const isMatch = await bcrypt.compare(cleanPassword, user.password_hash);
     if (!isMatch) {
       const failed = await db.recordFailedAttempt(ip, normalizedEmail);
+      await db.recordLoginAttempt({
+        user_id: null,
+        email: normalizedEmail,
+        status: 'FAILED',
+        ip_address: ip,
+        user_agent: req.headers['user-agent'] || 'Unknown'
+      });
       const remainingAttempts = Math.max(0, 5 - failed.attempts);
       return res.status(401).json({
         success: false,
@@ -79,6 +100,15 @@ module.exports = async (req, res) => {
 
     // 4. Clear rate limit on successful credentials
     await db.clearRateLimit(ip, normalizedEmail);
+
+    // Record successful login attempt
+    await db.recordLoginAttempt({
+      user_id: user.id,
+      email: user.email,
+      status: 'SUCCESS',
+      ip_address: ip,
+      user_agent: req.headers['user-agent'] || 'Unknown'
+    });
 
     // 5. Verification check
     if (!user.is_verified) {

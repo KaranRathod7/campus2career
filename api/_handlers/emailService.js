@@ -126,8 +126,42 @@ async function sendInterviewInviteEmail({ to, candidateName, recruiterCompany, r
   return await sendBrevoRaw({ to, subject, htmlContent, textContent });
 }
 
+async function sendPasswordResetOtpEmail({ to, name = 'Student', code }) {
+  const subject = 'Campus2Career — Password Reset Verification Code';
+
+  const htmlContent = `
+  <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #0B132B; color: #FFFFFF; border-radius: 20px; overflow: hidden; border: 1px solid #1E293B;">
+    <div style="padding: 28px 32px; background: linear-gradient(135deg, #0B132B, #111C3A); border-bottom: 1px solid #1E293B;">
+      <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #FFFFFF;">Campus<span style="color: #008080;">2Career</span></h1>
+      <p style="margin: 4px 0 0 0; font-size: 12px; color: #94A3B8;">Security &amp; Account Recovery</p>
+    </div>
+    <div style="padding: 32px; background: #0F172A;">
+      <h2 style="margin: 0 0 12px 0; font-size: 18px; color: #F8FAFC;">Hello ${name},</h2>
+      <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #CBD5E1;">
+        We received a request to reset your password for your Campus2Career account. Enter the 6-digit verification code below to set a new password:
+      </p>
+      
+      <div style="background: #1E293B; border: 2px dashed #008080; border-radius: 16px; padding: 24px; text-align: center; margin: 24px 0;">
+        <span style="font-family: monospace; font-size: 38px; font-weight: 900; letter-spacing: 8px; color: #2DD4BF;">${code}</span>
+        <p style="margin: 8px 0 0 0; font-size: 11px; color: #94A3B8;">This verification code expires in 15 minutes. Never share this code with anyone.</p>
+      </div>
+
+      <p style="margin: 28px 0 0 0; font-size: 12px; color: #64748B; border-top: 1px solid #1E293B; padding-top: 16px;">
+        If you did not request a password reset, you can safely ignore this email. Your current password will remain unchanged.
+      </p>
+    </div>
+  </div>
+  `;
+
+  const textContent = `Hello ${name},\n\nYour 6-digit Campus2Career password reset code is: ${code}\n\nThis code expires in 15 minutes.\n\nIf you did not request this, please ignore this email.`;
+
+  console.log(`[PASSWORD RESET OTP]: ${code} for ${to}`);
+  return await sendBrevoRaw({ to, subject, htmlContent, textContent });
+}
+
 module.exports = {
   sendBrevoRaw,
   sendVerificationEmail,
-  sendInterviewInviteEmail
+  sendInterviewInviteEmail,
+  sendPasswordResetOtpEmail
 };

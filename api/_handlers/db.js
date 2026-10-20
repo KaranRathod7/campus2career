@@ -153,35 +153,40 @@ const DEFAULT_SKILLS_BY_STREAM = {
 
 let inMemoryStore = null;
 
+function normalizeStoreCollections(store) {
+  if (!store) return store;
+  if (!store.login_rate_limits) store.login_rate_limits = {};
+  if (store.login_attempts && !Array.isArray(store.login_attempts)) {
+    store.login_rate_limits = { ...store.login_rate_limits, ...store.login_attempts };
+    store.login_attempts = [];
+  }
+  if (!Array.isArray(store.login_attempts)) store.login_attempts = [];
+  if (!store.password_resets) store.password_resets = [];
+  if (!store.student_test_attempts) store.student_test_attempts = [];
+  if (!store.student_skill_progress) store.student_skill_progress = [];
+  if (!store.user_completed_lectures) store.user_completed_lectures = [];
+  return store;
+}
+
 function getLocalStore() {
   if (inMemoryStore) {
-    if (!inMemoryStore.student_skill_progress) inMemoryStore.student_skill_progress = [];
-    if (!inMemoryStore.user_completed_lectures) inMemoryStore.user_completed_lectures = [];
-    if (!inMemoryStore.user_completed_lectures) inMemoryStore.user_completed_lectures = [];
-    return inMemoryStore;
+    return normalizeStoreCollections(inMemoryStore);
   }
   const tmpPath = path.join('/tmp', 'local_pg_store.json');
   if (fs.existsSync(tmpPath)) {
     try {
       inMemoryStore = JSON.parse(fs.readFileSync(tmpPath, 'utf-8'));
-      if (!inMemoryStore.student_skill_progress) inMemoryStore.student_skill_progress = [];
-    if (!inMemoryStore.user_completed_lectures) inMemoryStore.user_completed_lectures = [];
-    if (!inMemoryStore.user_completed_lectures) inMemoryStore.user_completed_lectures = [];
-      return inMemoryStore;
+      return normalizeStoreCollections(inMemoryStore);
     } catch (e) {}
   }
   if (fs.existsSync(LOCAL_STORE_FILE)) {
     try {
       inMemoryStore = JSON.parse(fs.readFileSync(LOCAL_STORE_FILE, 'utf-8'));
       delete inMemoryStore.student_activity_logs;
-      if (!inMemoryStore.student_test_attempts) inMemoryStore.student_test_attempts = [];
-      if (!inMemoryStore.student_skill_progress) inMemoryStore.student_skill_progress = [];
-    if (!inMemoryStore.user_completed_lectures) inMemoryStore.user_completed_lectures = [];
-    if (!inMemoryStore.user_completed_lectures) inMemoryStore.user_completed_lectures = [];
-      return inMemoryStore;
+      return normalizeStoreCollections(inMemoryStore);
     } catch (e) {}
   }
-  return {
+  inMemoryStore = {
     users: [
       {
         id: 'admin-uuid-1',
@@ -193,7 +198,9 @@ function getLocalStore() {
         stream: 'ALL'
       }
     ],
-    login_attempts: {},
+    login_rate_limits: {},
+    login_attempts: [],
+    password_resets: [],
     pending_verifications: [],
     candidates: [
       {
@@ -432,18 +439,62 @@ async function ensureSchema() {
         await p.query('CREATE INDEX IF NOT EXISTS idx_pending_verifications_email ON pending_verifications (LOWER(TRIM(email)));');
       } catch (e) {}
 
-      // 5. Login Attempts Table
+      // 5. Login Rate Limits & Audit Log Tables
       await p.query(`
-        CREATE TABLE IF NOT EXISTS login_attempts (
+        CREATE TABLE IF NOT EXISTS login_rate_limits (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           ip_address VARCHAR(100) NOT NULL,
           email VARCHAR(255) NOT NULL,
           failed_attempts INT DEFAULT 1,
           locked_until TIMESTAMP WITH TIME ZONE,
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          CONSTRAINT unique_ip_email UNIQUE(ip_address, email)
+          CONSTRAINT unique_rate_limit_ip_email UNIQUE(ip_address, email)
         );
       `);
+
+      await p.query(`
+        CREATE TABLE IF NOT EXISTS login_attempts (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id UUID,
+          email VARCHAR(255) NOT NULL,
+          status VARCHAR(50) NOT NULL DEFAULT 'SUCCESS',
+          ip_address VARCHAR(100),
+          user_agent TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // Migration for login_attempts if previously created with old rate-limiting schema
+      const loginAttemptMigrations = [
+        "ALTER TABLE login_attempts DROP CONSTRAINT IF EXISTS unique_ip_email;",
+        "ALTER TABLE login_attempts ADD COLUMN IF NOT EXISTS user_id UUID;",
+        "ALTER TABLE login_attempts ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'SUCCESS';",
+        "ALTER TABLE login_attempts ADD COLUMN IF NOT EXISTS user_agent TEXT;",
+        "ALTER TABLE login_attempts ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;",
+        "ALTER TABLE login_attempts ALTER COLUMN failed_attempts DROP NOT NULL;",
+        "CREATE INDEX IF NOT EXISTS idx_login_attempts_email ON login_attempts (LOWER(TRIM(email)));",
+        "CREATE INDEX IF NOT EXISTS idx_login_attempts_created_at ON login_attempts (created_at DESC);",
+        "CREATE INDEX IF NOT EXISTS idx_login_rate_limits_ip_email ON login_rate_limits (ip_address, LOWER(TRIM(email)));"
+      ];
+      for (const lam of loginAttemptMigrations) {
+        try { await p.query(lam); } catch (e) {}
+      }
+
+      // Password Resets Table
+      await p.query(`
+        CREATE TABLE IF NOT EXISTS password_resets (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          email VARCHAR(255) NOT NULL,
+          token VARCHAR(100) NOT NULL,
+          expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+          used BOOLEAN DEFAULT false,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      try {
+        await p.query('CREATE INDEX IF NOT EXISTS idx_password_resets_email ON password_resets (LOWER(TRIM(email)));');
+        await p.query('CREATE INDEX IF NOT EXISTS idx_password_resets_token ON password_resets (token);');
+      } catch (e) {}
 
       // 6. Candidates Table
       await p.query(`
@@ -583,6 +634,7 @@ async function ensureSchema() {
             skill_name VARCHAR(150) NOT NULL,
             test_title VARCHAR(255),
             score NUMERIC(5,2) NOT NULL,
+            score_percentage NUMERIC(5,2),
             total_questions INT DEFAULT 0,
             correct_answers INT DEFAULT 0,
             metadata JSONB DEFAULT '{}',
@@ -594,6 +646,8 @@ async function ensureSchema() {
 
         // Extra column verification
         const attemptCols = [
+          "ALTER TABLE student_test_attempts ADD COLUMN IF NOT EXISTS score NUMERIC(5,2);",
+          "ALTER TABLE student_test_attempts ADD COLUMN IF NOT EXISTS score_percentage NUMERIC(5,2);",
           "ALTER TABLE student_test_attempts ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';",
           "ALTER TABLE student_test_attempts ADD COLUMN IF NOT EXISTS total_questions INT DEFAULT 0;",
           "ALTER TABLE student_test_attempts ADD COLUMN IF NOT EXISTS correct_answers INT DEFAULT 0;",
@@ -1053,7 +1107,7 @@ const db = {
     return false;
   },
 
-  // Rate Limiting (Brute-Force Protection)
+  // Rate Limiting (Brute-Force Protection via login_rate_limits)
   async checkRateLimit(ip, email) {
     const ipAddr = ip || '127.0.0.1';
     const emailAddr = (email || '').trim().toLowerCase();
@@ -1065,8 +1119,8 @@ const db = {
         await ensureSchema();
         const res = await p.query(
           `SELECT failed_attempts, locked_until 
-           FROM login_attempts 
-           WHERE ip_address = $1 AND email = $2`,
+           FROM login_rate_limits 
+           WHERE ip_address = $1 AND LOWER(TRIM(email)) = LOWER(TRIM($2))`,
           [ipAddr, emailAddr]
         );
         if (res.rows.length > 0) {
@@ -1085,7 +1139,7 @@ const db = {
 
     const store = getLocalStore();
     const key = `${ipAddr}_${emailAddr}`;
-    const entry = store.login_attempts[key];
+    const entry = (store.login_rate_limits && store.login_rate_limits[key]) || (store.login_attempts && !Array.isArray(store.login_attempts) && store.login_attempts[key]);
     if (entry && entry.failed_attempts >= 5 && entry.locked_until && new Date(entry.locked_until) > now) {
       const remainingSecs = Math.ceil((new Date(entry.locked_until).getTime() - now.getTime()) / 1000);
       return { isLocked: true, remainingSecs, attempts: entry.failed_attempts };
@@ -1103,7 +1157,7 @@ const db = {
       try {
         await ensureSchema();
         const cur = await p.query(
-          `SELECT failed_attempts FROM login_attempts WHERE ip_address = $1 AND email = $2`,
+          `SELECT failed_attempts FROM login_rate_limits WHERE ip_address = $1 AND LOWER(TRIM(email)) = LOWER(TRIM($2))`,
           [ipAddr, emailAddr]
         );
         let attempts = 1;
@@ -1122,7 +1176,7 @@ const db = {
         }
 
         await p.query(
-          `INSERT INTO login_attempts (ip_address, email, failed_attempts, locked_until, updated_at)
+          `INSERT INTO login_rate_limits (ip_address, email, failed_attempts, locked_until, updated_at)
            VALUES ($1, $2, $3, $4, NOW())
            ON CONFLICT (ip_address, email) 
            DO UPDATE SET failed_attempts = $3, locked_until = $4, updated_at = NOW()`,
@@ -1141,8 +1195,9 @@ const db = {
     }
 
     const store = getLocalStore();
+    if (!store.login_rate_limits) store.login_rate_limits = {};
     const key = `${ipAddr}_${emailAddr}`;
-    const entry = store.login_attempts[key] || { failed_attempts: 0 };
+    const entry = store.login_rate_limits[key] || { failed_attempts: 0 };
     entry.failed_attempts += 1;
     let lockedUntil = null;
     if (entry.failed_attempts === 5) {
@@ -1152,7 +1207,7 @@ const db = {
     }
     entry.locked_until = lockedUntil ? lockedUntil.toISOString() : null;
     entry.updated_at = now.toISOString();
-    store.login_attempts[key] = entry;
+    store.login_rate_limits[key] = entry;
     saveLocalStore(store);
 
     return {
@@ -1169,7 +1224,7 @@ const db = {
     if (p) {
       try {
         await ensureSchema();
-        await p.query('DELETE FROM login_attempts WHERE ip_address = $1 AND email = $2', [ipAddr, emailAddr]);
+        await p.query('DELETE FROM login_rate_limits WHERE ip_address = $1 AND LOWER(TRIM(email)) = LOWER(TRIM($2))', [ipAddr, emailAddr]);
         return;
       } catch (err) {
         console.warn('[Campus2Career DB] Cloud clearRateLimit notice (falling back to local):', err.message);
@@ -1177,9 +1232,194 @@ const db = {
       }
     }
     const store = getLocalStore();
-    const key = `${ipAddr}_${emailAddr}`;
-    delete store.login_attempts[key];
+    if (store.login_rate_limits) {
+      const key = `${ipAddr}_${emailAddr}`;
+      delete store.login_rate_limits[key];
+      saveLocalStore(store);
+    }
+  },
+
+  // Audit Log: Record Every Login Attempt (SUCCESS and FAILED)
+  async recordLoginAttempt({ user_id, email, status, ip_address, user_agent }) {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanStatus = (status || 'SUCCESS').toUpperCase();
+    const cleanIp = ip_address || '127.0.0.1';
+    const cleanAgent = user_agent || 'Unknown';
+    let validUuid = (user_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(user_id))) ? String(user_id) : null;
+
+    // Supabase SDK attempt if available
+    const sb = this.getSupabaseClient();
+    if (sb) {
+      try {
+        const { data, error } = await sb
+          .from('login_attempts')
+          .insert([
+            {
+              user_id: validUuid,
+              email: cleanEmail,
+              status: cleanStatus,
+              ip_address: cleanIp,
+              user_agent: cleanAgent
+            }
+          ])
+          .select()
+          .single();
+        if (!error && data) return data;
+      } catch (e) {
+        console.warn('[Campus2Career Supabase login_attempts notice]:', e.message);
+      }
+    }
+
+    // Direct PostgreSQL Pool
+    const p = initPool();
+    if (p) {
+      try {
+        await ensureSchema();
+        if (!validUuid && cleanStatus === 'SUCCESS') {
+          const u = await p.query('SELECT id FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) LIMIT 1', [cleanEmail]);
+          if (u.rows.length > 0) validUuid = u.rows[0].id;
+        }
+        const res = await p.query(
+          `INSERT INTO login_attempts (user_id, email, status, ip_address, user_agent, created_at)
+           VALUES ($1, $2, $3, $4, $5, NOW())
+           RETURNING *`,
+          [validUuid, cleanEmail, cleanStatus, cleanIp, cleanAgent]
+        );
+        return res.rows[0];
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud recordLoginAttempt notice (falling back to local):', err.message);
+        lastDbError = err.message;
+      }
+    }
+
+    // Local / In-Memory Fallback
+    const store = getLocalStore();
+    if (!Array.isArray(store.login_attempts)) store.login_attempts = [];
+    const entry = {
+      id: `login-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+      user_id: validUuid || null,
+      email: cleanEmail,
+      status: cleanStatus,
+      ip_address: cleanIp,
+      user_agent: cleanAgent,
+      created_at: new Date().toISOString()
+    };
+    store.login_attempts.push(entry);
     saveLocalStore(store);
+    return entry;
+  },
+
+  // Password Reset OTP Management
+  async createPasswordReset(email, token, expiresAt) {
+    const normalized = (email || '').trim().toLowerCase();
+    const expiry = expiresAt || new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+    const p = initPool();
+
+    if (p) {
+      try {
+        await ensureSchema();
+        // Invalidate previous unused reset tokens for this email
+        await p.query('UPDATE password_resets SET used = true WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) AND used = false', [normalized]);
+        const res = await p.query(
+          `INSERT INTO password_resets (email, token, expires_at, used, created_at)
+           VALUES ($1, $2, $3, false, NOW())
+           RETURNING *`,
+          [normalized, token, expiry]
+        );
+        return res.rows[0];
+      } catch (err) {
+        console.error('[Campus2Career DB] Cloud createPasswordReset error:', err.message);
+        lastDbError = err.message;
+      }
+    }
+
+    const store = getLocalStore();
+    if (!store.password_resets) store.password_resets = [];
+    store.password_resets.forEach(pr => {
+      if (pr.email && pr.email.toLowerCase() === normalized) {
+        pr.used = true;
+      }
+    });
+    const entry = {
+      id: `pr-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+      email: normalized,
+      token,
+      expires_at: expiry.toISOString(),
+      used: false,
+      created_at: new Date().toISOString()
+    };
+    store.password_resets.push(entry);
+    saveLocalStore(store);
+    return entry;
+  },
+
+  async verifyAndUsePasswordReset(email, token, newPasswordHash) {
+    const normalized = (email || '').trim().toLowerCase();
+    const cleanToken = (token || '').trim();
+    const p = initPool();
+
+    if (p) {
+      try {
+        await ensureSchema();
+        const res = await p.query(
+          `SELECT * FROM password_resets 
+           WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) AND token = $2 AND used = false AND expires_at > NOW()
+           ORDER BY created_at DESC LIMIT 1`,
+          [normalized, cleanToken]
+        );
+
+        if (!res.rows || res.rows.length === 0) {
+          return { success: false, error: 'Invalid or expired verification code. Please request a new code.' };
+        }
+
+        const resetRecord = res.rows[0];
+        // Mark token as used
+        await p.query('UPDATE password_resets SET used = true WHERE id = $1', [resetRecord.id]);
+
+        // Update user password hash
+        const updateRes = await p.query(
+          'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE LOWER(TRIM(email)) = LOWER(TRIM($2)) RETURNING id, email, name',
+          [newPasswordHash, normalized]
+        );
+
+        if (!updateRes.rows || updateRes.rows.length === 0) {
+          return { success: false, error: 'User account not found.' };
+        }
+
+        return { success: true, user: updateRes.rows[0] };
+      } catch (err) {
+        console.error('[Campus2Career DB] Cloud verifyAndUsePasswordReset error:', err.message);
+        lastDbError = err.message;
+      }
+    }
+
+    const store = getLocalStore();
+    if (!store.password_resets) store.password_resets = [];
+    const now = new Date();
+    const entry = store.password_resets.find(pr => 
+      pr.email && pr.email.toLowerCase() === normalized &&
+      pr.token === cleanToken &&
+      !pr.used &&
+      new Date(pr.expires_at) > now
+    );
+
+    if (!entry) {
+      return { success: false, error: 'Invalid or expired verification code. Please request a new code.' };
+    }
+
+    entry.used = true;
+
+    // Update user in store
+    const user = (store.users || []).find(u => u.email && u.email.toLowerCase() === normalized);
+    if (!user) {
+      return { success: false, error: 'User account not found.' };
+    }
+
+    user.password_hash = newPasswordHash;
+    user.updated_at = now.toISOString();
+    saveLocalStore(store);
+
+    return { success: true, user: { id: user.id, email: user.email, name: user.name } };
   },
 
   // Pending Verifications
@@ -1787,7 +2027,7 @@ const db = {
 
   // Record student test attempt in student_test_attempts and update student_skill_progress
   async recordTestAttempt({ user_id, skill_name, test_title, score, total_questions, correct_answers, metadata }) {
-    const validUuid = (user_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(user_id))) ? String(user_id) : null;
+    let validUuid = (user_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(user_id))) ? String(user_id) : null;
     const cleanSkill = (skill_name || 'Core Skill').trim();
     const cleanTitle = (test_title || `${cleanSkill} Assessment`).trim();
     const numScore = Math.min(100, Math.max(0, Number(score) || 0));
@@ -1802,12 +2042,34 @@ const db = {
     if (p) {
       try {
         await ensureSchema();
-        const res = await p.query(
-          `INSERT INTO student_test_attempts (user_id, skill_name, test_title, score, total_questions, correct_answers, metadata)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           RETURNING *`,
-          [validUuid, cleanSkill, cleanTitle, numScore, totalQ, correctA, JSON.stringify(metaObj)]
-        );
+
+        // If validUuid is null but user_id looks like an email or username, resolve to user UUID
+        if (!validUuid && user_id && typeof user_id === 'string' && (user_id.includes('@') || isNaN(Number(user_id)))) {
+          try {
+            const uRes = await p.query(
+              'SELECT id FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) OR LOWER(TRIM(username)) = LOWER(TRIM($1)) LIMIT 1',
+              [String(user_id).trim()]
+            );
+            if (uRes.rows.length > 0) validUuid = uRes.rows[0].id;
+          } catch (e) {}
+        }
+
+        let res;
+        try {
+          res = await p.query(
+            `INSERT INTO student_test_attempts (user_id, skill_name, test_title, score, score_percentage, total_questions, correct_answers, metadata)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+             RETURNING *`,
+            [validUuid, cleanSkill, cleanTitle, numScore, numScore, totalQ, correctA, JSON.stringify(metaObj)]
+          );
+        } catch (colErr) {
+          res = await p.query(
+            `INSERT INTO student_test_attempts (user_id, skill_name, test_title, score, total_questions, correct_answers, metadata)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             RETURNING *`,
+            [validUuid, cleanSkill, cleanTitle, numScore, totalQ, correctA, JSON.stringify(metaObj)]
+          );
+        }
         attempt = res.rows[0];
 
         // Fetch updated progress summary from student_skill_progress
@@ -1875,10 +2137,11 @@ const db = {
 
     attempt = {
       id: `attempt-${Date.now()}-${Math.floor(Math.random()*1000)}`,
-      user_id: user_id || 'anonymous',
+      user_id: validUuid || user_id || 'anonymous',
       skill_name: cleanSkill,
       test_title: cleanTitle,
       score: numScore,
+      score_percentage: numScore,
       total_questions: totalQ,
       correct_answers: correctA,
       metadata: metaObj,

@@ -74,6 +74,10 @@ router.all('/auth/status', adapt(require('./_handlers/auth-status')));
 router.all('/auth/logout', adapt(require('./_handlers/logout')));
 router.all('/auth/login', adapt(require('./_handlers/login')));
 router.all('/auth/register', adapt(require('./_handlers/register')));
+router.all('/auth/forgot-password', adapt(require('./_handlers/forgot-password')));
+router.all('/forgot-password', adapt(require('./_handlers/forgot-password')));
+router.all('/auth/reset-password', adapt(require('./_handlers/reset-password')));
+router.all('/reset-password', adapt(require('./_handlers/reset-password')));
 
 // Verification & SMTP Dispatch
 router.all('/verify-pin', adapt(require('./_handlers/verify-pin')));
