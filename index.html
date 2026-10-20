@@ -51,6 +51,13 @@
   </script>
 
   <style>
+    /* Prevent horizontal overflow on mobile viewports */
+    html, body {
+      overflow-x: hidden !important;
+      width: 100%;
+      max-width: 100vw;
+    }
+
     /* UI Polish & Custom Scrollbars */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: #f8fafc; }
@@ -349,8 +356,8 @@
             </div>
         </div>
 
-        <!-- Desktop Navigation Items (Learner Mode) -->
-        <nav id="navLearnerItems" class="flex items-center space-x-0.5 shrink">
+        <!-- Desktop Navigation Items (Learner Mode) - Hidden on mobile (<768px), visible on md+ -->
+        <nav id="navLearnerItems" class="hidden md:flex items-center space-x-0.5 shrink">
 
           <!-- Home button is always visible even when logged out -->
           <button onclick="navigateTo('home')" id="navBtn-home" class="nav-tab-btn px-2.5 py-1.5 text-xs font-semibold rounded-lg text-[#008080] bg-teal-50 dark:bg-teal-950/60 dark:text-teal-300 border-b-2 border-[#008080] transition-all whitespace-nowrap">
@@ -378,8 +385,8 @@
           </div>
         </nav>
 
-        <!-- Desktop Navigation Items (Recruiter Mode) -->
-        <nav id="navRecruiterItems" class="hidden items-center space-x-1 shrink">
+        <!-- Desktop Navigation Items (Recruiter Mode) - Hidden on mobile (<768px), visible on md+ -->
+        <nav id="navRecruiterItems" class="hidden md:flex items-center space-x-1 shrink">
           <button onclick="navigateTo('recruiter-market')" id="navBtn-recruiter-market" class="nav-tab-btn px-2.5 py-1.5 text-xs font-semibold rounded-lg text-[#008080] bg-teal-50 dark:bg-teal-950/60 dark:text-teal-300 border-b-2 border-[#008080] transition-all whitespace-nowrap">
             <i class="fa-solid fa-bullhorn mr-1 text-[#008080]"></i> Signals
           </button>
@@ -394,7 +401,7 @@
         </nav>
 
         <!-- Global Stream Selector Pill (CLICKABLE ANYWHERE ON THE PILL) -->
-        <div id="navStreamSelectorContainer" class="relative flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-[#1E293B] dark:hover:bg-slate-700 rounded-xl border border-slate-300 dark:border-slate-700 text-xs shadow-2xs transition-all shrink-0 cursor-pointer" title="Click anywhere to change engineering stream">
+        <div id="navStreamSelectorContainer" class="relative hidden lg:flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-[#1E293B] dark:hover:bg-slate-700 rounded-xl border border-slate-300 dark:border-slate-700 text-xs shadow-2xs transition-all shrink-0 cursor-pointer" title="Click anywhere to change engineering stream">
           <i class="fa-solid fa-graduation-cap text-[#008080] dark:text-teal-400 text-xs pointer-events-none"></i>
           <span class="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider hidden sm:inline pointer-events-none">Stream:</span>
           <span id="navStreamLabelDisplay" class="font-bold text-slate-900 dark:text-white pointer-events-none">IT</span>
@@ -413,7 +420,7 @@
         <div class="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
           
           <!-- Recruiter Portal Access Button for Unauthenticated Visitors -->
-          <button type="button" id="headerRecruiterAccessBtn" onclick="openRecruiterAuthModal()" class="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-[#008080] dark:hover:text-teal-300 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shrink-0 hidden sm:inline-flex items-center space-x-1.5 shadow-2xs" title="Verified Recruiter Hiring Console">
+          <button type="button" id="headerRecruiterAccessBtn" onclick="openRecruiterAuthModal()" class="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-[#008080] dark:hover:text-teal-300 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shrink-0 hidden lg:inline-flex items-center space-x-1.5 shadow-2xs" title="Verified Recruiter Hiring Console">
             <i class="fa-solid fa-briefcase text-[#008080] dark:text-teal-400 text-xs"></i>
             <span>Recruiter Console</span>
           </button>
@@ -454,19 +461,21 @@
             </button>
           </div>
 
-          <div id="authActionsLoggedIn" class="hidden items-center space-x-1.5 shrink-0">
+          <div id="authActionsLoggedIn" class="hidden items-center space-x-1.5 sm:space-x-2 shrink-0">
             <div class="flex items-center space-x-1.5 px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-xs cursor-pointer shrink-0" onclick="navigateTo(appState.activeRole === 'recruiter' ? 'recruiter-candidates' : 'growth')">
-              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-              <span id="userPillName" class="font-bold text-slate-800 dark:text-slate-200 max-w-[85px] sm:max-w-[110px] truncate">Aryan S.</span>
-              <span id="userPillRoleBadge" class="ml-1 px-1.5 py-0.2 rounded text-[10px] font-bold uppercase tracking-wider bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200">Learner</span>
+              <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+              <span id="userPillName" class="font-bold text-slate-800 dark:text-slate-200 max-w-[80px] sm:max-w-[110px] truncate">Aryan S.</span>
+              <span id="userPillRoleBadge" class="hidden xs:inline-block ml-1 px-1.5 py-0.2 rounded text-[10px] font-bold uppercase tracking-wider bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200">Learner</span>
             </div>
-            <button onclick="handleLogout()" title="Log Out / Switch User" class="p-1.5 text-slate-400 hover:text-red-600 transition-all text-xs shrink-0">
-              <i class="fa-solid fa-arrow-right-from-bracket"></i>
+            <!-- Prominent Explicit Log Out Button -->
+            <button type="button" onclick="handleLogout()" id="navLogoutBtn" title="Log Out / End Session" class="inline-flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-900/80 transition-all shadow-2xs shrink-0 cursor-pointer">
+              <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+              <span class="font-bold">Log Out</span>
             </button>
           </div>
 
           <!-- Mobile Hamburger Menu Button (Accessible >=44px Touch Target) -->
-          <button id="mobileMenuToggleBtn" onclick="toggleMobileNav()" class="xl:hidden p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-all shrink-0 flex items-center justify-center min-w-[42px] min-h-[42px]" aria-label="Toggle navigation menu" title="Navigation Menu">
+          <button id="mobileMenuToggleBtn" onclick="toggleMobileNav()" class="md:hidden p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-all shrink-0 flex items-center justify-center min-w-[42px] min-h-[42px]" aria-label="Toggle navigation menu" title="Navigation Menu">
             <i id="mobileMenuIcon" class="fa-solid fa-bars text-base"></i>
           </button>
 
@@ -476,7 +485,7 @@
   </header>
 
   <!-- MOBILE NAVIGATION DRAWER (Responsive & Touch Friendly) -->
-  <div id="mobileNavDrawer" class="hidden xl:hidden fixed inset-x-0 top-[104px] z-40 bg-white dark:bg-[#0F172A] border-b border-slate-200 dark:border-slate-800 shadow-2xl p-4 transition-all max-h-[85vh] overflow-y-auto">
+  <div id="mobileNavDrawer" class="hidden md:hidden fixed inset-x-0 top-[100px] sm:top-[104px] z-40 bg-white dark:bg-[#0F172A] border-b border-slate-200 dark:border-slate-800 shadow-2xl p-4 transition-all max-h-[85vh] overflow-y-auto">
     <div class="space-y-3 max-w-lg mx-auto">
       
       <!-- Mobile Stream & Role Controls -->
@@ -543,16 +552,35 @@
         </button>
       </nav>
 
-      <!-- Mobile Theme & Auth Row -->
-      <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+      <!-- Mobile Theme & Auth Row (Logged Out) -->
+      <div id="mobileAuthRowLoggedOut" class="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
         <button onclick="toggleDarkMode();" class="flex items-center space-x-2 text-xs font-semibold py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 min-h-[44px]">
           <i class="fa-solid fa-circle-half-stroke text-amber-500 text-sm"></i>
           <span>Dark / Light</span>
         </button>
         <div class="flex items-center space-x-2">
-          <button onclick="openAuthModal('signin'); toggleMobileNav(false);" class="text-xs font-bold text-slate-700 dark:text-slate-200 py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 min-h-[44px]">Log In</button>
-          <button onclick="openAuthModal('signup'); toggleMobileNav(false);" class="text-xs font-bold text-white bg-[#008080] py-2 px-4 rounded-xl shadow-xs min-h-[44px]">Sign Up</button>
+          <button type="button" onclick="quickFacultyLogin(); toggleMobileNav(false);" class="text-xs font-bold text-amber-900 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/70 border border-amber-300 dark:border-amber-700 py-2 px-2.5 rounded-xl min-h-[44px]">Demo</button>
+          <button type="button" onclick="openAuthModal('signin'); toggleMobileNav(false);" class="text-xs font-bold text-slate-700 dark:text-slate-200 py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 min-h-[44px]">Log In</button>
+          <button type="button" onclick="openAuthModal('signup'); toggleMobileNav(false);" class="text-xs font-bold text-white bg-[#008080] py-2 px-4 rounded-xl shadow-xs min-h-[44px]">Sign Up</button>
         </div>
+      </div>
+
+      <!-- Mobile Theme & Auth Row (Logged In) with Explicit Log Out -->
+      <div id="mobileAuthRowLoggedIn" class="hidden pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-2">
+        <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+          <div class="flex items-center space-x-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+            <span id="mobileUserPillName" class="text-xs font-bold text-slate-800 dark:text-slate-200">User</span>
+            <span id="mobileUserRoleBadge" class="px-1.5 py-0.2 rounded text-[10px] font-bold uppercase tracking-wider bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200">Learner</span>
+          </div>
+          <button onclick="toggleDarkMode();" class="p-2 text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white" title="Toggle Theme">
+            <i class="fa-solid fa-circle-half-stroke text-amber-500"></i>
+          </button>
+        </div>
+        <button type="button" onclick="handleLogout(); toggleMobileNav(false);" class="w-full py-2.5 px-4 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/70 dark:hover:bg-rose-900/80 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-900 font-bold text-xs rounded-xl flex items-center justify-center space-x-2 transition-all min-h-[44px] cursor-pointer">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i>
+          <span>Log Out of Campus2Career</span>
+        </button>
       </div>
     </div>
   </div>
@@ -798,6 +826,17 @@
             </p>
           </div>
 
+          <!-- Cross-Device Auto-Verification Beacon -->
+          <div class="p-2.5 rounded-xl bg-teal-500/10 dark:bg-teal-950/50 border border-teal-500/30 flex items-center justify-center space-x-2 text-center">
+            <span class="relative flex h-2.5 w-2.5 shrink-0">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-teal-500"></span>
+            </span>
+            <span class="text-[11px] font-semibold text-teal-800 dark:text-teal-300">
+              Auto-checking: Opening the email link on your phone or other device will verify this screen automatically!
+            </span>
+          </div>
+
           <div class="space-y-1.5">
             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">Enter 6-Digit Email Verification Code</label>
             <input type="text" id="authVerificationCodeInput" maxlength="6" placeholder="• • • • • •" class="w-full text-center text-lg font-mono tracking-[0.4em] p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-[#008080] focus:outline-none font-bold">
@@ -863,6 +902,36 @@
       </div>
     </div>
   </div>
+
+  <!-- DEVICE B CROSS-DEVICE EMAIL VERIFICATION CONFIRMATION MODAL -->
+  <div id="deviceBVerifiedModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#0B132B] border border-teal-500/40 rounded-2xl p-6 sm:p-7 max-w-md w-full text-center space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+      <div class="w-16 h-16 bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-400 text-emerald-500 rounded-full flex items-center justify-center mx-auto text-3xl shadow-sm">
+        <i class="fa-solid fa-circle-check"></i>
+      </div>
+      <div>
+        <h3 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">Email Verified!</h3>
+        <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+          Your Campus2Career account (<strong id="deviceBVerifiedEmailDisplay" class="text-teal-600 dark:text-teal-400 font-mono"></strong>) has been successfully activated.
+        </p>
+      </div>
+
+      <div class="p-3.5 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 text-left space-y-1.5">
+        <div class="flex items-center space-x-2 font-bold text-slate-800 dark:text-slate-200">
+          <i class="fa-solid fa-laptop-mobile text-[#008080] dark:text-teal-400 text-sm"></i>
+          <span>Cross-Device Auto-Sync Enabled</span>
+        </div>
+        <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+          If you initiated registration on another screen (e.g. your Laptop or Desktop), that screen has <strong>automatically updated</strong> and logged you in! You can return to your original screen or continue here.
+        </p>
+      </div>
+
+      <button type="button" onclick="dismissDeviceBVerifiedModal()" class="w-full py-3.5 bg-[#008080] hover:bg-[#006666] text-white text-xs sm:text-sm font-bold rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 cursor-pointer">
+        <span>Continue to Dashboard on this Device &rarr;</span>
+      </button>
+    </div>
+  </div>
+
 </div>
 
   <!-- ========================================================================= -->
@@ -27493,14 +27562,71 @@ function onWizardBranchChanged(branchKey) {
         if (heroSkillBtn) heroSkillBtn.classList.remove('hidden');
       }
 
+      // Synchronize Mobile Navigation Drawer Auth & Profile State
+      const mobileLoggedOutDiv = document.getElementById('mobileAuthRowLoggedOut');
+      const mobileLoggedInDiv = document.getElementById('mobileAuthRowLoggedIn');
+      const mobileNamePill = document.getElementById('mobileUserPillName');
+      const mobileRoleBadge = document.getElementById('mobileUserRoleBadge');
+
+      if (isAuthenticated) {
+        if (mobileLoggedOutDiv) mobileLoggedOutDiv.classList.add('hidden');
+        if (mobileLoggedInDiv) {
+          mobileLoggedInDiv.classList.remove('hidden');
+          mobileLoggedInDiv.classList.add('flex');
+        }
+        if (mobileNamePill) mobileNamePill.innerText = appState.user.name || 'User';
+        if (mobileRoleBadge) mobileRoleBadge.innerText = (appState.user.role || 'learner').toUpperCase();
+      } else {
+        if (mobileLoggedInDiv) {
+          mobileLoggedInDiv.classList.add('hidden');
+          mobileLoggedInDiv.classList.remove('flex');
+        }
+        if (mobileLoggedOutDiv) mobileLoggedOutDiv.classList.remove('hidden');
+      }
+
       checkGuestEvaluationBanner();
     }
 
-    function handleLogout() {
-      appState.user = null;
+    async function handleLogout() {
+      try {
+        // 1. Invalidate HTTP-only session cookies on backend
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        }).catch(() => {
+          return fetch('/api/logout', { method: 'POST', credentials: 'include' });
+        });
+      } catch (e) {
+        console.debug('Backend logout call notice:', e);
+      }
+
+      // 2. Clear client-side cached authentication keys
       localStorage.removeItem(STORAGE_KEY_USER);
+      localStorage.removeItem('c2c_login_failed_attempts');
+      localStorage.removeItem('c2c_login_lockout_until');
+      sessionStorage.removeItem('c2c_active_demo_session');
+      sessionStorage.clear();
+
+      // 3. Reset application state back to unauthenticated guest mode
+      appState.user = null;
+      appState.activeRole = 'learner';
+
+      // 4. Reset modal form fields
+      const emailInput = document.getElementById('authEmailInput');
+      const passInput = document.getElementById('authPasswordInput');
+      const nameInput = document.getElementById('authNameInput');
+      const codeInput = document.getElementById('authVerificationCodeInput');
+      if (emailInput) emailInput.value = '';
+      if (passInput) passInput.value = '';
+      if (nameInput) nameInput.value = '';
+      if (codeInput) codeInput.value = '';
+
+      // 5. Update auth UI & notify user
       updateAuthUI();
-      showToast("Logged out successfully.");
+      showToast("You have been logged out successfully. All sessions ended.");
+
+      // 6. Redirect cleanly to landing page
       navigateTo('home');
     }
 
@@ -27674,6 +27800,7 @@ function onWizardBranchChanged(branchKey) {
     }
 
     function closeAuthModal() {
+      stopVerificationPolling();
       const modal = document.getElementById('authModal');
       if (modal) {
         modal.classList.add('hidden');
@@ -29736,14 +29863,27 @@ function onWizardBranchChanged(branchKey) {
       if (!email) return;
 
       const normalizedEmail = email.trim().toLowerCase();
+      // Auto-poll every 2.5 seconds (2500ms) for cross-device email verification
       verificationPollInterval = setInterval(async () => {
         try {
-          const res = await fetch(`/api/verify-email?check=true&email=${encodeURIComponent(normalizedEmail)}`, {
-            headers: { 'Accept': 'application/json' }
-          });
-          if (!res.ok) return;
+          // Check dedicated /api/auth/status route with fallback to /api/verify-email?check=true
+          let res = await fetch(`/api/auth/status?email=${encodeURIComponent(normalizedEmail)}`, {
+            headers: { 'Accept': 'application/json' },
+            credentials: 'include'
+          }).catch(() => null);
+
+          if (!res || !res.ok) {
+            res = await fetch(`/api/verify-email?check=true&email=${encodeURIComponent(normalizedEmail)}`, {
+              headers: { 'Accept': 'application/json' },
+              credentials: 'include'
+            }).catch(() => null);
+          }
+
+          if (!res || !res.ok) return;
           const data = await res.json();
+
           if (data && data.success && data.is_verified && data.user) {
+            // Stop polling immediately upon verification
             stopVerificationPolling();
             const verifiedUser = data.user;
             appState.user = verifiedUser;
@@ -29774,9 +29914,9 @@ function onWizardBranchChanged(branchKey) {
             }
           }
         } catch (err) {
-          // Keep polling silently
+          // Silent recovery to sustain polling interval
         }
-      }, 3000);
+      }, 2500);
     }
 
     function stopVerificationPolling() {
@@ -29792,6 +29932,49 @@ function onWizardBranchChanged(branchKey) {
     }
 
     // CHECK FOR URL VERIFICATION PARAMETERS (?verified=true&email=...)
+    let deviceBVerifiedTargetUser = null;
+
+    function showDeviceBVerifiedModal(email, name) {
+      const modal = document.getElementById('deviceBVerifiedModal');
+      const emailDisplay = document.getElementById('deviceBVerifiedEmailDisplay');
+      if (emailDisplay) emailDisplay.innerText = email || '';
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function dismissDeviceBVerifiedModal() {
+      const modal = document.getElementById('deviceBVerifiedModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      if (deviceBVerifiedTargetUser) {
+        const u = deviceBVerifiedTargetUser;
+        if (u.role === 'recruiter') {
+          setRole('recruiter');
+          navigateTo('recruiter-candidates');
+        } else {
+          setRole('learner');
+          if (!hasCompletedOnboarding(u)) {
+            openOnboardingModal(u.stream || u.branch || null);
+          } else {
+            if (u.stream || u.branch) {
+              applyStreamChange(u.stream || u.branch, true);
+            }
+            navigateTo('analyzer');
+          }
+          renderSkillLevelDiagram();
+          updateGrowthSummaryCards();
+          updateCharts();
+        }
+        deviceBVerifiedTargetUser = null;
+      } else {
+        navigateTo('analyzer');
+      }
+    }
+
     async function checkUrlVerificationParams() {
       try {
         const urlParams = new URLSearchParams(window.location.search);
@@ -29800,34 +29983,32 @@ function onWizardBranchChanged(branchKey) {
         if (isVerified && email) {
           // Clean up URL parameters cleanly
           window.history.replaceState({}, document.title, window.location.pathname);
-          const res = await fetch(`/api/verify-email?check=true&email=${encodeURIComponent(email)}`);
-          if (res.ok) {
+
+          // Query /api/auth/status to register verified session on Device B
+          let res = await fetch(`/api/auth/status?email=${encodeURIComponent(email)}`, {
+            credentials: 'include'
+          }).catch(() => null);
+
+          if (!res || !res.ok) {
+            res = await fetch(`/api/verify-email?check=true&email=${encodeURIComponent(email)}`, {
+              credentials: 'include'
+            }).catch(() => null);
+          }
+
+          if (res && res.ok) {
             const data = await res.json();
             if (data.success && data.user) {
               appState.user = data.user;
               appState.selectedStream = (data.user.stream || data.user.branch || 'it').toLowerCase();
               appState.activeRole = data.user.role || 'learner';
+              deviceBVerifiedTargetUser = data.user;
               saveStateToStorage();
               updateAuthUI();
               closeAuthModal();
+
+              // Display clean confirmation message on Device B with button to continue
+              showDeviceBVerifiedModal(email, data.user.name);
               showToast(`✓ Email verified! Welcome back, ${data.user.name}!`);
-              if (data.user.role === 'recruiter') {
-                setRole('recruiter');
-                navigateTo('recruiter-candidates');
-              } else {
-                setRole('learner');
-                if (!hasCompletedOnboarding(data.user)) {
-                  openOnboardingModal(data.user.stream || data.user.branch || null);
-                } else {
-                  if (data.user.stream || data.user.branch) {
-                    applyStreamChange(data.user.stream || data.user.branch, true);
-                  }
-                  navigateTo('analyzer');
-                }
-                renderSkillLevelDiagram();
-                updateGrowthSummaryCards();
-                updateCharts();
-              }
             }
           }
         }
