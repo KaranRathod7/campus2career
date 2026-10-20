@@ -61,7 +61,7 @@
       "id": "usr-1792444753215",
       "name": "Whitelisted Admin",
       "email": "theyareop@gmail.com",
-      "password_hash": "$2b$10$hhUW3UKyaK.t4ALdOyjte.6VNnyiShWcJUxCoeDFRBz5ki3wgQj4.",
+      "password_hash": "$2b$10$rPZKV7d8MIOCHf6EVDtaIeTYKouNvMXqaE9o0rP/SlKpNWLRXF8qC",
       "role": "learner",
       "stream": "IT",
       "is_verified": false,
@@ -333,6 +333,54 @@
       "stream": "IT",
       "is_verified": true,
       "created_at": "2026-10-20T13:35:04.318Z"
+    },
+    {
+      "id": "usr-1792505442434",
+      "name": "Pooja Iyer",
+      "username": "ece_442284",
+      "email": "ece_student_1792505442284@campus2career.org",
+      "password_hash": "$2b$10$Xg4oJ/A7T0y2CWWMkjfWoOgBBS.Pr0Bz6Mzvy34CJEW7U9cQ6Yj.2",
+      "role": "learner",
+      "stream": "ECE",
+      "is_verified": true,
+      "created_at": "2026-10-20T14:10:42.434Z",
+      "total_study_minutes": 45,
+      "dynamic_competence_percent": 88
+    },
+    {
+      "id": "usr-1792505452734",
+      "name": "Rohan Deshmukh",
+      "username": "stud_452525",
+      "email": "student_1792505452525@campus2career.org",
+      "password_hash": "$2b$10$Qv7/rxvssHTZKpGqN0Dk7.o4Trcvef5lsY4aiTQkdYP7cZ4l9C6OK",
+      "role": "learner",
+      "stream": "IT",
+      "is_verified": true,
+      "created_at": "2026-10-20T14:10:52.734Z",
+      "total_study_minutes": 95,
+      "dynamic_competence_percent": 92
+    },
+    {
+      "id": "usr-1792505552686",
+      "name": "Cross Device Student",
+      "username": "crossdevice_1792505552529",
+      "email": "crossdevice_1792505552529@example.com",
+      "password_hash": "$2b$10$f.AFbMbPhDELzG6dsGAiheUfvQiKCiI0CQ4DcX/irIS/g3K.4MVwi",
+      "role": "learner",
+      "stream": "IT",
+      "is_verified": true,
+      "created_at": "2026-10-20T14:12:32.686Z"
+    },
+    {
+      "id": "usr-1792505562356",
+      "name": "Test Student",
+      "username": "test_1792505562206",
+      "email": "test_1792505562206@example.com",
+      "password_hash": "$2b$10$.UHBc1nzfheQ0uYZafXjwumuNPU6MOO1mjMmk1.JmxPoehFgQrs1W",
+      "role": "learner",
+      "stream": "IT",
+      "is_verified": true,
+      "created_at": "2026-10-20T14:12:42.357Z"
     }
   ],
   "login_attempts": {
@@ -378,12 +426,12 @@
       "created_at": "2026-10-20T10:55:24.290Z"
     },
     {
-      "id": "pv-1792502871942",
+      "id": "pv-1792505564100",
       "email": "theyareop@gmail.com",
-      "pin": "686269",
-      "token": "bf6ef5fb85cc630305e86fdb4fb74434c59d6cd20da7f9fbfe5bcc649cb3a891",
-      "expires_at": "2026-10-20T13:42:51.942Z",
-      "created_at": "2026-10-20T13:27:51.942Z"
+      "pin": "583972",
+      "token": "fc06af80925a33527cc8debcb7a63ce2c3c3d623a0c7370cb003ed7a4e4ea455",
+      "expires_at": "2026-10-20T14:27:44.100Z",
+      "created_at": "2026-10-20T14:12:44.100Z"
     }
   ],
   "candidates": [
@@ -593,6 +641,38 @@
         "Embedded C & RTOS"
       ],
       "created_at": "2026-10-20T13:34:50.901Z"
+    },
+    {
+      "id": "cand-1792505443906",
+      "user_id": "usr-1792505442434",
+      "name": "Pooja Iyer",
+      "email": "ece_student_1792505442284@campus2career.org",
+      "stream": "ECE",
+      "domain": "Embedded C & RTOS",
+      "experience_level": "Student / Candidate",
+      "skill_score": 73,
+      "dynamic_competence_percent": 88,
+      "readiness_score": 73,
+      "skills": [
+        "Embedded C & RTOS"
+      ],
+      "created_at": "2026-10-20T14:10:43.906Z"
+    },
+    {
+      "id": "cand-1792505454002",
+      "user_id": "usr-1792505452734",
+      "name": "Rohan Deshmukh",
+      "email": "student_1792505452525@campus2career.org",
+      "stream": "IT",
+      "domain": "Data Structures & Algorithms",
+      "experience_level": "Student / Candidate",
+      "skill_score": 87,
+      "dynamic_competence_percent": 92,
+      "readiness_score": 87,
+      "skills": [
+        "Data Structures & Algorithms"
+      ],
+      "created_at": "2026-10-20T14:10:54.002Z"
     }
   ],
   "market_signals": [
@@ -795,6 +875,66 @@
   ],
   "student_activity_logs": [],
   "student_activity": [
+    {
+      "id": "act-1792505454008",
+      "user_id": "usr-1792505452734",
+      "user_email": "student_1792505452525@campus2career.org",
+      "stream": "IT",
+      "topic": "Web Dev & Full-Stack",
+      "activity_type": "revision",
+      "score": 88,
+      "time_spent_minutes": 30,
+      "competence_rating": 88,
+      "created_at": "2026-10-20T14:10:54.008Z"
+    },
+    {
+      "id": "act-1792505454004",
+      "user_id": "usr-1792505452734",
+      "user_email": "student_1792505452525@campus2career.org",
+      "stream": "IT",
+      "topic": "Database Systems & SQL",
+      "activity_type": "quiz",
+      "score": 92,
+      "time_spent_minutes": 20,
+      "competence_rating": 92,
+      "created_at": "2026-10-20T14:10:54.004Z"
+    },
+    {
+      "id": "act-1792505454001",
+      "user_id": "usr-1792505452734",
+      "user_email": "student_1792505452525@campus2career.org",
+      "stream": "IT",
+      "topic": "Data Structures & Algorithms",
+      "activity_type": "timer",
+      "score": null,
+      "time_spent_minutes": 45,
+      "competence_rating": 70,
+      "created_at": "2026-10-20T14:10:54.001Z"
+    },
+    {
+      "id": "act-1792505443909",
+      "user_id": "usr-1792505442434",
+      "user_email": "ece_student_1792505442284@campus2career.org",
+      "stream": "ECE",
+      "topic": "Bare-Metal STM32 & ARM Cortex",
+      "activity_type": "revision",
+      "score": null,
+      "time_spent_minutes": 30,
+      "competence_rating": 75,
+      "created_at": "2026-10-20T14:10:43.909Z"
+    },
+    {
+      "id": "act-1792505443905",
+      "user_id": "usr-1792505442434",
+      "user_email": "ece_student_1792505442284@campus2career.org",
+      "stream": "ECE",
+      "topic": "Embedded C & RTOS",
+      "activity_type": "quiz",
+      "score": 88,
+      "time_spent_minutes": 15,
+      "competence_rating": 88,
+      "created_at": "2026-10-20T14:10:43.905Z"
+    },
     {
       "id": "act-1792503290905",
       "user_id": "usr-1792503290194",
@@ -1168,6 +1308,132 @@
       "next_milestone": "High-speed signal integrity and EMI shielding",
       "created_at": "2026-10-20T13:34:50.894Z",
       "updated_at": "2026-10-20T13:34:50.894Z"
+    },
+    {
+      "id": "ssp-1792505443896-841",
+      "user_id": "usr-1792505442434",
+      "user_email": "ece_student_1792505442284@campus2career.org",
+      "skill_id": "emb_c",
+      "skill_name": "Embedded C & RTOS",
+      "category": "Firmware Architecture",
+      "base_percentage": 35,
+      "total_score": 88,
+      "status": "LIVE VERIFIED",
+      "lectures_completed": 0,
+      "current_milestone": "GPIO, UART and FreeRTOS task creation",
+      "next_milestone": "Bare-metal DMA queues and interrupt race conditions",
+      "created_at": "2026-10-20T14:10:43.896Z",
+      "updated_at": "2026-10-20T14:10:43.906Z"
+    },
+    {
+      "id": "ssp-1792505443896-438",
+      "user_id": "usr-1792505442434",
+      "user_email": "ece_student_1792505442284@campus2career.org",
+      "skill_id": "stm32",
+      "skill_name": "Bare-Metal STM32 & ARM Cortex",
+      "category": "Microcontrollers",
+      "base_percentage": 40,
+      "total_score": 43,
+      "status": "UNVERIFIED BASELINE",
+      "lectures_completed": 1,
+      "current_milestone": "Register-level timer configuration",
+      "next_milestone": "Custom bootloaders and memory mapping",
+      "created_at": "2026-10-20T14:10:43.896Z",
+      "updated_at": "2026-10-20T14:10:43.909Z"
+    },
+    {
+      "id": "ssp-1792505443896-271",
+      "user_id": "usr-1792505442434",
+      "user_email": "ece_student_1792505442284@campus2career.org",
+      "skill_id": "protocols",
+      "skill_name": "Hardware Protocols (SPI/I2C/CAN)",
+      "category": "Bus Communication",
+      "base_percentage": 25,
+      "total_score": 25,
+      "status": "UNVERIFIED BASELINE",
+      "lectures_completed": 0,
+      "current_milestone": "Bit-banged SPI logic analyzer decoding",
+      "next_milestone": "Multi-node CAN FD transceivers",
+      "created_at": "2026-10-20T14:10:43.896Z",
+      "updated_at": "2026-10-20T14:10:43.896Z"
+    },
+    {
+      "id": "ssp-1792505443896-13",
+      "user_id": "usr-1792505442434",
+      "user_email": "ece_student_1792505442284@campus2career.org",
+      "skill_id": "pcb",
+      "skill_name": "KiCad & High-Speed PCB Layout",
+      "category": "Hardware Design",
+      "base_percentage": 45,
+      "total_score": 45,
+      "status": "UNVERIFIED BASELINE",
+      "lectures_completed": 0,
+      "current_milestone": "4-layer stackup and differential impedance",
+      "next_milestone": "High-speed signal integrity and EMI shielding",
+      "created_at": "2026-10-20T14:10:43.896Z",
+      "updated_at": "2026-10-20T14:10:43.896Z"
+    }
+  ],
+  "user_completed_lectures": [
+    {
+      "id": 1792505402927,
+      "user_id": "test-watch-user-1792505402915",
+      "user_email": "watchuser_1792505402916@example.com",
+      "skill_name": "Bare-Metal STM32",
+      "lecture_id": "stm32-lec-1",
+      "duration_seconds": 1200,
+      "time_watched_seconds": 1200,
+      "completed_at": "2026-10-20T14:10:02.956Z"
+    },
+    {
+      "id": 1792505402958,
+      "user_id": "test-watch-user-1792505402915",
+      "user_email": "watchuser_1792505402916@example.com",
+      "skill_name": "Bare-Metal STM32",
+      "lecture_id": "stm32-lec-2",
+      "duration_seconds": 1200,
+      "time_watched_seconds": 1100,
+      "completed_at": "2026-10-20T14:10:02.958Z"
+    },
+    {
+      "id": 1792505403141,
+      "user_id": "test-watch-user-1792505402915",
+      "user_email": "watchuser_1792505402916@example.com",
+      "skill_name": "Bare-Metal STM32",
+      "lecture_id": "stm32-lec-3",
+      "duration_seconds": 1000,
+      "time_watched_seconds": 900,
+      "completed_at": "2026-10-20T14:10:03.141Z"
+    },
+    {
+      "id": 1792505528644,
+      "user_id": "test-watch-user-1792505528638",
+      "user_email": "watchuser_1792505528638@example.com",
+      "skill_name": "Bare-Metal STM32",
+      "lecture_id": "stm32-lec-1",
+      "duration_seconds": 1200,
+      "time_watched_seconds": 1200,
+      "completed_at": "2026-10-20T14:12:08.663Z"
+    },
+    {
+      "id": 1792505528665,
+      "user_id": "test-watch-user-1792505528638",
+      "user_email": "watchuser_1792505528638@example.com",
+      "skill_name": "Bare-Metal STM32",
+      "lecture_id": "stm32-lec-2",
+      "duration_seconds": 1200,
+      "time_watched_seconds": 1100,
+      "completed_at": "2026-10-20T14:12:08.665Z"
+    },
+    {
+      "id": 1792505528874,
+      "user_id": "test-watch-user-1792505528638",
+      "user_email": "watchuser_1792505528638@example.com",
+      "skill_name": "Bare-Metal STM32",
+      "lecture_id": "stm32-lec-3",
+      "duration_seconds": 1000,
+      "time_watched_seconds": 900,
+      "completed_at": "2026-10-20T14:12:08.874Z"
     }
   ]
 }

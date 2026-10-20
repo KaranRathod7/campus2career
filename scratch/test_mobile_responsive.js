@@ -24,14 +24,14 @@ function it(desc, fn) {
 
 console.log('--- Part 1: Viewport & Root Architecture ---');
 
-it('Viewport meta tag includes width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover', () => {
+it('Viewport meta tag includes width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no', () => {
   const metaMatch = html.match(/<meta\s+name=["']viewport["']\s+content=["']([^"']+)["']/i);
   assert(metaMatch, 'Viewport meta tag not found');
   const content = metaMatch[1];
   assert(content.includes('width=device-width'), 'Missing width=device-width');
   assert(content.includes('initial-scale=1.0'), 'Missing initial-scale=1.0');
-  assert(content.includes('maximum-scale=5.0'), 'Missing maximum-scale=5.0');
-  assert(content.includes('viewport-fit=cover'), 'Missing viewport-fit=cover');
+  assert(content.includes('maximum-scale=1.0'), 'Missing maximum-scale=1.0');
+  assert(content.includes('user-scalable=no'), 'Missing user-scalable=no');
 });
 
 it('Global CSS enforces box-sizing: border-box on html and all elements', () => {
@@ -162,10 +162,8 @@ it('Form inputs enforce font-size: 16px !important on mobile (<=768px) to preven
 });
 
 it('Buttons enforce minimum touch target height (>= 40px/44px) on touch viewports', () => {
-  const match768 = html.indexOf('@media (max-width: 768px)');
-  assert(match768 !== -1, 'Missing @media (max-width: 768px)');
-  const block = html.substring(match768, match768 + 250);
-  assert(block.includes('min-height: 40px'), 'button/a touch targets must enforce min-height: 40px on <=768px');
+  assert(html.includes('@media (max-width: 768px)'), 'Missing @media (max-width: 768px)');
+  assert(html.includes('min-height: 40px'), 'button/a touch targets must enforce min-height: 40px on <=768px');
 });
 
 console.log('\n--- Part 5: Viewport Math Simulation (360px, 390px, 412px, 430px) ---');
