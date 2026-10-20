@@ -59,13 +59,12 @@ function setAdminCookie(res, token) {
         httpOnly: true,
         secure: isProd,
         sameSite: 'strict',
-        maxAge: 8 * 60 * 60, // 8 hours in seconds
         path: '/'
       });
     } catch (e) {}
   }
   if (!serialized) {
-    serialized = `${ADMIN_COOKIE_NAME}=${token}; Max-Age=28800; Path=/; HttpOnly; SameSite=Strict${isProd ? '; Secure' : ''}`;
+    serialized = `${ADMIN_COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Strict${isProd ? '; Secure' : ''}`;
   }
   res.setHeader('Set-Cookie', serialized);
 }
@@ -79,15 +78,30 @@ function clearAdminCookie(res) {
         httpOnly: true,
         secure: isProd,
         sameSite: 'strict',
+        expires: new Date(0),
         maxAge: 0,
         path: '/'
       });
     } catch (e) {}
   }
   if (!serialized) {
-    serialized = `${ADMIN_COOKIE_NAME}=; Max-Age=0; Path=/; HttpOnly; SameSite=Strict${isProd ? '; Secure' : ''}`;
+    serialized = `${ADMIN_COOKIE_NAME}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; HttpOnly; SameSite=Strict${isProd ? '; Secure' : ''}`;
   }
-  res.setHeader('Set-Cookie', serialized);
+  
+  let existing = null;
+  if (typeof res.getHeader === 'function') {
+    existing = res.getHeader('Set-Cookie') || res.getHeader('set-cookie');
+  } else if (res.headers) {
+    existing = res.headers['set-cookie'] || res.headers['Set-Cookie'];
+  }
+
+  if (!existing) {
+    res.setHeader('Set-Cookie', serialized);
+  } else if (Array.isArray(existing)) {
+    res.setHeader('Set-Cookie', [...existing, serialized]);
+  } else {
+    res.setHeader('Set-Cookie', [existing, serialized]);
+  }
 }
 
 // verifyAdmin backend guard function
@@ -145,61 +159,61 @@ function signUserToken(user) {
 
 function setUserCookie(res, token) {
   const isProd = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL);
-  let serialized;
-  if (typeof cookie.stringifySetCookie === 'function') {
-    serialized = cookie.stringifySetCookie({
-      name: USER_COOKIE_NAME,
-      value: token,
-      httpOnly: true,
-      secure: isProd,
-      sameSite: 'Lax',
-      maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
-      path: '/'
-    });
-  } else if (typeof cookie.serialize === 'function') {
-    serialized = cookie.serialize(USER_COOKIE_NAME, token, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60,
-      path: '/'
-    });
-  } else {
-    serialized = `${USER_COOKIE_NAME}=${token}; Max-Age=604800; Path=/; HttpOnly; SameSite=Lax${isProd ? '; Secure' : ''}`;
+  let serialized = null;
+  if (cookie && typeof cookie.serialize === 'function') {
+    try {
+      serialized = cookie.serialize(USER_COOKIE_NAME, token, {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: 'lax',
+        path: '/'
+      });
+    } catch (e) {}
+  }
+  if (!serialized) {
+    serialized = `${USER_COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax${isProd ? '; Secure' : ''}`;
   }
   res.setHeader('Set-Cookie', serialized);
 }
 
 function clearUserCookie(res) {
   const isProd = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL);
-  let serialized;
-  if (typeof cookie.stringifySetCookie === 'function') {
-    serialized = cookie.stringifySetCookie({
-      name: USER_COOKIE_NAME,
-      value: '',
-      httpOnly: true,
-      secure: isProd,
-      sameSite: 'Lax',
-      maxAge: 0,
-      path: '/'
-    });
-  } else if (typeof cookie.serialize === 'function') {
-    serialized = cookie.serialize(USER_COOKIE_NAME, '', {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: 'lax',
-      maxAge: 0,
-      path: '/'
-    });
-  } else {
-    serialized = `${USER_COOKIE_NAME}=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax${isProd ? '; Secure' : ''}`;
+  let serialized = null;
+  if (cookie && typeof cookie.serialize === 'function') {
+    try {
+      serialized = cookie.serialize(USER_COOKIE_NAME, '', {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: 'lax',
+        expires: new Date(0),
+        maxAge: 0,
+        path: '/'
+      });
+    } catch (e) {}
   }
-  res.setHeader('Set-Cookie', serialized);
+  if (!serialized) {
+    serialized = `${USER_COOKIE_NAME}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; HttpOnly; SameSite=Lax${isProd ? '; Secure' : ''}`;
+  }
+
+  let existing = null;
+  if (typeof res.getHeader === 'function') {
+    existing = res.getHeader('Set-Cookie') || res.getHeader('set-cookie');
+  } else if (res.headers) {
+    existing = res.headers['set-cookie'] || res.headers['Set-Cookie'];
+  }
+
+  if (!existing) {
+    res.setHeader('Set-Cookie', serialized);
+  } else if (Array.isArray(existing)) {
+    res.setHeader('Set-Cookie', [...existing, serialized]);
+  } else {
+    res.setHeader('Set-Cookie', [existing, serialized]);
+  }
 }
 
 function verifyUser(req) {
   const cookies = parseCookies(req);
-  let token = cookies[USER_COOKIE_NAME];
+  let token = cookies[USER_COOKIE_NAME] || cookies['token'];
 
   if (!token && req.headers && req.headers.authorization) {
     const parts = req.headers.authorization.split(' ');

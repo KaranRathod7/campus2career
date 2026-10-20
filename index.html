@@ -23305,7 +23305,9 @@ const defaultMarketReports = [
     /* ========================================================================= */
     function loadStateFromStorage() {
       try {
-        const storedUser = localStorage.getItem(STORAGE_KEY_USER);
+        // Enforce session-only auth: read user credentials strictly from sessionStorage
+        localStorage.removeItem(STORAGE_KEY_USER); // Purge any legacy persisted user from localStorage
+        const storedUser = sessionStorage.getItem(STORAGE_KEY_USER);
         const parsedUser = storedUser ? JSON.parse(storedUser) : null;
         // By default the website when opened should NOT be in demo mode
         if (parsedUser && parsedUser.isDemo && !sessionStorage.getItem('c2c_active_demo_session')) {
@@ -23313,6 +23315,9 @@ const defaultMarketReports = [
         } else {
           appState.user = parsedUser;
         }
+        appState.isLoggedIn = Boolean(appState.user && appState.user.name && !appState.user.isGuest);
+        window.currentUser = appState.user;
+        window.isLoggedIn = appState.isLoggedIn;
 
         const branchKey = (appState.user && appState.user.branch && STREAM_DATA[appState.user.branch])
           ? appState.user.branch
@@ -23340,6 +23345,9 @@ const defaultMarketReports = [
       } catch (e) {
         console.error("Storage load error:", e);
         appState.user = null;
+        appState.isLoggedIn = false;
+        window.currentUser = null;
+        window.isLoggedIn = false;
         appState.currentStack = JSON.parse(JSON.stringify(STREAM_DATA.it.presets.java_cloud.skills));
         appState.progress = JSON.parse(JSON.stringify(defaultProgress));
         appState.mcqHistory = JSON.parse(JSON.stringify(defaultMcqHistory));
@@ -23350,11 +23358,18 @@ const defaultMarketReports = [
 
     function saveStateToStorage() {
       try {
+        // Enforce session-only storage: user is saved in sessionStorage, never in localStorage
         if (appState.user) {
-          localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(appState.user));
+          sessionStorage.setItem(STORAGE_KEY_USER, JSON.stringify(appState.user));
+          localStorage.removeItem(STORAGE_KEY_USER);
         } else {
+          sessionStorage.removeItem(STORAGE_KEY_USER);
           localStorage.removeItem(STORAGE_KEY_USER);
         }
+        appState.isLoggedIn = Boolean(appState.user && appState.user.name && !appState.user.isGuest);
+        window.currentUser = appState.user;
+        window.isLoggedIn = appState.isLoggedIn;
+
         localStorage.setItem(STORAGE_KEY_STACK, JSON.stringify(appState.currentStack));
         localStorage.setItem(STORAGE_KEY_PROGRESS, JSON.stringify(appState.progress));
         localStorage.setItem(STORAGE_KEY_MCQ, JSON.stringify(appState.mcqHistory));
@@ -23366,20 +23381,58 @@ const defaultMarketReports = [
 
     async function checkAuthSession() {
       try {
-        const res = await fetch('/api/me');
-        if (res.ok) {
+        // Check for valid credentials strictly from the active session (/api/auth/me or /api/me)
+        let res = await fetch('/api/auth/me', {
+          credentials: 'include',
+          headers: { 'Accept': 'application/json' }
+        }).catch(() => null);
+
+        if (!res || !res.ok) {
+          res = await fetch('/api/me', {
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+          }).catch(() => null);
+        }
+
+        if (res && res.ok) {
           const data = await res.json();
           if (data && data.success && data.user) {
             appState.user = Object.assign({}, appState.user || {}, data.user);
+            appState.isLoggedIn = true;
+            window.currentUser = appState.user;
+            window.isLoggedIn = true;
             if (data.role) appState.activeRole = data.role;
             if (data.user.stream) appState.selectedStream = data.user.stream;
-            localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(appState.user));
+            sessionStorage.setItem(STORAGE_KEY_USER, JSON.stringify(appState.user));
+            localStorage.removeItem(STORAGE_KEY_USER);
             updateAuthUI();
             renderSkillLevelDiagram();
+            return;
           }
         }
+
+        // If no active session exists (such as when freshly opened in a new browser process),
+        // check whether sessionStorage has active credentials; otherwise default immediately to unauthenticated/guest
+        const sessionStored = sessionStorage.getItem(STORAGE_KEY_USER);
+        if (!sessionStored) {
+          appState.user = null;
+          appState.isLoggedIn = false;
+          window.currentUser = null;
+          window.isLoggedIn = false;
+          localStorage.removeItem(STORAGE_KEY_USER);
+          updateAuthUI();
+        }
       } catch (e) {
-        console.debug('Session auto-sync bypassed:', e);
+        console.debug('Session check notice:', e);
+        const sessionStored = sessionStorage.getItem(STORAGE_KEY_USER);
+        if (!sessionStored) {
+          appState.user = null;
+          appState.isLoggedIn = false;
+          window.currentUser = null;
+          window.isLoggedIn = false;
+          localStorage.removeItem(STORAGE_KEY_USER);
+          updateAuthUI();
+        }
       }
     }
 
@@ -27603,7 +27656,7 @@ function onWizardBranchChanged(branchKey) {
 
     async function handleLogout() {
       try {
-        // 1. Invalidate HTTP-only session cookies on backend
+        // 1. Invalidate HTTP-only session cookies on backend via POST /api/auth/logout
         await fetch('/api/auth/logout', {
           method: 'POST',
           credentials: 'include',
@@ -27615,16 +27668,20 @@ function onWizardBranchChanged(branchKey) {
         console.debug('Backend logout call notice:', e);
       }
 
-      // 2. Clear client-side cached authentication keys
-      localStorage.removeItem(STORAGE_KEY_USER);
-      localStorage.removeItem('c2c_login_failed_attempts');
-      localStorage.removeItem('c2c_login_lockout_until');
-      sessionStorage.removeItem('c2c_active_demo_session');
-      sessionStorage.clear();
+      // 2. Clear all storages completely
+      try {
+        localStorage.clear();
+      } catch (e) {}
+      try {
+        sessionStorage.clear();
+      } catch (e) {}
 
-      // 3. Reset application state back to unauthenticated guest mode
+      // 3. Reset all in-memory application variables
       appState.user = null;
       appState.activeRole = 'learner';
+      appState.isLoggedIn = false;
+      window.currentUser = null;
+      window.isLoggedIn = false;
 
       // 4. Reset modal form fields
       const emailInput = document.getElementById('authEmailInput');
@@ -27640,8 +27697,12 @@ function onWizardBranchChanged(branchKey) {
       updateAuthUI();
       showToast("You have been logged out successfully. All sessions ended.");
 
-      // 6. Redirect cleanly to landing page
-      navigateTo('home');
+      // 6. Force a hard reload / redirect to the clean landing page
+      try {
+        window.location.replace('/');
+      } catch (e) {
+        window.location.href = '/';
+      }
     }
 
     function quickFacultyLogin() {

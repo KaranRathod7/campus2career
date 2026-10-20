@@ -104,7 +104,9 @@ async function runCrossDeviceTests() {
   assert.ok(pollPostRes.body.user, 'Session user payload must be provided to Device A');
   assert.ok(pollPostRes.body.token, 'Session token must be provided to Device A');
   assert.ok(pollPostRes.headers['set-cookie'], 'Set-Cookie header must be sent to Device A for seamless auto-login');
-  console.log('   Device A auto-poller successfully detected cross-device verification!');
+  assert.ok(!pollPostRes.headers['set-cookie'].includes('Max-Age'), 'Auth session cookie must NOT contain Max-Age (must be session-only)');
+  assert.ok(!pollPostRes.headers['set-cookie'].includes('Expires'), 'Auth session cookie must NOT contain Expires (must be session-only)');
+  console.log('   Device A auto-poller successfully detected cross-device verification with session-only cookie!');
 
   // Step 6: Verify Device A session works with /api/me
   console.log('6. Device A: Calling /api/me with newly issued cookie');
@@ -131,12 +133,14 @@ async function runCrossDeviceTests() {
   assert.strictEqual(logoutRes.statusCode, 200);
   assert.strictEqual(logoutRes.body.success, true);
   assert.ok(logoutRes.headers['set-cookie'], 'Logout must send expired Set-Cookie header');
-  assert.ok(logoutRes.headers['set-cookie'].includes('Max-Age=0'), 'Cookie Max-Age must be 0 to destroy session');
+  const sc = logoutRes.headers['set-cookie'];
+  const scStr = Array.isArray(sc) ? sc.join('; ') : String(sc);
+  assert.ok(scStr.includes('Max-Age=0'), 'Cookie Max-Age must be 0 to destroy session');
   console.log('   Backend cleared HTTP-only session cookie.');
 
   // Step 8: Subsequent request to /api/me with expired cookie must fail (no lingering session)
   console.log('8. Device A: Verifying /api/me after logout');
-  const expiredCookie = logoutRes.headers['set-cookie'];
+  const expiredCookie = Array.isArray(sc) ? sc.join('; ') : String(sc);
   const postLogoutMeReq = {
     method: 'GET',
     headers: { host: 'localhost:8000', cookie: expiredCookie }
