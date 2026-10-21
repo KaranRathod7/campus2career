@@ -19,9 +19,9 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { email, code, newPassword } = req.body || {};
+    const { email, code, otp, newPassword } = req.body || {};
     const normalizedEmail = (email || '').trim().toLowerCase();
-    const cleanCode = (code || '').trim();
+    const cleanCode = (code || otp || '').trim();
     const cleanPassword = (newPassword || '').trim();
 
     if (!normalizedEmail || !cleanCode) {

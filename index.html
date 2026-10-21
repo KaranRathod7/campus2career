@@ -846,7 +846,7 @@
             <span class="text-[10px] font-bold text-teal-400 tracking-wider uppercase">Authentication Gateway</span>
             <h3 id="authModalTitle" class="text-xl font-bold text-white">Sign Up to Campus2Career</h3>
           </div>
-          <button onclick="closeAuthModal()" class="text-slate-400 hover:text-white p-1">
+          <button type="button" onclick="closeAuthModal()" class="text-slate-400 hover:text-white p-1.5 transition-colors cursor-pointer" style="z-index: 9999; pointer-events: auto;" title="Close" aria-label="Close">
             <i class="fa-solid fa-xmark text-lg"></i>
           </button>
         </div>
@@ -1056,7 +1056,7 @@
           <span class="text-[10px] uppercase tracking-wider text-teal-400 font-bold block">Engineering Diagnostic Intake</span>
           <h3 id="wizardStepTitle" class="text-lg font-bold text-white">Step 1: Academic Profile &amp; Stream</h3>
         </div>
-        <button onclick="closeOnboardingModal()" class="text-slate-400 hover:text-white text-lg">
+        <button onclick="closeOnboardingModal()" class="text-slate-400 hover:text-white text-lg p-1 transition-colors cursor-pointer" style="z-index: 9999; pointer-events: auto;" title="Close" aria-label="Close">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
@@ -1090,7 +1090,7 @@
         <div id="wizardStep1" class="wizard-pane block space-y-4" onkeydown="handleFormEnterKey(event, this, '#wizardNextBtn')">
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">University / Institute</label>
-            <input type="text" id="obCollege" placeholder="e.g. Gujarat Technological University / IIT / NIT" class="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#008080]">
+            <input type="text" id="obCollege" placeholder="e.g. IIT / Office / No (if not applicable)" class="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#008080]">
           </div>
 
           <div>
@@ -1098,11 +1098,16 @@
               <label class="block text-xs font-bold text-slate-700" id="wizardYearLabel">Current Year of B.Tech</label>
               <span class="text-[10px]" id="wizardYearStatusHint"><span class="text-teal-700 font-semibold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">Required for Students</span></span>
             </div>
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-              <button type="button" onclick="selectWizardYear(1)" class="w-year-btn py-2.5 border rounded-lg text-center font-medium border-slate-200 hover:border-teal-500 text-slate-700 transition-all min-h-[40px]">1st Year</button>
-              <button type="button" onclick="selectWizardYear(2)" class="w-year-btn py-2.5 border rounded-lg text-center font-medium border-slate-200 hover:border-teal-500 text-slate-700 transition-all min-h-[40px]">2nd Year</button>
-              <button type="button" onclick="selectWizardYear(3)" class="w-year-btn py-2.5 border rounded-lg text-center font-semibold border-[#008080] bg-teal-50 text-[#008080] shadow-2xs transition-all min-h-[40px]">3rd Year</button>
-              <button type="button" onclick="selectWizardYear(4)" class="w-year-btn py-2.5 border rounded-lg text-center font-medium border-slate-200 hover:border-teal-500 text-slate-700 transition-all min-h-[40px]">Final Year</button>
+            <select id="obYear" name="btech_year" onchange="onWizardYearChanged(this.value)" class="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-slate-800 focus:ring-2 focus:ring-[#008080]">
+              <option value="" selected>Select your current year</option>
+              <option value="1">1st Year</option>
+              <option value="2">2nd Year</option>
+              <option value="3">3rd Year</option>
+              <option value="4">Final Year</option>
+            </select>
+            <div id="obYearAlert" class="hidden text-xs text-red-600 font-semibold mt-1.5 flex items-center space-x-1">
+              <i class="fa-solid fa-circle-exclamation text-xs"></i>
+              <span id="obYearAlertText">Please enter your current year to proceed.</span>
             </div>
           </div>
 
@@ -1210,7 +1215,7 @@
 
       <!-- Modal Footer Action Buttons -->
       <div class="bg-slate-50 dark:bg-[#0B132B] p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-        <button id="wizardBackBtn" onclick="prevWizardStep()" class="text-xs px-4 py-2 border border-slate-200 rounded-lg font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-30" disabled>
+        <button id="wizardBackBtn" type="button" onclick="prevWizardStep()" class="text-xs transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255, 255, 255, 0.15); color: #cbd5e1; padding: 10px 20px; border-radius: 8px; font-weight: 600;" onmouseover="if(!this.disabled){this.style.background='rgba(51, 65, 85, 0.9)'; this.style.color='#ffffff';}" onmouseout="if(!this.disabled){this.style.background='rgba(30, 41, 59, 0.7)'; this.style.color='#cbd5e1';}" disabled>
           &larr; Back
         </button>
         <button id="wizardNextBtn" onclick="nextWizardStep()" class="text-xs px-5 py-2.5 bg-[#008080] hover:bg-[#006666] text-white rounded-lg font-bold shadow-sm transition-all flex items-center space-x-1.5">
@@ -1660,26 +1665,29 @@
           <p class="text-xs text-slate-500">Completing assessments directly levels up your score in your visual skill diagram.</p>
         </div>
 
-        <div class="flex items-center space-x-4 bg-slate-900 text-white px-4 py-2 rounded-xl font-mono text-xs shadow-inner">
-          <div>
-            <span class="text-slate-400 block text-[9px] uppercase">Time Remaining</span>
-            <span id="quizTimer" class="text-teal-300 font-bold text-base">10:00</span>
+        <div class="flex items-center space-x-3">
+          <div class="flex items-center space-x-4 bg-slate-900 text-white px-4 py-2 rounded-xl font-mono text-xs shadow-inner">
+            <div>
+              <span class="text-slate-400 block text-[9px] uppercase">Time Remaining</span>
+              <span id="quizTimer" class="text-teal-300 font-bold text-base">10:00</span>
+            </div>
+            <div class="border-l border-slate-700 pl-4">
+              <span class="text-slate-400 block text-[9px] uppercase">Question</span>
+              <span id="questionStep" class="font-bold text-base text-white">1 / 4</span>
+            </div>
           </div>
-          <div class="border-l border-slate-700 pl-4">
-            <span class="text-slate-400 block text-[9px] uppercase">Question</span>
-            <span id="questionStep" class="font-bold text-base text-white">1 / 4</span>
-          </div>
+          <button type="button" onclick="navigateTo('analyzer')" class="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all cursor-pointer" style="z-index: 9999; pointer-events: auto;" title="Exit Assessment" aria-label="Exit Assessment">
+            <i class="fa-solid fa-xmark text-base"></i>
+          </button>
         </div>
       </div>
 
       <!-- Module Selector Bar -->
       <div class="pt-4 flex flex-wrap gap-2 items-center">
-        <span class="text-xs font-bold text-slate-600 mr-1">Select Skill to Test:</span>
+        <span class="text-xs font-bold text-slate-600 dark:text-slate-300 mr-1">Select Skill to Test:</span>
         <div id="mcqModuleTabs" class="flex flex-wrap gap-2 items-center">
-        <button onclick="switchQuizModule('java')" id="qmod-java" class="quiz-mod-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#008080] text-white">Java &amp; Architecture</button>
-        <button onclick="switchQuizModule('db')" id="qmod-db" class="quiz-mod-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">Database &amp; SQL</button>
-        <button onclick="switchQuizModule('docker')" id="qmod-docker" class="quiz-mod-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">Docker &amp; Containers</button>
-        <button onclick="switchQuizModule('debug')" id="qmod-debug" class="quiz-mod-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">Production Debugging</button>
+          <!-- Dynamically populated via renderMcqModuleTabs() strictly with user's selected skills -->
+        </div>
       </div>
 
       <!-- Assessment Mode Selector (10-MCQ Fast Track vs 20-Q Comprehensive Benchmark with 13 MCQ + 7 MSQ) -->
@@ -2207,7 +2215,7 @@
             <p class="text-[11px] text-slate-400 font-mono mt-0.5" id="dossierToken">Token: BTECH-2026-IT-901</p>
           </div>
         </div>
-        <button onclick="closeCandidateDossier()" class="text-slate-400 hover:text-white p-1">
+        <button onclick="closeCandidateDossier()" class="text-slate-400 hover:text-white p-1 transition-colors cursor-pointer" style="z-index: 9999; pointer-events: auto;" title="Close Dossier" aria-label="Close">
           <i class="fa-solid fa-xmark text-xl"></i>
         </button>
       </div>
@@ -2293,7 +2301,7 @@
             <p class="text-[11px] text-slate-500 dark:text-slate-400">Share platform link directly with friends or via apps</p>
           </div>
         </div>
-        <button onclick="closeShareModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1">
+        <button onclick="closeShareModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 transition-colors cursor-pointer" style="z-index: 9999; pointer-events: auto;" title="Close" aria-label="Close">
           <i class="fa-solid fa-xmark text-lg"></i>
         </button>
       </div>
@@ -2358,7 +2366,7 @@
           <span class="text-slate-500">|</span>
           <span class="text-xs text-slate-300 font-mono" id="resModalTag">EMBEDDED C</span>
         </div>
-        <button onclick="closeResourceModal()" class="text-slate-400 hover:text-white p-1">
+        <button type="button" onclick="closeResourceModal()" class="text-slate-400 hover:text-white p-1.5 transition-colors cursor-pointer" style="z-index: 9999; pointer-events: auto;" title="Close Lecture Player" aria-label="Close">
           <i class="fa-solid fa-xmark text-lg"></i>
         </button>
       </div>
@@ -23745,6 +23753,9 @@ const defaultMarketReports = [
 
         const storedReports = localStorage.getItem(STORAGE_KEY_MARKET_REPORTS);
         appState.marketReports = storedReports ? JSON.parse(storedReports) : JSON.parse(JSON.stringify(defaultMarketReports));
+
+        const storedDomainProg = localStorage.getItem('campus2career_domain_progress');
+        appState.user_domain_progress = storedDomainProg ? JSON.parse(storedDomainProg) : {};
       } catch (e) {
         console.error("Storage load error:", e);
         appState.user = null;
@@ -23756,6 +23767,7 @@ const defaultMarketReports = [
         appState.mcqHistory = JSON.parse(JSON.stringify(defaultMcqHistory));
         appState.invites = JSON.parse(JSON.stringify(defaultInvites));
         appState.marketReports = JSON.parse(JSON.stringify(defaultMarketReports));
+        appState.user_domain_progress = {};
       }
     }
 
@@ -23777,6 +23789,7 @@ const defaultMarketReports = [
         localStorage.setItem(STORAGE_KEY_PROGRESS, JSON.stringify(appState.progress));
         localStorage.setItem(STORAGE_KEY_MCQ, JSON.stringify(appState.mcqHistory));
         localStorage.setItem(STORAGE_KEY_INVITES, JSON.stringify(appState.invites));
+        localStorage.setItem('campus2career_domain_progress', JSON.stringify(appState.user_domain_progress || {}));
       } catch (e) {
         console.error("Storage save error:", e);
       }
@@ -23806,6 +23819,13 @@ const defaultMarketReports = [
             window.isLoggedIn = true;
             if (data.role) appState.activeRole = data.role;
             if (data.user.stream) appState.selectedStream = data.user.stream;
+            if (data.user.active_domain) {
+              appState.selectedPreset = data.user.active_domain;
+              if (appState.user) appState.user.active_domain = data.user.active_domain;
+            }
+            if (data.user.domain_progress) {
+              appState.user_domain_progress = Object.assign({}, appState.user_domain_progress || {}, data.user.domain_progress);
+            }
             sessionStorage.setItem(STORAGE_KEY_USER, JSON.stringify(appState.user));
             localStorage.removeItem(STORAGE_KEY_USER);
             updateAuthUI();
@@ -24969,43 +24989,67 @@ function renderCurriculumComparison() {
 }
 
 function renderMcqModulesForStream() {
-  const streamKey = getActiveStreamKey();
-  const stream = STREAM_DATA[streamKey];
-  if (!stream) return;
-  appState.quizModules = JSON.parse(JSON.stringify(stream.quizModules));
-
   const tabsContainer = document.getElementById('mcqModuleTabs');
-  if (tabsContainer) {
-    tabsContainer.innerHTML = '';
-    const modKeys = Object.keys(appState.quizModules);
-    
-    // Choose active key: maintain current activeQuizModule if it exists in this stream
-    const activeKey = (appState.activeQuizModule && appState.quizModules[appState.activeQuizModule])
-      ? appState.activeQuizModule
-      : (modKeys.length > 0 ? modKeys[0] : null);
+  if (!tabsContainer) return;
+  tabsContainer.innerHTML = '';
 
-    modKeys.forEach((key) => {
-      const mod = appState.quizModules[key];
-      const btn = document.createElement('button');
-      btn.id = `modBtn-${key}`;
-      const isActive = (key === activeKey);
-      btn.className = `px-3.5 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
-        isActive
-          ? 'bg-[#008080] text-white border-[#008080] shadow-xs'
-          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-      }`;
-      btn.innerText = mod.title;
-      btn.onclick = () => {
-        appState.targetSkillName = null;
-        appState.targetSkillId = null;
-        switchQuizModule(key);
-      };
-      tabsContainer.appendChild(btn);
-    });
+  // Dynamically render ONLY the skills the logged-in user has selected (both from chosen domain cluster and extras added via "Add More Skills")
+  let userSkills = [];
+  if (Array.isArray(appState.currentStack) && appState.currentStack.length > 0) {
+    userSkills = appState.currentStack;
+  } else if (appState.user && Array.isArray(appState.user.skills) && appState.user.skills.length > 0) {
+    userSkills = appState.user.skills.map(s => typeof s === 'string' ? { id: s.toLowerCase().replace(/[^a-z0-9]/g, '_'), name: s } : s);
+  }
 
-    if (activeKey) {
-      switchQuizModule(activeKey);
+  // Fallback to active stream default preset skills if none selected
+  if (userSkills.length === 0) {
+    const streamKey = getActiveStreamKey();
+    const stream = STREAM_DATA[streamKey] || STREAM_DATA.ece;
+    const defPreset = (stream && stream.presets && stream.presets[stream.defaultPreset]) || Object.values((stream && stream.presets) || {})[0];
+    if (defPreset && defPreset.skills) {
+      userSkills = defPreset.skills;
     }
+  }
+
+  if (userSkills.length === 0) return;
+
+  // Determine active skill: default to currently selected target skill, or first skill in currentStack
+  let activeSkill = null;
+  if (appState.targetSkillName) {
+    activeSkill = userSkills.find(s => (s.name || '').toLowerCase() === appState.targetSkillName.toLowerCase() || (s.id && s.id === appState.targetSkillId));
+  }
+  if (!activeSkill) {
+    activeSkill = userSkills[0];
+    appState.targetSkillName = activeSkill.name;
+    appState.targetSkillId = activeSkill.id;
+  }
+
+  userSkills.forEach((skill) => {
+    const skillName = skill.name || skill.id;
+    const skillId = skill.id || skillName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const isSelected = (activeSkill && (activeSkill.name === skillName || activeSkill.id === skillId));
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = `modBtn-${skillId}`;
+    btn.className = `quiz-mod-btn px-3.5 py-1.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
+      isSelected
+        ? 'bg-[#008080] text-white border-[#008080] shadow-xs'
+        : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+    }`;
+    btn.innerText = skillName;
+    btn.onclick = () => {
+      appState.targetSkillName = skillName;
+      appState.targetSkillId = skillId;
+      startQuizForSkill(skillId, skillName);
+      renderMcqModulesForStream(); // Re-render tabs to reflect active highlight
+    };
+    tabsContainer.appendChild(btn);
+  });
+
+  // Load the active skill questions immediately without defaulting to Java
+  if (activeSkill && (!appState.activeQuizQuestions || appState.activeQuizQuestions.length === 0 || !appState.targetSkillName)) {
+    startQuizForSkill(activeSkill.id, activeSkill.name);
   }
 }
 
@@ -25460,6 +25504,48 @@ function onWizardBranchChanged(branchKey) {
       }
     };
 
+    function getDomainMasteryPercent(domainKey, branchKey) {
+      if (!branchKey) branchKey = (typeof getWizardActiveStreamKey === 'function') ? getWizardActiveStreamKey() : (appState.selectedStream || 'ece');
+      const stream = STREAM_DATA[branchKey] || STREAM_DATA.ece;
+      const presets = Object.assign({}, (typeof SENIOR_ROLE_PRESETS !== 'undefined' ? SENIOR_ROLE_PRESETS : {}), (stream && stream.presets) || {});
+      const preset = presets[domainKey];
+      if (!preset || !Array.isArray(preset.skills) || preset.skills.length === 0) return 0;
+
+      let totalScore = 0;
+      let scoredSkills = 0;
+
+      preset.skills.forEach(skill => {
+        // 1. Look in currentStack
+        const inStack = (appState.currentStack || []).find(s => 
+          (s.id && skill.id && s.id === skill.id) ||
+          (s.name && skill.name && s.name.toLowerCase() === skill.name.toLowerCase())
+        );
+        if (inStack && typeof inStack.score === 'number' && inStack.score > 0) {
+          totalScore += inStack.score;
+          scoredSkills++;
+        } else {
+          // 2. Look in mcq history
+          const mcq = (appState.mcqHistory || []).filter(h => 
+            h.skill_name && skill.name && h.skill_name.toLowerCase() === skill.name.toLowerCase()
+          );
+          if (mcq.length > 0) {
+            totalScore += Number(mcq[mcq.length - 1].score || 0);
+            scoredSkills++;
+          } else if (appState.user_domain_progress && appState.user_domain_progress[domainKey] && appState.user_domain_progress[domainKey].skill_scores) {
+            const stored = appState.user_domain_progress[domainKey].skill_scores[skill.id || skill.name];
+            if (stored) {
+              totalScore += Number(stored);
+              scoredSkills++;
+            }
+          }
+        }
+      });
+
+      if (scoredSkills === 0) return 0;
+      // Formula: Domain % = (Sum of Skill Scores) / (Total Skills in Domain)
+      return Math.round(totalScore / preset.skills.length);
+    }
+
     function renderWizardPresets(branchKey) {
       const container = document.getElementById('wizardPresetsContainer');
       if (!container) return;
@@ -25481,13 +25567,18 @@ function onWizardBranchChanged(branchKey) {
         Object.assign(presetsToRender, STREAM_DATA[branchKey].presets);
       }
 
-      const activePreset = (appState.user && appState.user.activeTrackPreset) 
+      const activePreset = (appState.user && (appState.user.active_domain || appState.user.activeTrackPreset)) 
         || appState.selectedPreset 
         || (isSenior ? 'mgmt_lead' : (STREAM_DATA[branchKey] && STREAM_DATA[branchKey].defaultPreset) || Object.keys(presetsToRender)[0]);
 
       Object.keys(presetsToRender).forEach(key => {
         const p = presetsToRender[key];
         const isSelected = activePreset === key;
+        const domainPct = getDomainMasteryPercent(key, branchKey);
+        const badgeHtml = domainPct > 0 
+          ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/15 text-[#008080] dark:text-teal-300 border border-teal-500/30 font-mono">${domainPct}% Mastery</span>`
+          : `<span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 font-mono">Unexplored (0%)</span>`;
+
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.id = `wizardPresetBtn-${key}`;
@@ -25504,8 +25595,11 @@ function onWizardBranchChanged(branchKey) {
 
         btn.innerHTML = `
           ${roleBadgeHtml}
-          <span class="block font-bold text-xs sm:text-sm text-slate-900 dark:text-white">${p.name}</span>
-          <span class="text-[10px] text-slate-500 dark:text-slate-400 font-normal mt-0.5 block leading-relaxed">${p.description}</span>
+          <div class="flex items-center justify-between gap-2 mb-1">
+            <span class="block font-bold text-xs sm:text-sm text-slate-900 dark:text-white">${p.name}</span>
+            ${badgeHtml}
+          </div>
+          <span class="text-[10px] text-slate-500 dark:text-slate-400 font-normal block leading-relaxed">${p.description}</span>
         `;
         btn.onclick = () => selectWizardPreset(key);
         container.appendChild(btn);
@@ -25529,15 +25623,36 @@ function onWizardBranchChanged(branchKey) {
       // Default all skills to Intermediate (35%)
       const clonedSkills = JSON.parse(JSON.stringify(preset.skills));
       clonedSkills.forEach(s => {
-        s.score = 35; // Default all skills to Intermediate (35%)
+        if (s.score === undefined || s.score === null) s.score = 35;
       });
       appState.currentStack = clonedSkills;
 
       if (appState.user) {
         appState.user.activeTrackPreset = presetKey;
-      } else {
-        appState.selectedPreset = presetKey;
+        appState.user.active_domain = presetKey;
+        appState.user.skills = clonedSkills.map(s => s.name);
       }
+      appState.selectedPreset = presetKey;
+
+      // Update users.active_domain and load the associated skills into the dashboard and radar chart
+      if (appState.user && appState.user.email) {
+        fetch('/api/me', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: appState.user.email,
+            active_domain: presetKey,
+            stream: branchKey,
+            branch: branchKey,
+            skills: clonedSkills.map(s => s.name)
+          })
+        }).catch(e => console.warn('[Preset Selection Sync Warning]', e));
+      }
+
+      renderSkillLevelDiagram();
+      runLiveRecalculations();
+      updateCharts();
+      saveStateToStorage();
 
       document.querySelectorAll('[id^="wizardPresetBtn-"]').forEach(btn => {
         if (btn.id === `wizardPresetBtn-${presetKey}`) {
@@ -25914,10 +26029,9 @@ function onWizardBranchChanged(branchKey) {
       if (!appState.selectedRole) {
         selectWizardRole('student');
       }
-      // Pre-select Year 3 so student is immediately unblocked
-      if (!appState.selectedYear) {
-        selectWizardYear(3);
-      }
+      appState.selectedYear = "";
+      const ySel = document.getElementById('obYear');
+      if (ySel) ySel.value = "";
       onWizardBranchChanged(streamKey);
       updateWizardYearButtons();
       updateWizardUI();
@@ -25946,7 +26060,7 @@ function onWizardBranchChanged(branchKey) {
     }
 
     function updateWizardYearButtons() {
-      const isStudent = (appState.selectedRole === 'student');
+      const isStudent = (appState.selectedRole === 'student' || appState.selectedRole === 'learner');
       const label = document.getElementById('wizardYearLabel');
       const hint = document.getElementById('wizardYearStatusHint');
 
@@ -25957,23 +26071,12 @@ function onWizardBranchChanged(branchKey) {
         if (isStudent) {
           hint.innerHTML = `<span class="text-teal-700 font-semibold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">Required for Students</span>`;
         } else {
-          hint.innerHTML = (appState.selectedYear !== null && appState.selectedYear !== undefined)
-            ? `<span class="text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">Click active year again to deselect</span>`
-            : `<span class="text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 font-semibold">Not Applicable (Industry Professional)</span>`;
+          hint.innerHTML = `<span class="text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-medium">Optional for Professionals</span>`;
         }
       }
-
-      document.querySelectorAll('.w-year-btn').forEach((btn, idx) => {
-        const yrNum = idx + 1;
-        if (appState.selectedYear === yrNum) {
-          btn.className = "w-year-btn py-2 border rounded-lg text-center font-semibold border-[#008080] dark:border-teal-400 bg-teal-50 dark:bg-teal-950/70 text-[#008080] dark:text-teal-300 shadow-2xs transition-all";
-        } else {
-          btn.className = "w-year-btn py-2 border rounded-lg text-center font-medium border-slate-200 dark:border-slate-700 hover:border-teal-500 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 transition-all";
-        }
-      });
     }
 
-        function openOnboardingModal(branchOverride = null) {
+    function openOnboardingModal(branchOverride = null) {
       document.getElementById('onboardingModal').classList.remove('hidden');
       document.getElementById('onboardingModal').classList.add('flex');
       lockBodyScroll(true);
@@ -25984,12 +26087,23 @@ function onWizardBranchChanged(branchKey) {
       const obBranchEl = document.getElementById('obBranch');
       if (obBranchEl) obBranchEl.value = branch;
       
+      // Default value to empty string "" (no year pre-selected by default)
+      appState.selectedYear = (appState.user && appState.user.year) ? appState.user.year : "";
+      const yearSelect = document.getElementById('obYear');
+      if (yearSelect) {
+        yearSelect.value = appState.selectedYear ? String(appState.selectedYear) : "";
+        yearSelect.classList.remove('ring-2', 'ring-red-500', 'border-red-500');
+      }
+      const alertEl = document.getElementById('obYearAlert');
+      if (alertEl) alertEl.classList.add('hidden');
+
       onWizardBranchChanged(branch);
       updateWizardYearButtons();
       updateWizardUI();
     }
 
     function closeOnboardingModal() {
+      appState.isChangingCoreSkills = false;
       document.getElementById('onboardingModal').classList.add('hidden');
       document.getElementById('onboardingModal').classList.remove('flex');
       lockBodyScroll(false);
@@ -26029,6 +26143,15 @@ function onWizardBranchChanged(branchKey) {
       });
     }
 
+    function onWizardYearChanged(val) {
+      appState.selectedYear = val ? parseInt(val, 10) : "";
+      const alertEl = document.getElementById('obYearAlert');
+      if (alertEl) alertEl.classList.add('hidden');
+      const selectEl = document.getElementById('obYear');
+      if (selectEl) selectEl.classList.remove('ring-2', 'ring-red-500', 'border-red-500');
+      if (appState.user) appState.user.year = val ? parseInt(val, 10) : null;
+    }
+
     function setWizardSkillScore(idx, score) {
       if (!appState.currentStack || !appState.currentStack[idx]) return;
       appState.currentStack[idx].score = score;
@@ -26036,18 +26159,16 @@ function onWizardBranchChanged(branchKey) {
       const btnGroup = document.getElementById(`wizardSkillBtns-${idx}`);
       if (btnGroup) {
         const btns = btnGroup.querySelectorAll('.w-skill-level-btn');
+        const activeClass = "w-skill-level-btn py-1.5 px-3 rounded-lg text-xs font-bold bg-[#0ea5e9] text-white border border-[#0ea5e9] shadow-xs transition-all text-center flex items-center justify-center";
+        const inactiveClass = "w-skill-level-btn py-1.5 px-3 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all text-center flex items-center justify-center";
+
         btns.forEach(b => {
           const bScore = parseInt(b.getAttribute('data-score'), 10);
+          const isWide = b.classList.contains('w-full') || b.getAttribute('data-wide') === 'true';
           if (bScore === score) {
-            if (score <= 25) {
-              b.className = "w-skill-level-btn px-2.5 py-1 rounded-lg text-[10px] font-bold bg-red-600 text-white shadow-xs transition-all";
-            } else if (score <= 40) {
-              b.className = "w-skill-level-btn px-2.5 py-1 rounded-lg text-[10px] font-bold bg-yellow-400 text-slate-950 shadow-xs transition-all";
-            } else {
-              b.className = "w-skill-level-btn px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-600 text-white shadow-xs transition-all";
-            }
+            b.className = (isWide ? 'w-full ' : '') + activeClass;
           } else {
-            b.className = "w-skill-level-btn px-2.5 py-1 rounded-lg text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all";
+            b.className = (isWide ? 'w-full ' : '') + inactiveClass;
           }
         });
       }
@@ -26070,22 +26191,35 @@ function onWizardBranchChanged(branchKey) {
         }
       }
 
+      const activeClass = "w-skill-level-btn py-1.5 px-3 rounded-lg text-xs font-bold bg-[#0ea5e9] text-white border border-[#0ea5e9] shadow-xs transition-all text-center flex items-center justify-center min-h-[34px]";
+      const inactiveClass = "w-skill-level-btn py-1.5 px-3 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all text-center flex items-center justify-center min-h-[34px]";
+
       (appState.currentStack || []).forEach((s, idx) => {
         // Default to Intermediate (35%)
         if (s.score === undefined || s.score === null) s.score = 35;
         const currentScore = s.score;
 
+        const isBasic = (currentScore <= 25);
+        const isInter = (currentScore > 25 && currentScore <= 40);
+        const isAdv = (currentScore > 40);
+
         const div = document.createElement('div');
-        div.className = "p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2";
+        div.className = "p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs";
         div.innerHTML = `
           <div>
-            <span class="text-xs font-bold text-slate-900 dark:text-white">${s.name}</span>
-            <span class="text-[10px] text-slate-400 dark:text-slate-500 block">${s.category || 'Core Skill'}</span>
+            <span class="text-xs font-bold text-slate-900 dark:text-white block">${s.name}</span>
+            <span class="text-[10px] text-slate-400 dark:text-slate-500 block mt-0.5">${s.category || 'Core Skill'}</span>
           </div>
-          <div class="flex items-center space-x-1.5 flex-wrap gap-1" id="wizardSkillBtns-${idx}">
-            <button type="button" data-score="20" onclick="setWizardSkillScore(${idx}, 20)" class="w-skill-level-btn px-2.5 py-1.5 rounded-lg text-[10px] ${currentScore <= 25 ? 'bg-red-600 text-white font-bold shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'} transition-all min-h-[36px]">Basic (20%)</button>
-            <button type="button" data-score="35" onclick="setWizardSkillScore(${idx}, 35)" class="w-skill-level-btn px-2.5 py-1.5 rounded-lg text-[10px] ${currentScore > 25 && currentScore <= 40 ? 'bg-yellow-400 text-slate-950 font-bold shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'} transition-all min-h-[36px]">Intermediate (35%)</button>
-            <button type="button" data-score="48" onclick="setWizardSkillScore(${idx}, 48)" class="w-skill-level-btn px-2.5 py-1.5 rounded-lg text-[10px] ${currentScore > 40 ? 'bg-emerald-600 text-white font-bold shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'} transition-all min-h-[36px]">Advanced (48%)</button>
+          <div class="flex flex-col gap-2 w-full sm:w-64 shrink-0" id="wizardSkillBtns-${idx}">
+            <!-- Line 1: Basic (20%) and Intermediate (35%) side-by-side with equal width -->
+            <div class="grid grid-cols-2 gap-2 w-full">
+              <button type="button" data-score="20" onclick="setWizardSkillScore(${idx}, 20)" class="${isBasic ? activeClass : inactiveClass}">Basic (20%)</button>
+              <button type="button" data-score="35" onclick="setWizardSkillScore(${idx}, 35)" class="${isInter ? activeClass : inactiveClass}">Intermediate (35%)</button>
+            </div>
+            <!-- Line 2: Advanced (48%) centered below them with matching proportional width -->
+            <div class="w-full flex justify-center">
+              <button type="button" data-score="48" data-wide="true" onclick="setWizardSkillScore(${idx}, 48)" class="w-full ${isAdv ? activeClass : inactiveClass}">Advanced (48%)</button>
+            </div>
           </div>
         `;
         container.appendChild(div);
@@ -26107,7 +26241,10 @@ function onWizardBranchChanged(branchKey) {
       for (let i = 1; i <= 4; i++) {
         const dot = document.getElementById(`dot${i}`);
         if (dot) {
-          if (i < appState.currentWizardStep) {
+          if (appState.isChangingCoreSkills && i === 1) {
+            dot.className = "w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold";
+            dot.innerText = "✓";
+          } else if (i < appState.currentWizardStep) {
             dot.className = "w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold";
             dot.innerText = "✓";
           } else if (i === appState.currentWizardStep) {
@@ -26192,11 +26329,25 @@ function onWizardBranchChanged(branchKey) {
         }
       }
 
-      document.getElementById('wizardBackBtn').disabled = (appState.currentWizardStep === 1);
+      const backBtn = document.getElementById('wizardBackBtn');
+      if (backBtn) {
+        if (appState.isChangingCoreSkills && appState.currentWizardStep === 2) {
+          backBtn.disabled = true;
+          backBtn.style.opacity = '0.3';
+          backBtn.style.cursor = 'not-allowed';
+        } else {
+          backBtn.disabled = (appState.currentWizardStep === 1);
+          backBtn.style.opacity = (appState.currentWizardStep === 1) ? '0.3' : '1';
+          backBtn.style.cursor = (appState.currentWizardStep === 1) ? 'not-allowed' : 'pointer';
+        }
+      }
+
       const nextBtn = document.getElementById('wizardNextBtn');
-      nextBtn.innerHTML = (appState.currentWizardStep === 4)
-        ? `<span>Open Skill Level Diagram &amp; Interface &rarr;</span>`
-        : `<span>Continue &rarr;</span>`;
+      if (nextBtn) {
+        nextBtn.innerHTML = (appState.currentWizardStep === 4)
+          ? `<span>Open Skill Level Diagram &amp; Interface &rarr;</span>`
+          : `<span>Continue &rarr;</span>`;
+      }
     }
 
     function nextWizardStep() {
@@ -26207,10 +26358,30 @@ function onWizardBranchChanged(branchKey) {
           || 'ece';
         appState.selectedStream = branch;
 
-        if (appState.selectedRole === 'student' && !appState.selectedYear) {
-          appState.selectedYear = 3;
-          updateWizardYearButtons();
+        // Conditional Validation on "Continue":
+        const currentRole = (appState.selectedRole || (appState.user && appState.user.role) || 'student').toLowerCase();
+        const isStudentLearner = (currentRole === 'student' || currentRole === 'learner' || currentRole.includes('student') || currentRole.includes('learner'));
+        const yearSelect = document.getElementById('obYear');
+        const yearVal = (yearSelect && yearSelect.value !== undefined) ? yearSelect.value.trim() : (appState.selectedYear ? String(appState.selectedYear) : "");
+
+        if (isStudentLearner && (!yearVal || yearVal === "")) {
+          const alertEl = document.getElementById('obYearAlert');
+          if (alertEl) {
+            alertEl.classList.remove('hidden');
+            const alertText = document.getElementById('obYearAlertText');
+            if (alertText) alertText.innerText = "Please enter your current year to proceed.";
+          }
+          if (yearSelect) {
+            yearSelect.focus();
+            yearSelect.classList.add('ring-2', 'ring-red-500', 'border-red-500');
+          }
+          return; // Block progression
         }
+
+        const alertEl = document.getElementById('obYearAlert');
+        if (alertEl) alertEl.classList.add('hidden');
+        if (yearSelect) yearSelect.classList.remove('ring-2', 'ring-red-500', 'border-red-500');
+        if (yearVal) appState.selectedYear = parseInt(yearVal, 10);
       }
       if (appState.currentWizardStep < 4) {
         appState.currentWizardStep++;
@@ -26226,7 +26397,7 @@ function onWizardBranchChanged(branchKey) {
 
         appState.selectedStream = branch;
         if (!appState.user || appState.user.isGuest) {
-          appState.user = { isGuest: true, branch: branch, stream: branch, role: appState.selectedRole || 'student', year: appState.selectedYear || 3, onboarded: true, skills: chosenStack.map(s => s.name) };
+          appState.user = { isGuest: true, branch: branch, stream: branch, role: appState.selectedRole || 'student', year: appState.selectedYear || null, onboarded: true, skills: chosenStack.map(s => s.name) };
         } else {
           appState.user.branch = branch;
           appState.user.stream = branch;
@@ -26235,8 +26406,8 @@ function onWizardBranchChanged(branchKey) {
           if (appState.selectedRole) appState.user.role = appState.selectedRole;
           const colVal = (document.getElementById('obCollege') && document.getElementById('obCollege').value.trim()) || '';
           if (colVal) appState.user.college = colVal;
-          if (appState.selectedRole === 'student') {
-            appState.user.year = appState.selectedYear || appState.user.year || 3;
+          if (appState.selectedRole === 'student' || appState.selectedRole === 'learner') {
+            appState.user.year = appState.selectedYear || appState.user.year || null;
           } else {
             appState.user.year = appState.selectedYear || null;
           }
@@ -26250,6 +26421,7 @@ function onWizardBranchChanged(branchKey) {
                 email: appState.user.email,
                 stream: branch,
                 branch: branch,
+                active_domain: appState.selectedPreset || (appState.user && appState.user.active_domain),
                 skills: chosenStack.map(s => s.name),
                 college: appState.user.college,
                 year: appState.user.year
@@ -26279,6 +26451,10 @@ function onWizardBranchChanged(branchKey) {
     }
 
     function prevWizardStep() {
+      if (appState.isChangingCoreSkills && appState.currentWizardStep <= 2) {
+        // Bypass Step 1 completely on Change Core Skills
+        return;
+      }
       if (appState.currentWizardStep > 1) {
         appState.currentWizardStep--;
         updateWizardUI();
@@ -26286,7 +26462,17 @@ function onWizardBranchChanged(branchKey) {
     }
 
     function openSkillCustomizerModal() {
-      openOnboardingModal();
+      appState.isChangingCoreSkills = true;
+      document.getElementById('onboardingModal').classList.remove('hidden');
+      document.getElementById('onboardingModal').classList.add('flex');
+      lockBodyScroll(true);
+
+      const branch = (appState.user && (appState.user.stream || appState.user.branch)) || appState.selectedStream || 'ece';
+      appState.selectedStream = branch;
+      const obBranchEl = document.getElementById('obBranch');
+      if (obBranchEl) obBranchEl.value = branch;
+
+      // Jump directly to Step 2: Stream Focus Cluster
       appState.currentWizardStep = 2;
       updateWizardUI();
     }
@@ -27050,6 +27236,68 @@ function onWizardBranchChanged(branchKey) {
       alert("YouTube Video Playback Troubleshooting:\n\n1. Error 153 (\"Video player configuration error\") occurs when opening HTML files directly from your hard drive (file:/// protocol) because YouTube enforces web-origin headers.\n\n2. Solutions:\n• Solution A: Click 'Watch on YouTube' or 'Direct HD Stream'. The video will play in a new tab, and your study timer/skill progress will continue tracking automatically!\n• Solution B: Double-click 'start.bat' in the project folder to run Campus2Career via the local server (http://localhost:8000). Embedded video players will stream smoothly inside the modal without any Error 153!");
     }
 
+    function updateUserDomainProgressAfterActivity() {
+      const streamKey = (typeof getActiveStreamKey === 'function') ? getActiveStreamKey() : (appState.selectedStream || 'ece');
+      const stream = (typeof STREAM_DATA !== 'undefined' && STREAM_DATA[streamKey]) ? STREAM_DATA[streamKey] : null;
+      if (!stream || !stream.presets) return;
+
+      if (!appState.user_domain_progress) appState.user_domain_progress = {};
+
+      Object.keys(stream.presets).forEach(domainKey => {
+        const preset = stream.presets[domainKey];
+        if (!preset || !Array.isArray(preset.skills) || preset.skills.length === 0) return;
+
+        let totalScore = 0;
+        let scoredSkills = 0;
+        const skillScores = {};
+
+        preset.skills.forEach(skill => {
+          const found = (appState.currentStack || []).find(s => 
+            (s.id && skill.id && s.id === skill.id) ||
+            (s.name && skill.name && s.name.toLowerCase() === skill.name.toLowerCase())
+          );
+          let sScore = (found && typeof found.score === 'number' && found.score > 0) ? found.score : 0;
+          if (!sScore) {
+            const mcq = (appState.mcqHistory || []).filter(h => h.skill_name && skill.name && h.skill_name.toLowerCase() === skill.name.toLowerCase());
+            if (mcq.length > 0) sScore = Number(mcq[mcq.length - 1].score || 0);
+          }
+          if (sScore > 0) {
+            totalScore += sScore;
+            scoredSkills++;
+          }
+          skillScores[skill.id || skill.name] = sScore;
+        });
+
+        // Formula: Domain % = (Sum of Skill Scores) / (Total Skills in Domain)
+        const mastery = scoredSkills > 0 ? Math.round(totalScore / preset.skills.length) : 0;
+
+        appState.user_domain_progress[domainKey] = {
+          domain: domainKey,
+          stream: streamKey,
+          mastery_percent: mastery,
+          skill_scores: skillScores,
+          updated_at: new Date().toISOString()
+        };
+
+        // Save and update records in user_domain_progress upon test/lecture completion
+        if (appState.user && appState.user.email) {
+          fetch('/api/student/domain-progress', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: appState.user.email,
+              stream: streamKey,
+              domain: domainKey,
+              mastery_percent: mastery,
+              skill_scores: skillScores
+            })
+          }).catch(e => console.warn('[Domain Progress Sync Notice]', e));
+        }
+      });
+
+      saveStateToStorage();
+    }
+
     function openResourceModal(id) {
       const curric = getSkillCurriculum(id);
       if (curric) {
@@ -27058,6 +27306,18 @@ function onWizardBranchChanged(branchKey) {
     }
 
     function closeResourceModal() {
+      // Instant dismissal - unmount & hide modal immediately
+      const resModal = document.getElementById('resourceModal');
+      if (resModal) {
+        resModal.classList.add('hidden');
+        resModal.classList.remove('flex');
+      }
+      lockBodyScroll(false);
+
+      const iframe = document.getElementById('resYoutubeIframe');
+      if (iframe) iframe.src = '';
+      setPlayerMode('embed');
+
       if (appState.studyStopwatchInterval) {
         clearInterval(appState.studyStopwatchInterval);
         appState.studyStopwatchInterval = null;
@@ -27131,6 +27391,9 @@ function onWizardBranchChanged(branchKey) {
         renderLearningLog();
         updateGrowthSummaryCards();
         updateCharts();
+        if (typeof updateUserDomainProgressAfterActivity === 'function') {
+          updateUserDomainProgressAfterActivity();
+        }
         showToast(`✓ Logged ${minutesSpent} min study time. Competence progress evaluated automatically!`);
       }
       
@@ -27141,16 +27404,6 @@ function onWizardBranchChanged(branchKey) {
       if (btn) {
         btn.innerHTML = `<i class="fa-solid fa-pause text-[10px]"></i><span id="toggleTimerPauseText">Pause</span>`;
       }
-
-      const iframe = document.getElementById('resYoutubeIframe');
-      if (iframe) iframe.src = '';
-      setPlayerMode('embed');
-      const resModal = document.getElementById('resourceModal');
-      if (resModal) {
-        resModal.classList.add('hidden');
-        resModal.classList.remove('flex');
-      }
-      lockBodyScroll(false);
     }
 
     function saveAndCompleteResource() {
@@ -27209,6 +27462,9 @@ function onWizardBranchChanged(branchKey) {
         renderLearningLog();
         updateGrowthSummaryCards();
         updateCharts();
+        if (typeof updateUserDomainProgressAfterActivity === 'function') {
+          updateUserDomainProgressAfterActivity();
+        }
         showToast(`Logged ${minutesSpent} min on "${curric.name}". Level updated on your diagram!`);
       }
 
@@ -27907,6 +28163,9 @@ function onWizardBranchChanged(branchKey) {
       runLiveRecalculations();
       updateGrowthSummaryCards();
       updateCharts();
+      if (typeof updateUserDomainProgressAfterActivity === 'function') {
+        updateUserDomainProgressAfterActivity();
+      }
 
       document.getElementById('quizContainer').classList.add('hidden');
       document.getElementById('quizResultBox').classList.remove('hidden');
@@ -32314,7 +32573,7 @@ function onWizardBranchChanged(branchKey) {
             <i class="fa-solid fa-lock text-xs"></i>
             <span>Lock &amp; Exit</span>
           </button>
-          <button onclick="closeDatabaseViewerModal()" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer">
+          <button onclick="closeDatabaseViewerModal()" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer transition-colors" style="z-index: 9999; pointer-events: auto;" title="Close Database Viewer" aria-label="Close Database Viewer">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
@@ -32622,7 +32881,7 @@ function onWizardBranchChanged(branchKey) {
             <p class="text-[11px] text-indigo-300">Protected Master Control Center</p>
           </div>
         </div>
-        <button onclick="closeAdminAuthModal()" class="text-slate-400 hover:text-white p-1">
+        <button onclick="closeAdminAuthModal()" class="text-slate-400 hover:text-white p-1 transition-colors cursor-pointer" style="z-index: 9999; pointer-events: auto;" title="Close Admin Modal" aria-label="Close Admin Modal">
           <i class="fa-solid fa-xmark text-lg"></i>
         </button>
       </div>

@@ -26,14 +26,16 @@ module.exports = async (req, res) => {
       return res.status(401).json({ success: false, error: 'Unauthorized: User authentication required.' });
     }
 
-    const { stream, branch, skills, college, year } = req.body || {};
+    const { stream, branch, skills, college, year, active_domain, domain_progress } = req.body || {};
     const updated = await db.updateUserProfile({
       email,
       stream,
       branch,
       skills,
       college,
-      year
+      year,
+      active_domain,
+      domain_progress
     });
 
     return res.status(200).json({
@@ -71,6 +73,8 @@ module.exports = async (req, res) => {
         skills: dbUser.skills,
         college: dbUser.college,
         year: dbUser.year,
+        active_domain: dbUser.active_domain || null,
+        domain_progress: dbUser.domain_progress || null,
         is_verified: dbUser.is_verified,
         total_study_minutes: Number(dbUser.total_study_minutes) || 0,
         total_lecture_minutes: Number(dbUser.total_lecture_minutes) || 0,

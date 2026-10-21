@@ -99,6 +99,7 @@ router.all('/student/skills/sync', adapt(require('./_handlers/student/skills-syn
 router.all('/student/skills', adapt(require('./_handlers/student/skills')));
 router.all('/student/dashboard', adapt(require('./_handlers/student/dashboard')));
 router.all('/student/lecture-progress', adapt(require('./_handlers/student/lecture-progress')));
+router.all('/student/domain-progress', adapt(require('./_handlers/student/domain-progress')));
 router.all('/activity', adapt(require('./_handlers/activity')));
 router.all('/analytics', adapt(require('./_handlers/analytics')));
 

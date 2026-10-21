@@ -1,7 +1,40 @@
-// Brevo Transactional Email Service for Campus2Career
+// Brevo & Resend Transactional Email Service for Campus2Career
 const BREVO_API_KEY = process.env.BREVO_API_KEY || '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';
 const BREVO_FROM_EMAIL = process.env.BREVO_FROM_EMAIL || 'campus2career7@gmail.com';
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
 const SENDER_NAME = 'Campus2Career Verification';
+
+async function sendResendRaw({ to, subject, htmlContent, textContent }) {
+  if (!RESEND_API_KEY) return { success: false, error: 'RESEND_API_KEY not configured' };
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: `${SENDER_NAME} <${RESEND_FROM_EMAIL}>`,
+        to: [to],
+        subject,
+        text: textContent,
+        html: htmlContent
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      console.log(`[Resend Success]: Dispatched message to ${to} (id: ${data.id})`);
+      return { success: true, messageId: data.id || 'ok' };
+    } else {
+      console.error('[Resend Error Response]:', data);
+      return { success: false, error: (data && data.message) || JSON.stringify(data) };
+    }
+  } catch (err) {
+    console.error('[Resend Request Failed]:', err.message);
+    return { success: false, error: err.message };
+  }
+}
 
 async function sendBrevoRaw({ to, subject, htmlContent, textContent }) {
   if (!BREVO_API_KEY) {
@@ -28,13 +61,14 @@ async function sendBrevoRaw({ to, subject, htmlContent, textContent }) {
 
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
+      console.log(`[Brevo Success]: Dispatched message to ${to} (id: ${data.messageId || 'ok'})`);
       return { success: true, messageId: data.messageId || 'ok' };
     } else {
-      console.error('[Brevo Error]', data);
+      console.error('[Brevo Error Response]:', data);
       return { success: false, error: data.message || JSON.stringify(data) };
     }
   } catch (err) {
-    console.error('[Brevo Request Failed]', err.message);
+    console.error('[Brevo Request Failed]:', err.message);
     return { success: false, error: err.message };
   }
 }
@@ -155,7 +189,18 @@ async function sendPasswordResetOtpEmail({ to, name = 'Student', code }) {
 
   const textContent = `Hello ${name},\n\nYour 6-digit Campus2Career password reset code is: ${code}\n\nThis code expires in 15 minutes.\n\nIf you did not request this, please ignore this email.`;
 
+  console.log(`[RESET ATTEMPT] Initiating OTP send for: ${to}`);
   console.log(`[PASSWORD RESET OTP]: ${code} for ${to}`);
+
+  // 1. Try Resend if configured
+  if (RESEND_API_KEY) {
+    console.log(`[Transport] Attempting dispatch via Resend for ${to}...`);
+    const resendRes = await sendResendRaw({ to, subject, htmlContent, textContent });
+    if (resendRes.success) return resendRes;
+    console.warn(`[Transport Notice] Resend dispatch failed (${resendRes.error}), falling back to Brevo...`);
+  }
+
+  // 2. Dispatch via Brevo
   return await sendBrevoRaw({ to, subject, htmlContent, textContent });
 }
 

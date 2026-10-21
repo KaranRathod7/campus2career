@@ -1071,7 +1071,7 @@ const db = {
     return true;
   },
 
-  async updateUserProfile({ email, stream, branch, skills, college, year }) {
+  async updateUserProfile({ email, stream, branch, skills, college, year, active_domain, domain_progress }) {
     const normalized = (email || '').trim().toLowerCase();
     const cleanStream = (stream || branch || 'IT').toUpperCase();
     const cleanBranch = (branch || stream || 'it').toLowerCase();
@@ -1086,6 +1086,20 @@ const db = {
           await p.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS college VARCHAR(255);');
           await p.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS year INT;');
           await p.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS skills TEXT[];');
+          await p.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS active_domain VARCHAR(100);');
+          await p.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS domain_progress JSONB;');
+          await p.query(`
+            CREATE TABLE IF NOT EXISTS user_domain_progress (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              user_email VARCHAR(255) NOT NULL,
+              stream VARCHAR(50) NOT NULL,
+              domain VARCHAR(100) NOT NULL,
+              mastery_percent NUMERIC(5,2) DEFAULT 0,
+              skill_scores JSONB,
+              updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT unique_user_domain UNIQUE(user_email, domain)
+            );
+          `);
         } catch (colErr) {}
 
         const res = await p.query(
@@ -1094,10 +1108,11 @@ const db = {
                branch = COALESCE($2, branch),
                college = COALESCE($3, college),
                year = COALESCE($4, year),
-               skills = COALESCE($5, skills)
-           WHERE LOWER(email) = $6
+               skills = COALESCE($5, skills),
+               active_domain = COALESCE($6, active_domain)
+           WHERE LOWER(email) = $7
            RETURNING *`,
-          [cleanStream, cleanBranch, college || null, year ? parseInt(year, 10) : null, cleanSkills, normalized]
+          [cleanStream, cleanBranch, college || null, year ? parseInt(year, 10) : null, cleanSkills, active_domain || null, normalized]
         );
         if (res.rows[0]) return res.rows[0];
       } catch (err) {
@@ -1114,10 +1129,89 @@ const db = {
       if (college) u.college = college;
       if (year) u.year = parseInt(year, 10);
       if (cleanSkills) u.skills = cleanSkills;
+      if (active_domain) u.active_domain = active_domain;
+      if (domain_progress) u.domain_progress = domain_progress;
       saveLocalStore(store);
       return u;
     }
     return null;
+  },
+
+  async saveDomainProgress({ email, stream, domain, mastery_percent, skill_scores }) {
+    const normalized = (email || '').trim().toLowerCase();
+    const cleanStream = (stream || 'ECE').toUpperCase();
+    const cleanDomain = (domain || '').trim();
+    const mastery = Math.round(Number(mastery_percent) || 0);
+
+    const p = initPool();
+    if (p) {
+      try {
+        await ensureSchema();
+        await p.query(`
+          CREATE TABLE IF NOT EXISTS user_domain_progress (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_email VARCHAR(255) NOT NULL,
+            stream VARCHAR(50) NOT NULL,
+            domain VARCHAR(100) NOT NULL,
+            mastery_percent NUMERIC(5,2) DEFAULT 0,
+            skill_scores JSONB,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT unique_user_domain UNIQUE(user_email, domain)
+          );
+        `);
+        const res = await p.query(
+          `INSERT INTO user_domain_progress (user_email, stream, domain, mastery_percent, skill_scores, updated_at)
+           VALUES ($1, $2, $3, $4, $5, NOW())
+           ON CONFLICT (user_email, domain)
+           DO UPDATE SET mastery_percent = EXCLUDED.mastery_percent,
+                         skill_scores = EXCLUDED.skill_scores,
+                         stream = EXCLUDED.stream,
+                         updated_at = NOW()
+           RETURNING *;`,
+          [normalized, cleanStream, cleanDomain, mastery, JSON.stringify(skill_scores || {})]
+        );
+        if (res.rows[0]) return res.rows[0];
+      } catch (err) {
+        console.warn('[Campus2Career DB] Cloud saveDomainProgress notice (falling back to local):', err.message);
+      }
+    }
+
+    const store = getLocalStore();
+    if (!store.user_domain_progress) store.user_domain_progress = [];
+    let entry = store.user_domain_progress.find(p => p.user_email.toLowerCase() === normalized && p.domain === cleanDomain);
+    if (!entry) {
+      entry = {
+        id: `udp-${Date.now()}`,
+        user_email: normalized,
+        stream: cleanStream,
+        domain: cleanDomain,
+        mastery_percent: mastery,
+        skill_scores: skill_scores || {},
+        updated_at: new Date().toISOString()
+      };
+      store.user_domain_progress.push(entry);
+    } else {
+      entry.mastery_percent = mastery;
+      entry.skill_scores = skill_scores || {};
+      entry.stream = cleanStream;
+      entry.updated_at = new Date().toISOString();
+    }
+    saveLocalStore(store);
+    return entry;
+  },
+
+  async getDomainProgress(email) {
+    const normalized = (email || '').trim().toLowerCase();
+    const p = initPool();
+    if (p) {
+      try {
+        await ensureSchema();
+        const res = await p.query('SELECT * FROM user_domain_progress WHERE LOWER(user_email) = $1', [normalized]);
+        if (res.rows) return res.rows;
+      } catch (err) {}
+    }
+    const store = getLocalStore();
+    return (store.user_domain_progress || []).filter(p => (p.user_email || '').toLowerCase() === normalized);
   },
 
   async getAllUsers() {
