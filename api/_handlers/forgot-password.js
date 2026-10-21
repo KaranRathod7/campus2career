@@ -69,13 +69,14 @@ module.exports = async (req, res) => {
       // Delete any existing rows for this email before inserting a new one
       await supabase.from('password_resets').delete().ilike('email', cleanEmail);
 
-      // Insert New OTP with Strict 5-Minute Validity:
+      // Insert New OTP with Strict 5-Minute Validity & Reset Attempt Counter:
       const { error: insertError } = await supabase
         .from('password_resets')
         .insert([{
           email: cleanEmail,
           token: String(resetCode).trim(),
-          expires_at: expiresAt
+          expires_at: expiresAt,
+          attempts: 0
         }]);
 
       if (insertError) {

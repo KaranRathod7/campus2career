@@ -141,6 +141,7 @@ module.exports = async (req, res) => {
         skills: user.skills || null,
         college: user.college || null,
         year: user.year || null,
+        token_version: user.token_version || 1,
         is_verified: true,
         total_study_minutes: Number(user.total_study_minutes) || 0,
         total_lecture_minutes: Number(user.total_lecture_minutes) || 0,

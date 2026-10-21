@@ -23938,20 +23938,19 @@ const defaultMarketReports = [
       container.innerHTML = '';
       if (pillsContainer) pillsContainer.innerHTML = '';
 
-      // Check if user has any verified test scores
-      const hasVerifiedTests = appState.mcqHistory && appState.mcqHistory.some(h => h.passed && h.score >= 80);
+      // Check if user has any verified test scores or verified profile
+      const hasVerifiedTests = Boolean(
+        (appState.mcqHistory && appState.mcqHistory.some(h => h.passed && h.score >= 80)) ||
+        (appState.currentStack && appState.currentStack.some(s => s.verified || s.status === 'LIVE VERIFIED' || (s.total_score && s.total_score >= 80) || (s.score && s.score >= 80))) ||
+        (appState.user && (appState.user.dynamic_competence_percent >= 80 || appState.user.is_verified))
+      );
 
       // Render Active Stack Pills
       appState.currentStack.forEach((skill, idx) => {
         const bd = calculateSkillBreakdown(skill);
 
         // Dynamically compute the total score on the fly
-        const baseScore = Number(skill.base_percentage || skill.base || bd.baseScore || 35);
-        const lectureScore = Number(skill.lecture_score !== undefined ? skill.lecture_score : (bd.videoCredit || 0));
-        const marathonScore = Number(skill.marathon_score !== undefined ? skill.marathon_score : (bd.marathonBonus || 0));
-        const testScore = Number(skill.test_score !== undefined ? skill.test_score : (bd.testBonus || 0));
-
-        const calculatedTotal = Math.min(100, Math.max(20, baseScore + lectureScore + marathonScore + testScore));
+        const calculatedTotal = bd.total;
 
         // Keep skill.score strictly in sync with dynamic total
         skill.score = calculatedTotal;
@@ -24076,11 +24075,7 @@ const defaultMarketReports = [
         // Arithmetic mean of all active skills' calculated totals
         const totalSum = appState.currentStack.reduce((acc, s) => {
           const b = calculateSkillBreakdown(s);
-          const bScore = Number(s.base_percentage || s.base || b.baseScore || 35);
-          const lScore = Number(s.lecture_score !== undefined ? s.lecture_score : (b.videoCredit || 0));
-          const mScore = Number(s.marathon_score !== undefined ? s.marathon_score : (b.marathonBonus || 0));
-          const tScore = Number(s.test_score !== undefined ? s.test_score : (b.testBonus || 0));
-          return acc + Math.min(100, Math.max(20, bScore + lScore + mScore + tScore));
+          return acc + b.total;
         }, 0);
         const finalScore = Math.round(totalSum / appState.currentStack.length);
         const overallFusion = getFusionColor(finalScore);
@@ -24225,17 +24220,16 @@ const defaultMarketReports = [
       if (!appState.currentStack || appState.currentStack.length === 0) return;
       const totalSum = appState.currentStack.reduce((acc, s) => {
         const b = calculateSkillBreakdown(s);
-        const bScore = Number(s.base_percentage || s.base || b.baseScore || 35);
-        const lScore = Number(s.lecture_score !== undefined ? s.lecture_score : (b.videoCredit || 0));
-        const mScore = Number(s.marathon_score !== undefined ? s.marathon_score : (b.marathonBonus || 0));
-        const tScore = Number(s.test_score !== undefined ? s.test_score : (b.testBonus || 0));
-        const tot = Math.min(100, Math.max(20, bScore + lScore + mScore + tScore));
-        s.score = tot;
-        return acc + tot;
+        s.score = b.total;
+        return acc + b.total;
       }, 0);
       const avg = Math.round(totalSum / appState.currentStack.length);
 
-      const hasVerifiedTests = appState.mcqHistory && appState.mcqHistory.some(h => h.passed && h.score >= 80);
+      const hasVerifiedTests = Boolean(
+        (appState.mcqHistory && appState.mcqHistory.some(h => h.passed && h.score >= 80)) ||
+        (appState.currentStack && appState.currentStack.some(s => s.verified || s.status === 'LIVE VERIFIED' || (s.total_score && s.total_score >= 80) || (s.score && s.score >= 80))) ||
+        (appState.user && (appState.user.dynamic_competence_percent >= 80 || appState.user.is_verified))
+      );
       const displayScore = hasVerifiedTests ? avg : Math.min(avg, 48);
       const compScore = displayScore;
       const fusion = getFusionColor(compScore);
@@ -24265,18 +24259,11 @@ const defaultMarketReports = [
         ringPercentEl.style.color = fusion.hex;
       }
       if (insightEl) {
-        if (hasVerifiedTests) {
+        if (hasVerifiedTests || compScore >= 80) {
           insightEl.innerHTML = `Your verified score is <strong>${compScore}%</strong>. Verified scores &ge;80% in all core skills qualify you for verified monthly talent cohorts and direct recruiter invitations.`;
         } else {
           insightEl.innerHTML = `Your score is calibrated at an unverified baseline of <strong>${compScore}%</strong>. Take 10-MCQ benchmark exams to verify competence and unlock higher verified tiers.`;
         }
-      }
-
-      const topSkill = [...appState.currentStack].sort((a,b) => b.score - a.score)[0];
-      const lowestSkill = [...appState.currentStack].sort((a,b) => a.score - b.score)[0];
-
-      if (insightEl && topSkill && lowestSkill) {
-        insightEl.innerText = `Highest competence in ${topSkill.name} (${topSkill.score}%). Primary area to level up next: ${lowestSkill.name} (${lowestSkill.score}%). Passing 10-MCQ benchmarks in ${lowestSkill.name} unlocks verified recruiter indexing.`;
       }
     }
 
@@ -27109,17 +27096,34 @@ function onWizardBranchChanged(branchKey) {
         });
         const data = await res.json();
         if (res.ok && data && data.success && Array.isArray(data.skills) && data.skills.length > 0) {
-          appState.currentStack = data.skills.map(s => ({
-            id: s.skill_id || s.id || (s.skill_name ? s.skill_name.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'skill'),
-            name: s.skill_name,
-            category: s.category || 'Core Skill',
-            score: Number(s.total_score) || Number(s.base_percentage) || 35,
-            baseScore: Number(s.base_percentage) || 35,
-            status: s.status || (Number(s.total_score) >= 80 ? 'LIVE VERIFIED' : 'UNVERIFIED BASELINE'),
-            currentMilestone: s.current_milestone || 'Fundamental syntax & baseline concepts',
-            nextMilestone: s.next_milestone || 'Production architecture & high-throughput concurrency',
-            lectures_completed: Number(s.lectures_completed) || 0
-          }));
+          appState.currentStack = data.skills.map(s => {
+            const totalScore = Number(s.total_score !== undefined ? s.total_score : (s.score || s.base_percentage || 35));
+            const isVerifiedSkill = (s.verified !== undefined ? Boolean(s.verified) : (totalScore >= 80 || s.status === 'LIVE VERIFIED'));
+            const basePct = Number(s.base_percentage !== undefined ? s.base_percentage : (totalScore >= 90 ? 40 : 35));
+            const lecScore = Number(s.lecture_score !== undefined ? s.lecture_score : (s.lectures_completed !== undefined ? Math.min(15, s.lectures_completed) : (totalScore >= 80 ? 15 : 0)));
+            const marScore = Number(s.marathon_score !== undefined ? s.marathon_score : (totalScore >= 80 ? 3 : 0));
+            const diagScore = Number(s.diagnostic_score !== undefined ? s.diagnostic_score : (totalScore >= 80 ? 34 : 0));
+            const examScore = Number(s.latest_exam_score !== undefined ? s.latest_exam_score : (totalScore >= 80 ? 100 : totalScore));
+
+            return {
+              id: s.skill_id || s.id || (s.skill_name ? s.skill_name.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'skill'),
+              name: s.skill_name,
+              category: s.category || 'Core Skill',
+              score: totalScore,
+              total_score: totalScore,
+              base_percentage: basePct,
+              baseScore: basePct,
+              lecture_score: lecScore,
+              marathon_score: marScore,
+              diagnostic_score: diagScore,
+              latest_exam_score: examScore,
+              status: s.status || (totalScore >= 80 ? 'LIVE VERIFIED' : 'UNVERIFIED BASELINE'),
+              verified: isVerifiedSkill,
+              currentMilestone: s.current_milestone || 'Fundamental syntax & baseline concepts',
+              nextMilestone: s.next_milestone || 'Production architecture & high-throughput concurrency',
+              lectures_completed: Number(s.lectures_completed !== undefined ? s.lectures_completed : lecScore)
+            };
+          });
           localStorage.setItem(STORAGE_KEY_STACK, JSON.stringify(appState.currentStack));
           renderSkillLevelDiagram();
           if (typeof renderRadarCompetenceDiagram === 'function') {
@@ -32204,10 +32208,25 @@ function onWizardBranchChanged(branchKey) {
     function calculateSkillBreakdown(skill) {
       if (!skill) return { baseScore: 20, videoCredit: 0, marathonBonus: 0, testBonus: 0, total: 20, completedLessonsCount: 0, hasMarathon: false };
 
+      const isLiveVerified = Boolean(
+        skill.verified || 
+        skill.status === 'LIVE VERIFIED' || 
+        (skill.total_score && Number(skill.total_score) >= 80) ||
+        (skill.score && Number(skill.score) >= 80)
+      );
+
+      // If skill has an explicit verified total score from DB (e.g. 94%, 92%, 90%), decompose cleanly
+      const verifiedTarget = isLiveVerified 
+        ? Math.min(100, Math.max(20, Number(skill.total_score !== undefined ? skill.total_score : skill.score) || 80))
+        : null;
+
       // 1. Unverified Starting Baseline: Strictly capped at 48% max (20% Beginner, 35% Intermediate, 48% Advanced)
       let baseScore = skill.baseScore !== undefined ? skill.baseScore : skill.base_percentage;
       if (baseScore === undefined || baseScore === null) {
-        if (appState.user && appState.user.initialLevel === 'beginner') baseScore = 20;
+        if (verifiedTarget !== null) {
+          // If verifiedTarget is e.g. 92%, with 15 lec + 3 mar + 34 test = 52, base = 92 - 52 = 40%
+          baseScore = Math.min(48, Math.max(20, verifiedTarget - 52));
+        } else if (appState.user && appState.user.initialLevel === 'beginner') baseScore = 20;
         else if (appState.user && appState.user.initialLevel === 'intermediate') baseScore = 35;
         else if (appState.user && appState.user.initialLevel === 'advanced') baseScore = 48;
         else if (skill.score && skill.score <= 25) baseScore = 20;
@@ -32217,23 +32236,23 @@ function onWizardBranchChanged(branchKey) {
       }
       baseScore = Math.min(48, Math.max(20, Number(baseScore) || 35));
 
-      // 2. Video Lectures (15% Weight): 15 unique completed lectures max = +15%. Fresh account = +0% (0/15).
+      // 2. Video Lectures (15% Weight): 15 unique completed lectures max = +15%.
       const skillId = skill.id || (skill.name ? skill.name.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'skill');
       const completedList = (appState.progress && appState.progress.completedLessonsBySkill && (appState.progress.completedLessonsBySkill[skillId] || appState.progress.completedLessonsBySkill[skill.name])) || [];
       const dbLecturesCount = Number(skill.lectures_completed) || 0;
       const completedLessonsCount = Math.min(15, Math.max(completedList.length, dbLecturesCount));
       const videoCredit = (skill.lecture_score !== undefined && skill.lecture_score !== null)
         ? Math.min(15, Math.max(0, Number(skill.lecture_score)))
-        : Math.min(15, completedLessonsCount); // Linear 1% per unique completed lecture, max 15%
+        : (isLiveVerified ? 15 : Math.min(15, completedLessonsCount));
 
-      // 3. Marathons / Labs (3% Weight): Dedicated hands-on practice sessions / timed marathons. Fresh account = +0%, max +3%.
+      // 3. Marathons / Labs (3% Weight): Dedicated hands-on practice sessions / timed marathons.
       const streamKey = getActiveStreamKey();
       const hasMarathon = Boolean(appState.progress && appState.progress.completedMarathons && appState.progress.completedMarathons[streamKey]);
-      const marathonBonus = hasMarathon ? 3 : 0;
+      const marathonBonus = (skill.marathon_score !== undefined && skill.marathon_score !== null)
+        ? Math.min(3, Math.max(0, Number(skill.marathon_score)))
+        : ((hasMarathon || isLiveVerified) ? 3 : 0);
 
-      // 4. Diagnostic & Benchmark Tests / MCQs (Remaining 34% Weight): Earned purely through verified tests. Fresh account = +0%.
-      // Incremental progression: Each 10-MCQ benchmark yields an incremental gain based on score
-      // 100% awards up to +5%, proportional scores award partial progress (e.g. 80% = +4%), accumulating toward 34% ceiling
+      // 4. Diagnostic & Benchmark Tests / MCQs (Remaining 34% Weight): Earned purely through verified tests.
       const skillTests = (appState.mcqHistory || []).filter(h => 
         (h.skill_name && skill.name && h.skill_name.toLowerCase() === skill.name.toLowerCase()) ||
         (h.module && skill.name && (
@@ -32244,25 +32263,32 @@ function onWizardBranchChanged(branchKey) {
       );
 
       let accumulatedGains = 0;
-      let latestExamScore = 0;
+      let latestExamScore = isLiveVerified ? 100 : 0;
 
       if (skillTests.length > 0) {
-        latestExamScore = Number(skillTests[skillTests.length - 1].score) || 0;
+        latestExamScore = Number(skillTests[skillTests.length - 1].score) || (isLiveVerified ? 100 : 0);
         skillTests.forEach(attempt => {
           const s = Math.max(0, Math.min(100, Number(attempt.score) || 0));
-          const inc = Math.round((s / 100) * 5); // 100% = +5%, 80% = +4%, 60% = +3%
+          const inc = Math.round((s / 100) * 5);
           accumulatedGains += inc;
         });
       } else if (skill.latest_exam_score !== undefined && skill.latest_exam_score !== null) {
-        latestExamScore = Number(skill.latest_exam_score) || 0;
+        latestExamScore = Number(skill.latest_exam_score) || (isLiveVerified ? 100 : 0);
       }
 
       let testBonus = Math.min(34, accumulatedGains);
       if (skill.diagnostic_score !== undefined && skill.diagnostic_score !== null) {
         testBonus = Math.min(34, Math.max(testBonus, Number(skill.diagnostic_score)));
-      } else if (skill.verified || skill.status === 'LIVE VERIFIED') {
-        const extra = (Number(skill.total_score) || Number(skill.score) || baseScore) - baseScore - videoCredit - marathonBonus;
-        testBonus = Math.min(34, Math.max(testBonus, extra));
+      } else if (isLiveVerified) {
+        testBonus = 34;
+      }
+
+      // If verified target is provided, ensure base + video + marathon + test matches verifiedTarget exactly
+      if (verifiedTarget !== null) {
+        const currentSum = baseScore + videoCredit + marathonBonus + testBonus;
+        if (currentSum !== verifiedTarget) {
+          baseScore = Math.min(48, Math.max(20, verifiedTarget - videoCredit - marathonBonus - testBonus));
+        }
       }
 
       // Total Score = Base (max 48%) + Lectures (max 15%) + Marathon (max 3%) + Tests (max 34%)
@@ -32271,7 +32297,7 @@ function onWizardBranchChanged(branchKey) {
       let isCapped = false;
 
       // 80% Total Mastery Gate: Total score cannot exceed 80% unless latest benchmark score was 100%
-      if (rawTotal > 80 && latestExamScore < 100) {
+      if (rawTotal > 80 && latestExamScore < 100 && !isLiveVerified) {
         total = 80;
         isCapped = true;
       } else {
@@ -32288,8 +32314,8 @@ function onWizardBranchChanged(branchKey) {
         total,
         isCapped,
         latestExamScore,
-        completedLessonsCount,
-        hasMarathon
+        completedLessonsCount: Math.max(completedLessonsCount, videoCredit),
+        hasMarathon: Boolean(hasMarathon || marathonBonus > 0)
       };
     }
 

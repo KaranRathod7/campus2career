@@ -453,7 +453,9 @@ async function ensureSchema() {
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS total_study_minutes INT DEFAULT 0;",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS total_lecture_minutes INT DEFAULT 0;",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS avg_exam_score NUMERIC(5,2) DEFAULT 0;",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS dynamic_competence_percent NUMERIC(5,2) DEFAULT 25.0;"
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS dynamic_competence_percent NUMERIC(5,2) DEFAULT 25.0;",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INT DEFAULT 1;",
+        "ALTER TABLE users DROP COLUMN IF EXISTS password;"
       ];
       for (const colSql of userCols) {
         try { await p.query(colSql); } catch (e) {}
@@ -529,6 +531,7 @@ async function ensureSchema() {
       try {
         await p.query('CREATE INDEX IF NOT EXISTS idx_password_resets_email ON password_resets (LOWER(TRIM(email)));');
         await p.query('CREATE INDEX IF NOT EXISTS idx_password_resets_token ON password_resets (token);');
+        await p.query('ALTER TABLE password_resets ADD COLUMN IF NOT EXISTS attempts INT DEFAULT 0;');
       } catch (e) {}
 
       // 6. Candidates Table
@@ -551,7 +554,9 @@ async function ensureSchema() {
       `);
       const candCols = [
         "ALTER TABLE candidates ADD COLUMN IF NOT EXISTS user_id UUID;",
-        "ALTER TABLE candidates ADD COLUMN IF NOT EXISTS readiness_score NUMERIC(5,2) DEFAULT 35;"
+        "ALTER TABLE candidates ADD COLUMN IF NOT EXISTS readiness_score NUMERIC(5,2) DEFAULT 35;",
+        "ALTER TABLE candidates ADD COLUMN IF NOT EXISTS capstone_proof TEXT;",
+        "ALTER TABLE candidates ADD COLUMN IF NOT EXISTS bio TEXT;"
       ];
       for (const cCol of candCols) {
         try { await p.query(cCol); } catch (e) {}
@@ -1714,7 +1719,6 @@ const db = {
           .from('password_resets')
           .select('*')
           .ilike('email', cleanEmail)
-          .eq('token', cleanCode)
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -1726,35 +1730,66 @@ const db = {
             return { success: false, error: 'Verification code has expired (validity is 5 minutes). Please request a new code.' };
           }
 
-          // Update user password safely
-          let userData = null;
-          let userError = null;
-          const res1 = await supabase
-            .from('users')
-            .update({ password_hash: newPasswordHash })
-            .ilike('email', cleanEmail)
-            .select('id, email, name');
-          if (!res1.error && res1.data && res1.data.length > 0) {
-            userData = res1.data[0];
-          } else {
-            const res2 = await supabase
-              .from('users')
-              .update({ password: newPasswordHash })
-              .ilike('email', cleanEmail)
-              .select('id, email, name');
-            if (!res2.error && res2.data && res2.data.length > 0) {
-              userData = res2.data[0];
-            } else {
-              userError = res1.error || res2.error;
-            }
+          const currentAttempts = Number(record.attempts) || 0;
+          if (currentAttempts >= 5) {
+            await supabase.from('password_resets').delete().eq('id', record.id);
+            return {
+              success: false,
+              status: 403,
+              error: 'Too many invalid attempts. Verification code has been invalidated for security. Please request a new code.',
+              attemptsRemaining: 0
+            };
           }
 
-          // Immediately delete OTP from database upon successful reset
+          if (String(record.token).trim() !== cleanCode) {
+            const newAttempts = currentAttempts + 1;
+            if (newAttempts >= 5) {
+              await supabase.from('password_resets').delete().eq('id', record.id);
+              return {
+                success: false,
+                status: 403,
+                error: 'Too many invalid attempts. Verification code has been invalidated for security. Please request a new code.',
+                attemptsRemaining: 0
+              };
+            }
+            await supabase.from('password_resets').update({ attempts: newAttempts }).eq('id', record.id);
+            const remaining = 5 - newAttempts;
+            return {
+              success: false,
+              status: 400,
+              error: `Invalid verification code. ${remaining} attempt(s) remaining before security lockout.`,
+              attemptsRemaining: remaining
+            };
+          }
+
+          // Fetch user to get current token_version
+          const { data: existingUser } = await supabase
+            .from('users')
+            .select('id, email, token_version')
+            .ilike('email', cleanEmail)
+            .maybeSingle();
+
+          const nextTokenVersion = ((existingUser && existingUser.token_version !== undefined && existingUser.token_version !== null)
+            ? Number(existingUser.token_version)
+            : 1) + 1;
+
+          // Update user password_hash and token_version safely
+          const res1 = await supabase
+            .from('users')
+            .update({
+              password_hash: newPasswordHash,
+              token_version: nextTokenVersion,
+              updated_at: nowIso
+            })
+            .ilike('email', cleanEmail)
+            .select('id, email, name, token_version');
+
+          // Delete OTP from database immediately upon successful reset
           await supabase.from('password_resets').delete().ilike('email', cleanEmail);
 
-          if (userData && !userError) {
+          if (res1.data && res1.data.length > 0) {
             console.log(`[RESET SUCCESS] Verified and updated password in Supabase for: ${cleanEmail}`);
-            return { success: true, message: 'Password reset successful!', user: userData };
+            return { success: true, message: 'Password reset successful!', user: res1.data[0] };
           }
         }
       } catch (err) {
@@ -1770,9 +1805,8 @@ const db = {
         const res = await p.query(
           `SELECT * FROM password_resets 
            WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) 
-             AND TRIM(token) = $2 
            ORDER BY created_at DESC LIMIT 1`,
-          [cleanEmail, cleanCode]
+          [cleanEmail]
         );
 
         if (res.rows && res.rows.length > 0) {
@@ -1783,12 +1817,44 @@ const db = {
             return { success: false, error: 'Verification code has expired (validity is 5 minutes). Please request a new code.' };
           }
 
+          const currentAttempts = Number(record.attempts) || 0;
+          if (currentAttempts >= 5) {
+            await p.query('DELETE FROM password_resets WHERE id = $1', [record.id]);
+            return {
+              success: false,
+              status: 403,
+              error: 'Too many invalid attempts. Verification code has been invalidated for security. Please request a new code.',
+              attemptsRemaining: 0
+            };
+          }
+
+          if (String(record.token).trim() !== cleanCode) {
+            const newAttempts = currentAttempts + 1;
+            if (newAttempts >= 5) {
+              await p.query('DELETE FROM password_resets WHERE id = $1', [record.id]);
+              return {
+                success: false,
+                status: 403,
+                error: 'Too many invalid attempts. Verification code has been invalidated for security. Please request a new code.',
+                attemptsRemaining: 0
+              };
+            }
+            await p.query('UPDATE password_resets SET attempts = $1 WHERE id = $2', [newAttempts, record.id]);
+            const remaining = 5 - newAttempts;
+            return {
+              success: false,
+              status: 400,
+              error: `Invalid verification code. ${remaining} attempt(s) remaining before security lockout.`,
+              attemptsRemaining: remaining
+            };
+          }
+
           const updateRes = await p.query(
-            'UPDATE users SET password_hash = $1 WHERE LOWER(TRIM(email)) = LOWER(TRIM($2)) RETURNING id, email, name',
+            'UPDATE users SET password_hash = $1, token_version = COALESCE(token_version, 1) + 1, updated_at = NOW() WHERE LOWER(TRIM(email)) = LOWER(TRIM($2)) RETURNING id, email, name, token_version',
             [newPasswordHash, cleanEmail]
           );
 
-          // Immediately delete OTP from database upon successful reset
+          // Delete OTP from database immediately upon successful reset
           await p.query('DELETE FROM password_resets WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))', [cleanEmail]);
 
           if (updateRes.rows && updateRes.rows.length > 0) {
@@ -1807,12 +1873,11 @@ const db = {
     const store = getLocalStore();
     if (!store.password_resets) store.password_resets = [];
     const entryIndex = store.password_resets.slice().reverse().findIndex(pr => 
-      pr.email && pr.email.toLowerCase() === cleanEmail &&
-      String(pr.token).trim() === cleanCode
+      pr.email && pr.email.toLowerCase() === cleanEmail
     );
 
     if (entryIndex === -1) {
-      console.warn(`[RESET FAIL] Code "${cleanCode}" not found for: ${cleanEmail}`);
+      console.warn(`[RESET FAIL] Active reset record not found for: ${cleanEmail}`);
       return { success: false, error: 'Code not found. Please request a new code.' };
     }
 
@@ -1826,10 +1891,45 @@ const db = {
       return { success: false, error: 'Verification code has expired (validity is 5 minutes). Please request a new code.' };
     }
 
+    const currentAttempts = Number(entry.attempts) || 0;
+    if (currentAttempts >= 5) {
+      store.password_resets.splice(realIndex, 1);
+      saveLocalStore(store);
+      return {
+        success: false,
+        status: 403,
+        error: 'Too many invalid attempts. Verification code has been invalidated for security. Please request a new code.',
+        attemptsRemaining: 0
+      };
+    }
+
+    if (String(entry.token).trim() !== cleanCode) {
+      const newAttempts = currentAttempts + 1;
+      if (newAttempts >= 5) {
+        store.password_resets.splice(realIndex, 1);
+        saveLocalStore(store);
+        return {
+          success: false,
+          status: 403,
+          error: 'Too many invalid attempts. Verification code has been invalidated for security. Please request a new code.',
+          attemptsRemaining: 0
+        };
+      }
+      entry.attempts = newAttempts;
+      saveLocalStore(store);
+      const remaining = 5 - newAttempts;
+      return {
+        success: false,
+        status: 400,
+        error: `Invalid verification code. ${remaining} attempt(s) remaining before security lockout.`,
+        attemptsRemaining: remaining
+      };
+    }
+
     // Delete immediately on success
     store.password_resets.splice(realIndex, 1);
 
-    // Update user in store
+    // Update user in store & increment token_version
     const user = (store.users || []).find(u => u.email && u.email.toLowerCase() === cleanEmail);
     if (!user) {
       saveLocalStore(store);
@@ -1837,11 +1937,12 @@ const db = {
     }
 
     user.password_hash = newPasswordHash;
+    user.token_version = (user.token_version ? Number(user.token_version) : 1) + 1;
     user.updated_at = nowIso;
     saveLocalStore(store);
 
     console.log(`[RESET SUCCESS] Verified and updated password in local store for: ${cleanEmail}`);
-    return { success: true, message: 'Password reset successful!', user: { id: user.id, email: user.email, name: user.name } };
+    return { success: true, message: 'Password reset successful!', user: { id: user.id, email: user.email, name: user.name, token_version: user.token_version } };
   },
 
   async getPasswordReset(email) {
@@ -2729,13 +2830,20 @@ const db = {
     if (p) {
       try {
         await ensureSchema();
-        const validUuid = (user_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(user_id))) ? String(user_id) : null;
+        let validUuid = (user_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(user_id))) ? String(user_id) : null;
+        if (!validUuid && user_email) {
+          try {
+            const uRes = await p.query('SELECT id FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) LIMIT 1', [user_email.trim().toLowerCase()]);
+            if (uRes.rows[0]) validUuid = uRes.rows[0].id;
+          } catch (e) {}
+        }
 
+        const normEmail = (user_email || '').trim().toLowerCase();
         const res = await p.query(
-          `INSERT INTO student_activity (user_id, stream, topic, activity_type, score, time_spent_minutes, competence_rating)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
+          `INSERT INTO student_activity (user_id, user_email, email, stream, topic, activity_type, score, time_spent_minutes, competence_rating)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
            RETURNING *`,
-          [validUuid, streamKey, cleanTopic, normType, scoreVal, timeSpent, competenceVal]
+          [validUuid, normEmail, normEmail, streamKey, cleanTopic, normType, scoreVal, timeSpent, competenceVal]
         );
         insertedActivity = res.rows[0];
 
@@ -2747,8 +2855,8 @@ const db = {
              COALESCE(MAX(competence_rating), 0) AS max_competence,
              COUNT(DISTINCT topic) AS completed_topics
            FROM student_activity
-           WHERE user_id = $1 OR user_id::text = $2`,
-          [validUuid || '00000000-0000-0000-0000-000000000000', String(user_id)]
+           WHERE user_id = $1 OR user_id::text = $2 OR LOWER(TRIM(email)) = LOWER(TRIM($3)) OR LOWER(TRIM(user_email)) = LOWER(TRIM($3))`,
+          [validUuid || '00000000-0000-0000-0000-000000000000', String(user_id), normEmail]
         );
         const stats = statsRes.rows[0] || {};
         const totalMins = Number(stats.total_minutes) || timeSpent;
@@ -2772,11 +2880,11 @@ const db = {
               const nameToUse = user_name || 'Candidate';
               const emailToUse = user_email || `${validUuid || 'candidate'}@campus2career.org`;
               await p.query(
-                `INSERT INTO candidates (user_id, name, email, stream, domain, experience_level, skill_score, dynamic_competence_percent, readiness_score)
-                 VALUES ($1, $2, $3, $4, $5, 'Student / Candidate', $6, $7, $6)
+                `INSERT INTO candidates (user_id, name, email, stream, domain, experience_level, skill_score, dynamic_competence_percent, readiness_score, skills)
+                 VALUES ($1, $2, $3, $4, $5, 'Student / Candidate', $6, $7, $6, $8)
                  ON CONFLICT (email) DO UPDATE
                  SET readiness_score = EXCLUDED.readiness_score, dynamic_competence_percent = EXCLUDED.dynamic_competence_percent, skill_score = EXCLUDED.skill_score`,
-                [validUuid, nameToUse, emailToUse, streamKey, cleanTopic, readinessScore, maxComp]
+                [validUuid, nameToUse, emailToUse, streamKey, cleanTopic, readinessScore, maxComp, [streamKey, cleanTopic, 'Diagnostic Benchmark']]
               );
             }
           }
@@ -3568,188 +3676,6 @@ const db = {
     }
 
     return skills;
-  },
-
-  // Lecture Progress Verification & Watch-Time Fraud Prevention
-  async recordLectureProgress({ user_id, user_email, skill_name, lecture_id, duration_seconds, time_watched_seconds }) {
-    const p = initPool();
-    const duration = Math.max(1, parseInt(duration_seconds, 10) || 600);
-    const watched = Math.max(0, parseInt(time_watched_seconds, 10) || 0);
-    const cleanSkill = (skill_name || 'Core Skill').trim();
-    const cleanLecture = String(lecture_id || 'lecture-1').trim();
-    const isCompleted = watched >= Math.floor(duration * 0.85);
-
-    let resolvedUserId = user_id;
-
-    if (!isCompleted) {
-      return {
-        success: true,
-        completed: false,
-        percent_watched: Math.min(100, Math.round((watched / duration) * 100)),
-        message: 'Lecture progress recorded. Must accumulate active watch time >= 85% of duration to earn credit.'
-      };
-    }
-
-    // Legitimately completed (watched >= 85%)
-    if (p) {
-      try {
-        if (!resolvedUserId && user_email) {
-          const uRes = await p.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [user_email.trim().toLowerCase()]);
-          if (uRes.rows[0]) resolvedUserId = uRes.rows[0].id;
-        }
-
-        const validUuid = (resolvedUserId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(resolvedUserId))) ? String(resolvedUserId) : null;
-        if (validUuid) {
-          // Idempotent record insertion
-          await p.query(
-            `INSERT INTO user_completed_lectures (user_id, user_email, skill_name, lecture_id, duration_seconds, time_watched_seconds, completed_at)
-             VALUES ($1, $2, $3, $4, $5, $6, NOW())
-             ON CONFLICT (user_id, skill_name, lecture_id)
-             DO UPDATE SET time_watched_seconds = GREATEST(user_completed_lectures.time_watched_seconds, EXCLUDED.time_watched_seconds)`,
-            [validUuid, (user_email || '').toLowerCase(), cleanSkill, cleanLecture, duration, watched]
-          );
-
-          // Unique completed lectures count, capped at 15
-          const countRes = await p.query(
-            `SELECT LEAST(COUNT(DISTINCT lecture_id), 15)::int as count
-             FROM user_completed_lectures
-             WHERE user_id = $1 AND (
-               LOWER(skill_name) = LOWER($2) OR
-               LOWER($2) LIKE '%' || LOWER(skill_name) || '%' OR
-               LOWER(skill_name) LIKE '%' || LOWER($2) || '%'
-             )`,
-            [validUuid, cleanSkill]
-          );
-          const uniqueCompleted = (countRes.rows[0] && countRes.rows[0].count) || 1;
-
-          // Update student_skill_progress (Formula: Base max 48 + Lectures max 15 + Marathon max 3 + Tests max 34)
-          await p.query(
-            `UPDATE student_skill_progress
-             SET lectures_completed = $1,
-                 total_score = LEAST(100, base_percentage + $1 + CASE WHEN status = 'LIVE VERIFIED' THEN 34 ELSE 0 END),
-                 updated_at = NOW()
-             WHERE user_id = $2 AND (
-               LOWER(skill_name) = LOWER($3) OR
-               LOWER($3) LIKE '%' || LOWER(skill_name) || '%' OR
-               LOWER(skill_name) LIKE '%' || LOWER($3) || '%'
-             )`,
-            [uniqueCompleted, validUuid, cleanSkill]
-          );
-
-          return {
-            success: true,
-            completed: true,
-            lectures_completed: uniqueCompleted,
-            lecture_score: uniqueCompleted,
-            message: 'Lecture legitimately completed and verified (+1 unique lecture towards 15% weight).'
-          };
-        }
-      } catch (err) {
-        console.warn('[Campus2Career DB] Cloud recordLectureProgress notice:', err.message);
-      }
-    }
-
-    // Local JSON Store Fallback
-    const store = getLocalStore();
-    if (!store.user_completed_lectures) store.user_completed_lectures = [];
-    const normEmail = (user_email || '').trim().toLowerCase();
-    const effectiveUserId = resolvedUserId || user_id || (normEmail ? `usr-${normEmail}` : 'usr-default');
-
-    let existing = store.user_completed_lectures.find(l => 
-      ((l.user_id === effectiveUserId) || (normEmail && l.user_email === normEmail)) &&
-      (l.skill_name.toLowerCase() === cleanSkill.toLowerCase()) &&
-      (l.lecture_id === cleanLecture)
-    );
-
-    if (existing) {
-      existing.time_watched_seconds = Math.max(existing.time_watched_seconds || 0, watched);
-      existing.completed_at = new Date().toISOString();
-    } else {
-      store.user_completed_lectures.push({
-        id: Date.now(),
-        user_id: effectiveUserId,
-        user_email: normEmail,
-        skill_name: cleanSkill,
-        lecture_id: cleanLecture,
-        duration_seconds: duration,
-        time_watched_seconds: watched,
-        completed_at: new Date().toISOString()
-      });
-    }
-
-    // Count unique completed lectures for this skill, capped at 15
-    const distinctLectures = new Set(
-      store.user_completed_lectures
-        .filter(l => 
-          ((l.user_id === effectiveUserId) || (normEmail && l.user_email === normEmail)) &&
-          (l.skill_name.toLowerCase() === cleanSkill.toLowerCase() || cleanSkill.toLowerCase().includes(l.skill_name.toLowerCase()))
-        )
-        .map(l => l.lecture_id)
-    );
-    const uniqueCount = Math.min(15, distinctLectures.size);
-
-    if (store.student_skill_progress) {
-      const match = store.student_skill_progress.find(item =>
-        ((item.user_id === effectiveUserId) || (normEmail && item.user_email === normEmail)) &&
-        (item.skill_name.toLowerCase().includes(cleanSkill.toLowerCase()) || cleanSkill.toLowerCase().includes(item.skill_name.toLowerCase()))
-      );
-      if (match) {
-        match.lectures_completed = uniqueCount;
-        const base = Math.min(48, Math.max(20, match.base_percentage || 35));
-        const testB = (match.status === 'LIVE VERIFIED') ? 34 : 0;
-        match.total_score = Math.min(100, base + uniqueCount + testB);
-        match.updated_at = new Date().toISOString();
-      }
-    }
-
-    saveLocalStore(store);
-
-    return {
-      success: true,
-      completed: true,
-      lectures_completed: uniqueCount,
-      lecture_score: uniqueCount,
-      message: 'Lecture legitimately completed and verified (+1 unique lecture towards 15% weight).'
-    };
-  },
-
-  async getCompletedLectures({ user_id, user_email, skill_name }) {
-    const p = initPool();
-    const cleanSkill = (skill_name || '').trim().toLowerCase();
-    let resolvedUserId = user_id;
-
-    if (p) {
-      try {
-        if (!resolvedUserId && user_email) {
-          const uRes = await p.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [user_email.trim().toLowerCase()]);
-          if (uRes.rows[0]) resolvedUserId = uRes.rows[0].id;
-        }
-        const validUuid = (resolvedUserId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(resolvedUserId))) ? String(resolvedUserId) : null;
-        if (validUuid) {
-          let query = 'SELECT DISTINCT lecture_id, skill_name, completed_at FROM user_completed_lectures WHERE user_id = $1';
-          const params = [validUuid];
-          if (cleanSkill) {
-            query += ' AND (LOWER(skill_name) = $2 OR LOWER($2) LIKE '%' || LOWER(skill_name) || '%')';
-            params.push(cleanSkill);
-          }
-          const res = await p.query(query, params);
-          return res.rows || [];
-        }
-      } catch (err) {
-        console.warn('[Campus2Career DB] Cloud getCompletedLectures notice:', err.message);
-      }
-    }
-
-    const store = getLocalStore();
-    const normEmail = (user_email || '').trim().toLowerCase();
-    const effectiveUserId = resolvedUserId || user_id || (normEmail ? `usr-${normEmail}` : null);
-
-    return (store.user_completed_lectures || []).filter(l => {
-      const matchUser = (effectiveUserId && l.user_id === effectiveUserId) || (normEmail && l.user_email === normEmail);
-      if (!matchUser) return false;
-      if (!cleanSkill) return true;
-      return l.skill_name.toLowerCase().includes(cleanSkill) || cleanSkill.includes(l.skill_name.toLowerCase());
-    });
   },
 
   // Lecture Progress Verification & Watch-Time Fraud Prevention

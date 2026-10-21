@@ -1,5 +1,5 @@
 // GET /api/me
-const { verifyUser, verifyAdmin } = require('./authMiddleware');
+const { verifyUser, verifyAdmin, clearUserCookie, validateTokenVersion } = require('./authMiddleware');
 const db = require('./db');
 
 module.exports = async (req, res) => {
@@ -59,6 +59,15 @@ module.exports = async (req, res) => {
   const userCheck = verifyUser(req);
   if (userCheck.valid) {
     const dbUser = await db.getUserByEmail(userCheck.user.email);
+    if (dbUser && !validateTokenVersion(userCheck.user, dbUser)) {
+      clearUserCookie(res);
+      return res.status(401).json({
+        success: false,
+        authenticated: false,
+        error: 'Session invalidated due to password change. Please log in again.'
+      });
+    }
+
     return res.status(200).json({
       success: true,
       role: userCheck.user.role || 'learner',

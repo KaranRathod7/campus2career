@@ -151,11 +151,20 @@ function signUserToken(user) {
       name: user.name,
       username: user.username || null,
       role: user.role || 'learner',
-      stream: user.stream || 'IT'
+      stream: user.stream || 'IT',
+      token_version: (user && user.token_version !== undefined && user.token_version !== null) ? Number(user.token_version) : 1
     },
     JWT_SECRET,
     { expiresIn: '7d' }
   );
+}
+
+function validateTokenVersion(jwtUser, dbUser) {
+  if (!jwtUser || !dbUser) return true;
+  if (jwtUser.token_version !== undefined && dbUser.token_version !== undefined && dbUser.token_version !== null) {
+    return Number(jwtUser.token_version) === Number(dbUser.token_version);
+  }
+  return true;
 }
 
 function setUserCookie(res, token) {
@@ -245,6 +254,7 @@ module.exports = {
   clearAdminCookie,
   verifyAdmin,
   signUserToken,
+  validateTokenVersion,
   setUserCookie,
   clearUserCookie,
   verifyUser,
