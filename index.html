@@ -910,7 +910,7 @@
             </div>
             <div class="relative">
               <input type="password" id="authPassInput" placeholder="••••••••" class="w-full text-xs p-3 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-[#008080] focus:outline-none">
-              <button type="button" onclick="togglePasswordVisibility('authPassInput', 'authPassEyeIcon')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1" title="Show/Hide Password">
+              <button type="button" onclick="togglePasswordVisibility('authPassInput', 'authPassEyeIcon', event)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 cursor-pointer" title="Show/Hide Password">
                 <i id="authPassEyeIcon" class="fa-solid fa-eye text-sm"></i>
               </button>
             </div>
@@ -994,7 +994,7 @@
               <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">New Password</label>
               <div class="relative">
                 <input type="password" id="forgotNewPassInput" placeholder="Enter new password" class="w-full text-xs p-2.5 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-[#008080]">
-                <button type="button" onclick="togglePasswordVisibility('forgotNewPassInput', 'forgotPassEyeIcon')" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1" title="Show/Hide Password">
+                <button type="button" onclick="togglePasswordVisibility('forgotNewPassInput', 'forgotPassEyeIcon', event)" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 cursor-pointer" title="Show/Hide Password">
                   <i id="forgotPassEyeIcon" class="fa-solid fa-eye text-xs"></i>
                 </button>
               </div>
@@ -1095,19 +1095,20 @@
 
           <div>
             <div class="flex items-center justify-between mb-1.5">
-              <label class="block text-xs font-bold text-slate-700" id="wizardYearLabel">Current Year of B.Tech</label>
-              <span class="text-[10px]" id="wizardYearStatusHint"><span class="text-teal-700 font-semibold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">Required for Students</span></span>
+              <label class="block text-xs font-bold text-slate-700 dark:text-slate-300" id="wizardYearLabel">Current Year of B.Tech</label>
+              <span class="text-[10px]" id="wizardYearStatusHint"><span class="text-teal-700 dark:text-teal-400 font-semibold bg-teal-50 dark:bg-teal-950/70 px-2 py-0.5 rounded border border-teal-200 dark:border-teal-800">Required for Students</span></span>
             </div>
-            <select id="obYear" name="btech_year" onchange="onWizardYearChanged(this.value)" class="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-slate-800 focus:ring-2 focus:ring-[#008080]">
-              <option value="" selected>Select your current year</option>
-              <option value="1">1st Year</option>
-              <option value="2">2nd Year</option>
-              <option value="3">3rd Year</option>
-              <option value="4">Final Year</option>
-            </select>
+            <!-- Horizontal button group / segmented pills -->
+            <div id="wizardYearPillsGroup" class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              <button type="button" data-year="1" onclick="selectWizardYear(1)" class="w-year-pill py-2 px-2 text-xs font-semibold rounded-xl text-center border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all cursor-pointer">1st Year</button>
+              <button type="button" data-year="2" onclick="selectWizardYear(2)" class="w-year-pill py-2 px-2 text-xs font-semibold rounded-xl text-center border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all cursor-pointer">2nd Year</button>
+              <button type="button" data-year="3" onclick="selectWizardYear(3)" class="w-year-pill py-2 px-2 text-xs font-semibold rounded-xl text-center border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all cursor-pointer">3rd Year</button>
+              <button type="button" data-year="4" onclick="selectWizardYear(4)" class="w-year-pill py-2 px-2 text-xs font-semibold rounded-xl text-center border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all cursor-pointer">4th Year</button>
+              <button type="button" data-year="5" onclick="selectWizardYear(5)" class="w-year-pill py-2 px-2 text-xs font-semibold rounded-xl text-center border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all cursor-pointer col-span-2 sm:col-span-1">Passout / Graduated</button>
+            </div>
             <div id="obYearAlert" class="hidden text-xs text-red-600 font-semibold mt-1.5 flex items-center space-x-1">
               <i class="fa-solid fa-circle-exclamation text-xs"></i>
-              <span id="obYearAlertText">Please enter your current year to proceed.</span>
+              <span id="obYearAlertText">Please select your current B.Tech year to proceed.</span>
             </div>
           </div>
 
@@ -1321,7 +1322,7 @@
         </div>
 
         <!-- DYNAMIC SKILL CARDS CONTAINER -->
-        <div id="skillGaugesContainer" class="space-y-4">
+        <div id="skillGaugesContainer" data-alias="live-skill-breakdown" class="space-y-4">
           <!-- Populated dynamically via JS -->
         </div>
       </div>
@@ -1334,7 +1335,7 @@
             <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Radar Competence Diagram</h4>
             <span class="text-[10px] text-teal-700 font-bold font-mono">LIVE VERIFIED</span>
           </div>
-          <div class="radar-chart-container relative">
+          <div id="skill-radar-diagram" class="radar-chart-container relative">
             <canvas id="customRadarChartCanvas"></canvas>
           </div>
           <p class="text-[11px] text-slate-500 text-center">
@@ -25361,40 +25362,40 @@ function renderLearnerMarketPulse(targetDomainKey = null) {
     const salaryText = rep.salaryBand || '₹14 - ₹24 LPA';
 
     synthCards.innerHTML = `
-      <div class="p-4 rounded-xl bg-teal-50/70 border border-teal-200 space-y-2">
+      <div class="p-4 rounded-xl bg-teal-50/70 dark:bg-[#0f172a] border border-teal-200 dark:border-white/10 space-y-2">
         <div class="flex items-center justify-between">
-          <span class="text-[10px] font-bold text-teal-800 uppercase tracking-wider">Mandatory Core Skills</span>
-          <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-200 text-teal-900">Required</span>
+          <span class="text-[10px] font-bold text-teal-800 dark:text-teal-400 uppercase tracking-wider">Mandatory Core Skills</span>
+          <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-200 text-teal-900 dark:bg-teal-500/20 dark:text-teal-300">Required</span>
         </div>
-        <p class="text-xs font-bold text-slate-900">${preset.name}</p>
-        <p class="text-xs text-slate-700 font-mono leading-relaxed">${topSkills}</p>
+        <p class="text-xs font-bold text-slate-900 dark:text-white">${preset.name}</p>
+        <p class="text-xs text-slate-700 dark:text-[#cbd5e1] font-mono leading-relaxed font-normal">${topSkills}</p>
       </div>
 
-      <div class="p-4 rounded-xl bg-rose-50/70 border border-rose-200 space-y-2">
+      <div class="p-4 rounded-xl bg-rose-50/70 dark:bg-[#0f172a] border border-rose-200 dark:border-white/10 space-y-2">
         <div class="flex items-center justify-between">
-          <span class="text-[10px] font-bold text-rose-800 uppercase tracking-wider">#1 Fresher Deficit Warning</span>
-          <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-200 text-rose-900">88% Fail Rate</span>
+          <span class="text-[10px] font-bold text-rose-800 dark:text-[#f87171] uppercase tracking-wider">#1 Fresher Deficit Warning</span>
+          <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-200 text-rose-900 dark:bg-[rgba(239,68,68,0.15)] dark:text-[#fca5a5]">88% Fail Rate</span>
         </div>
-        <p class="text-xs font-bold text-slate-900">What Hiring Leads Reject</p>
-        <p class="text-xs text-slate-600 leading-relaxed italic">"${deficitText.slice(0, 130)}..."</p>
+        <p class="text-xs font-bold text-slate-900 dark:text-white">What Hiring Leads Reject</p>
+        <p class="text-xs text-slate-600 dark:text-[#cbd5e1] leading-relaxed italic font-normal">"${deficitText.slice(0, 130)}..."</p>
       </div>
 
-      <div class="p-4 rounded-xl bg-indigo-50/70 border border-indigo-200 space-y-2">
+      <div class="p-4 rounded-xl bg-indigo-50/70 dark:bg-[#0f172a] border border-indigo-200 dark:border-white/10 space-y-2">
         <div class="flex items-center justify-between">
-          <span class="text-[10px] font-bold text-indigo-800 uppercase tracking-wider">Verified Capstone Standard</span>
-          <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-200 text-indigo-900">Interview Gate</span>
+          <span class="text-[10px] font-bold text-indigo-800 dark:text-[#818cf8] uppercase tracking-wider">Verified Capstone Standard</span>
+          <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-200 text-indigo-900 dark:bg-[rgba(99,102,241,0.15)] dark:text-[#c7d2fe]">Interview Gate</span>
         </div>
-        <p class="text-xs font-bold text-slate-900">Proof Needed on GitHub</p>
-        <p class="text-xs text-slate-600 leading-relaxed">"${capstoneText.slice(0, 130)}..."</p>
+        <p class="text-xs font-bold text-slate-900 dark:text-white">Proof Needed on GitHub</p>
+        <p class="text-xs text-slate-600 dark:text-[#cbd5e1] leading-relaxed font-normal">"${capstoneText.slice(0, 130)}..."</p>
       </div>
 
-      <div class="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 space-y-2">
+      <div class="p-4 rounded-xl bg-emerald-50/70 dark:bg-[#0f172a] border border-emerald-200 dark:border-white/10 space-y-2">
         <div class="flex items-center justify-between">
-          <span class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Hiring Urgency &amp; CTC</span>
-          <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-200 text-emerald-900">Active</span>
+          <span class="text-[10px] font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider">Hiring Urgency &amp; CTC</span>
+          <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-200 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-300">Active</span>
         </div>
-        <p class="text-sm font-extrabold text-emerald-700 font-mono">${surgeText}</p>
-        <p class="text-xs font-mono font-bold text-slate-800">${salaryText}</p>
+        <p class="text-sm font-extrabold text-emerald-700 dark:text-emerald-400 font-mono">${surgeText}</p>
+        <p class="text-xs font-mono font-bold text-slate-800 dark:text-slate-200">${salaryText}</p>
       </div>
     `;
   }
@@ -25405,26 +25406,26 @@ function renderLearnerMarketPulse(targetDomainKey = null) {
     feed.innerHTML = '';
     matchedReports.slice(0, 4).forEach(r => {
       const card = document.createElement('div');
-      card.className = "p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5";
+      card.className = "p-4 rounded-xl bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 space-y-2.5";
       card.innerHTML = `
         <div class="flex items-start justify-between">
           <div>
             <div class="flex items-center space-x-1.5">
-              <span class="text-xs font-bold text-slate-900">${r.company}</span>
-              <span class="text-[10px] font-bold text-[#008080] bg-teal-50 px-1.5 py-0.2 rounded border border-teal-200">${r.stream.toUpperCase()} • ${r.role}</span>
+              <span class="text-xs font-bold text-slate-900 dark:text-white">${r.company}</span>
+              <span class="text-[10px] font-bold text-[#008080] bg-teal-50 dark:bg-teal-950/80 px-1.5 py-0.2 rounded border border-teal-200 dark:border-teal-800 dark:text-teal-300">${r.stream.toUpperCase()} • ${r.role}</span>
             </div>
             <p class="text-[10px] text-slate-400">${r.recruiterName} (${r.recruiterTitle}) • ${r.date}</p>
           </div>
-          <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-mono">${r.salaryBand}</span>
+          <span class="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800 font-mono">${r.salaryBand}</span>
         </div>
-        <p class="text-xs text-slate-700 leading-relaxed">
-          <strong>Mandatory Core Skills:</strong> <span class="font-mono text-[11px] text-[#008080]">${r.skills}</span>
+        <p class="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-normal">
+          <strong>Mandatory Core Skills:</strong> <span class="font-mono text-[11px] text-[#008080] dark:text-teal-400">${r.skills}</span>
         </p>
-        <p class="text-xs text-slate-600 leading-relaxed">
-          <span class="font-semibold text-rose-700">Observed Deficit:</span> "${r.deficit}"
+        <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
+          <span class="font-semibold text-rose-700 dark:text-rose-400">Observed Deficit:</span> "${r.deficit}"
         </p>
-        <p class="text-xs text-slate-600 leading-relaxed">
-          <span class="font-semibold text-emerald-700">Direct Advice:</span> "${r.directive}"
+        <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
+          <span class="font-semibold text-emerald-700 dark:text-emerald-400">Direct Advice:</span> "${r.directive}"
         </p>
       `;
       feed.appendChild(card);
@@ -25571,13 +25572,29 @@ function onWizardBranchChanged(branchKey) {
         || appState.selectedPreset 
         || (isSenior ? 'mgmt_lead' : (STREAM_DATA[branchKey] && STREAM_DATA[branchKey].defaultPreset) || Object.keys(presetsToRender)[0]);
 
+      const isDemo = Boolean(appState.user && appState.user.isDemo);
+      const isFreshUser = !appState.isChangingCoreSkills && (!appState.user || !appState.user.verified || appState.user.isGuest || !appState.user.onboarded);
+
       Object.keys(presetsToRender).forEach(key => {
         const p = presetsToRender[key];
         const isSelected = activePreset === key;
-        const domainPct = getDomainMasteryPercent(key, branchKey);
-        const badgeHtml = domainPct > 0 
-          ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/15 text-[#008080] dark:text-teal-300 border border-teal-500/30 font-mono">${domainPct}% Mastery</span>`
-          : `<span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 font-mono">Unexplored (0%)</span>`;
+
+        let badgeHtml = '';
+        if (isFreshUser && !isDemo) {
+          // Fresh Sign-Up Onboarding: 0% verified history -> neutral chip
+          badgeHtml = `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">Standard Track</span>`;
+        } else {
+          let domainPct = getDomainMasteryPercent(key, branchKey);
+          // For Demo Mode: ensure consistency with Target Stack Readiness score card
+          if (isDemo && key === activePreset) {
+            const overallEl = document.getElementById('overallStackScore');
+            const scoreVal = overallEl ? parseInt(overallEl.innerText, 10) : 0;
+            if (scoreVal > 0) domainPct = scoreVal;
+          }
+          badgeHtml = domainPct > 0 
+            ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/15 text-[#008080] dark:text-teal-300 border border-teal-500/30 font-mono">${domainPct}% Mastery</span>`
+            : `<span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 font-mono">Unexplored (0%)</span>`;
+        }
 
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -26029,9 +26046,9 @@ function onWizardBranchChanged(branchKey) {
       if (!appState.selectedRole) {
         selectWizardRole('student');
       }
-      appState.selectedYear = "";
-      const ySel = document.getElementById('obYear');
-      if (ySel) ySel.value = "";
+      appState.selectedYear = null;
+      const alertEl = document.getElementById('obYearAlert');
+      if (alertEl) alertEl.classList.add('hidden');
       onWizardBranchChanged(streamKey);
       updateWizardYearButtons();
       updateWizardUI();
@@ -26069,11 +26086,22 @@ function onWizardBranchChanged(branchKey) {
       }
       if (hint) {
         if (isStudent) {
-          hint.innerHTML = `<span class="text-teal-700 font-semibold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">Required for Students</span>`;
+          hint.innerHTML = `<span class="text-teal-700 dark:text-teal-400 font-semibold bg-teal-50 dark:bg-teal-950/70 px-2 py-0.5 rounded border border-teal-200 dark:border-teal-800">Required for Students</span>`;
         } else {
-          hint.innerHTML = `<span class="text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-medium">Optional for Professionals</span>`;
+          hint.innerHTML = `<span class="text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-medium">Optional for Professionals</span>`;
         }
       }
+
+      document.querySelectorAll('.w-year-pill').forEach(btn => {
+        const yr = parseInt(btn.getAttribute('data-year'), 10);
+        const isSelected = (appState.selectedYear === yr);
+        const isWide = (yr === 5);
+        if (isSelected) {
+          btn.className = `w-year-pill py-2 px-2 text-xs font-bold rounded-xl text-center border border-[#008080] bg-[#008080] text-white shadow-xs transition-all cursor-pointer ${isWide ? 'col-span-2 sm:col-span-1' : ''}`;
+        } else {
+          btn.className = `w-year-pill py-2 px-2 text-xs font-semibold rounded-xl text-center border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all cursor-pointer ${isWide ? 'col-span-2 sm:col-span-1' : ''}`;
+        }
+      });
     }
 
     function openOnboardingModal(branchOverride = null) {
@@ -26087,13 +26115,8 @@ function onWizardBranchChanged(branchKey) {
       const obBranchEl = document.getElementById('obBranch');
       if (obBranchEl) obBranchEl.value = branch;
       
-      // Default value to empty string "" (no year pre-selected by default)
-      appState.selectedYear = (appState.user && appState.user.year) ? appState.user.year : "";
-      const yearSelect = document.getElementById('obYear');
-      if (yearSelect) {
-        yearSelect.value = appState.selectedYear ? String(appState.selectedYear) : "";
-        yearSelect.classList.remove('ring-2', 'ring-red-500', 'border-red-500');
-      }
+      // Default state: nothing selected by default (selectedYear = null)
+      appState.selectedYear = (appState.user && appState.user.year) ? appState.user.year : null;
       const alertEl = document.getElementById('obYearAlert');
       if (alertEl) alertEl.classList.add('hidden');
 
@@ -26117,16 +26140,17 @@ function onWizardBranchChanged(branchKey) {
     }
 
     function selectWizardYear(yr) {
-      const isStudent = (appState.selectedRole === 'student');
-
-      if (!isStudent && appState.selectedYear === yr) {
-        // Non-student clicked the same year twice -> DESELECT IT!
+      if (appState.selectedYear === yr) {
+        // Clicking same year pill deselects it
         appState.selectedYear = null;
         if (appState.user) appState.user.year = null;
       } else {
         appState.selectedYear = yr;
         if (appState.user) appState.user.year = yr;
       }
+
+      const alertEl = document.getElementById('obYearAlert');
+      if (alertEl) alertEl.classList.add('hidden');
 
       updateWizardYearButtons();
     }
@@ -26361,43 +26385,47 @@ function onWizardBranchChanged(branchKey) {
         // Conditional Validation on "Continue":
         const currentRole = (appState.selectedRole || (appState.user && appState.user.role) || 'student').toLowerCase();
         const isStudentLearner = (currentRole === 'student' || currentRole === 'learner' || currentRole.includes('student') || currentRole.includes('learner'));
-        const yearSelect = document.getElementById('obYear');
-        const yearVal = (yearSelect && yearSelect.value !== undefined) ? yearSelect.value.trim() : (appState.selectedYear ? String(appState.selectedYear) : "");
 
-        if (isStudentLearner && (!yearVal || yearVal === "")) {
+        if (isStudentLearner && (!appState.selectedYear || appState.selectedYear === null || appState.selectedYear === "")) {
           const alertEl = document.getElementById('obYearAlert');
           if (alertEl) {
             alertEl.classList.remove('hidden');
             const alertText = document.getElementById('obYearAlertText');
-            if (alertText) alertText.innerText = "Please enter your current year to proceed.";
-          }
-          if (yearSelect) {
-            yearSelect.focus();
-            yearSelect.classList.add('ring-2', 'ring-red-500', 'border-red-500');
+            if (alertText) alertText.innerText = "Please select your current B.Tech year to proceed.";
           }
           return; // Block progression
         }
 
         const alertEl = document.getElementById('obYearAlert');
         if (alertEl) alertEl.classList.add('hidden');
-        if (yearSelect) yearSelect.classList.remove('ring-2', 'ring-red-500', 'border-red-500');
-        if (yearVal) appState.selectedYear = parseInt(yearVal, 10);
       }
       if (appState.currentWizardStep < 4) {
         appState.currentWizardStep++;
         updateWizardUI();
       } else {
+        // Step 4 Completion ("Open Skill Level Diagram & Interface →")
+        // 1. Close modal immediately without waiting for network or heavy renders
+        closeOnboardingModal();
+
         const branch = (document.getElementById('obBranch') && document.getElementById('obBranch').value) 
           || appState.selectedStream 
           || (appState.user && appState.user.branch) 
           || 'it';
 
-        // PERSISTENCE FIX: Snapshot the exact currentStack configured in wizard
-        const chosenStack = JSON.parse(JSON.stringify(appState.currentStack));
-
+        // Snapshot the exact currentStack configured in wizard
+        const chosenStack = JSON.parse(JSON.stringify(appState.currentStack || []));
         appState.selectedStream = branch;
+
         if (!appState.user || appState.user.isGuest) {
-          appState.user = { isGuest: true, branch: branch, stream: branch, role: appState.selectedRole || 'student', year: appState.selectedYear || null, onboarded: true, skills: chosenStack.map(s => s.name) };
+          appState.user = { 
+            isGuest: true, 
+            branch: branch, 
+            stream: branch, 
+            role: appState.selectedRole || 'student', 
+            year: appState.selectedYear || null, 
+            onboarded: true, 
+            skills: chosenStack.map(s => s.name) 
+          };
         } else {
           appState.user.branch = branch;
           appState.user.stream = branch;
@@ -26406,31 +26434,21 @@ function onWizardBranchChanged(branchKey) {
           if (appState.selectedRole) appState.user.role = appState.selectedRole;
           const colVal = (document.getElementById('obCollege') && document.getElementById('obCollege').value.trim()) || '';
           if (colVal) appState.user.college = colVal;
-          if (appState.selectedRole === 'student' || appState.selectedRole === 'learner') {
-            appState.user.year = appState.selectedYear || appState.user.year || null;
-          } else {
-            appState.user.year = appState.selectedYear || null;
-          }
-
-          // Persist preferences to Supabase / Backend via /api/me
-          if (appState.user.email) {
-            fetch('/api/me', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                email: appState.user.email,
-                stream: branch,
-                branch: branch,
-                active_domain: appState.selectedPreset || (appState.user && appState.user.active_domain),
-                skills: chosenStack.map(s => s.name),
-                college: appState.user.college,
-                year: appState.user.year
-              })
-            }).catch(e => console.warn('[Onboarding Sync Notice]', e));
-          }
+          appState.user.year = appState.selectedYear || appState.user.year || null;
         }
 
-        // Apply stream config while preserving chosenStack
+        // 2. Set active tab/view strictly to "Learn" (screen-analyzer)
+        navigateTo('analyzer');
+
+        // 3. Smooth scroll into view
+        requestAnimationFrame(() => {
+          const diagramEl = document.getElementById('skill-radar-diagram') || document.getElementById('live-skill-breakdown') || document.getElementById('skillGaugesContainer') || document.getElementById('customRadarChartCanvas');
+          if (diagramEl) {
+            diagramEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+
+        // 4. Fast UI sync
         applyStreamChange(branch, true);
         appState.currentStack = chosenStack;
         saveStateToStorage();
@@ -26444,9 +26462,24 @@ function onWizardBranchChanged(branchKey) {
         runLiveRecalculations();
         updateCharts();
 
-        closeOnboardingModal();
-        navigateTo('analyzer');
-        showToast(`Skill stack configured for ${STREAM_DATA[branch].name}!`);
+        // 5. Background network persistence to backend
+        if (appState.user && appState.user.email) {
+          fetch('/api/me', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: appState.user.email,
+              stream: branch,
+              branch: branch,
+              active_domain: appState.selectedPreset || (appState.user && appState.user.active_domain),
+              skills: chosenStack.map(s => s.name),
+              college: appState.user.college,
+              year: appState.user.year
+            })
+          }).catch(e => console.warn('[Onboarding Sync Notice]', e));
+        }
+
+        showToast(`Skill stack configured for ${(STREAM_DATA[branch] && STREAM_DATA[branch].name) || branch}!`);
       }
     }
 
@@ -28679,17 +28712,17 @@ function onWizardBranchChanged(branchKey) {
 
       steps.forEach(s => {
         const card = document.createElement('div');
-        card.className = "p-5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between space-y-3";
+        card.className = "p-5 rounded-2xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between space-y-3";
         card.innerHTML = `
           <div>
             <div class="flex items-center justify-between mb-2">
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-teal-50 text-[#008080] border border-teal-200 font-mono">${s.tag}</span>
-              <span class="w-5 h-5 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center">${s.num}</span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-teal-50 dark:bg-teal-950/80 text-[#008080] dark:text-teal-300 border border-teal-200 dark:border-teal-800 font-mono">${s.tag}</span>
+              <span class="w-5 h-5 rounded-full bg-slate-900 dark:bg-teal-600 text-white font-bold text-xs flex items-center justify-center">${s.num}</span>
             </div>
-            <h4 class="text-sm font-bold text-slate-900">${s.title}</h4>
-            <p class="text-xs text-slate-600 mt-2 leading-relaxed">${s.reason}</p>
+            <h4 class="text-sm font-bold text-slate-900 dark:text-white">${s.title}</h4>
+            <p class="text-xs text-slate-600 dark:text-[#cbd5e1] mt-2 leading-relaxed font-normal">${s.reason}</p>
           </div>
-          <button onclick="${s.actionFn}" class="w-full py-2 bg-slate-100 hover:bg-teal-50 text-[#008080] rounded-xl text-xs font-bold border border-slate-200 transition-all text-center">
+          <button onclick="${s.actionFn}" class="w-full py-2 bg-slate-100 dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-slate-700 text-[#008080] dark:text-teal-300 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 transition-all text-center">
             ${s.actionText}
           </button>
         `;
@@ -28704,20 +28737,20 @@ function onWizardBranchChanged(branchKey) {
 
       list.forEach(sem => {
         const card = document.createElement('div');
-        card.className = "p-5 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between space-y-4";
+        card.className = "p-5 rounded-2xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between space-y-4";
         card.innerHTML = `
           <div>
             <div class="flex items-center justify-between mb-2">
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono">${sem.categoryLabel}</span>
-              <span class="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">${sem.badge}</span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono">${sem.categoryLabel}</span>
+              <span class="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/70 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800">${sem.badge}</span>
             </div>
-            <h4 class="text-sm font-bold text-slate-900">${sem.title}</h4>
-            <p class="text-xs text-[#008080] font-semibold mt-1"><i class="fa-solid fa-clock mr-1"></i> ${sem.date}</p>
-            <p class="text-[11px] text-slate-500 mt-0.5"><i class="fa-solid fa-user-tie mr-1"></i> ${sem.speaker}</p>
-            <p class="text-xs text-slate-600 mt-2.5 leading-relaxed">${sem.desc}</p>
+            <h4 class="text-sm font-bold text-slate-900 dark:text-white">${sem.title}</h4>
+            <p class="text-xs text-[#008080] dark:text-teal-400 font-semibold mt-1"><i class="fa-solid fa-clock mr-1"></i> ${sem.date}</p>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5"><i class="fa-solid fa-user-tie mr-1"></i> ${sem.speaker}</p>
+            <p class="text-xs text-slate-600 dark:text-[#cbd5e1] mt-2.5 leading-relaxed font-normal">${sem.desc}</p>
           </div>
-          <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
-            <button onclick="showToast('Seat reserved for: ${sem.title}');" class="px-3.5 py-1.5 bg-[#008080] hover:bg-[#006666] text-white rounded-lg text-xs font-bold transition-all flex items-center space-x-1">
+          <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <button onclick="showToast('Seat reserved for: ${sem.title}');" class="px-3.5 py-1.5 bg-[#008080] hover:bg-[#006666] text-white rounded-lg text-xs font-bold transition-all flex items-center space-x-1 cursor-pointer">
               <i class="fa-solid fa-calendar-check text-xs"></i>
               <span>RSVP Free</span>
             </button>
@@ -28736,11 +28769,11 @@ function onWizardBranchChanged(branchKey) {
 
     function lockBodyScroll(lock) {
       if (lock) {
-        lockBodyScroll(true);
+        document.body.style.overflow = 'hidden';
       } else {
         const anyOpen = document.querySelector('#authModal.flex, #shareModal.flex, #recruiterAuthModal.flex, #mcqModal.flex, #diagnosticModal.flex, #databaseViewerModal.flex, #adminAuthModal.flex, #resourceModal.flex, #onboardingModal.flex, #mobileNavDrawer:not(.hidden)');
         if (!anyOpen) {
-          lockBodyScroll(false);
+          document.body.style.overflow = '';
         }
       }
     }
@@ -29962,18 +29995,20 @@ function onWizardBranchChanged(branchKey) {
     let pendingResetEmail = null;
     let pendingRegistrationUser = null;
 
-    // PASSWORD VISIBILITY TOGGLE (Eye Icon)
-    function togglePasswordVisibility(inputId, iconId) {
+    // PASSWORD VISIBILITY TOGGLE (Eye Icon - Pure Local State)
+    function togglePasswordVisibility(inputId, iconId, evt) {
+      if (evt && typeof evt.preventDefault === 'function') {
+        evt.preventDefault();
+        evt.stopPropagation();
+      }
       const input = document.getElementById(inputId);
       const icon = document.getElementById(iconId);
       if (!input || !icon) return;
-      if (input.type === 'password') {
-        input.type = 'text';
-        icon.className = 'fa-solid fa-eye-slash text-xs text-teal-600';
-      } else {
-        input.type = 'password';
-        icon.className = 'fa-solid fa-eye text-xs text-slate-400';
-      }
+      const isPass = input.type === 'password';
+      input.type = isPass ? 'text' : 'password';
+      icon.className = isPass 
+        ? 'fa-solid fa-eye-slash text-xs text-teal-600'
+        : 'fa-solid fa-eye text-xs text-slate-400';
     }
 
     // SHARE MODAL APP SHARING & COPY LINK

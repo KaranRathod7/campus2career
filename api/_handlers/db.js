@@ -3,9 +3,26 @@
 const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
 
 let pool = null;
 let lastDbError = null;
+let supabaseClient = null;
+
+function getSupabaseClient() {
+  if (supabaseClient) return supabaseClient;
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY;
+  if (supabaseUrl && supabaseKey) {
+    try {
+      supabaseClient = createClient(supabaseUrl, supabaseKey);
+      return supabaseClient;
+    } catch (e) {
+      console.warn('[DB Supabase Client Init Warning]', e.message);
+    }
+  }
+  return null;
+}
 
 function getConnectionString() {
   return (
@@ -1544,9 +1561,41 @@ const db = {
   // Password Reset OTP Management
   async createPasswordReset(email, token, expiresAt) {
     const normalized = (email || '').trim().toLowerCase();
-    const expiry = expiresAt || new Date(Date.now() + 15 * 60 * 1000); // 15 mins
-    const p = initPool();
+    const expiryDate = expiresAt || new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+    const expiryIso = expiryDate.toISOString();
+    const nowIso = new Date().toISOString();
+    const cleanToken = String(token || '').trim();
 
+    // 1. Supabase Client Integration
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        await supabase
+          .from('password_resets')
+          .update({ used: true })
+          .ilike('email', normalized)
+          .eq('used', false);
+
+        const { data, error } = await supabase
+          .from('password_resets')
+          .insert({
+            email: normalized,
+            token: cleanToken,
+            expires_at: expiryIso,
+            used: false,
+            created_at: nowIso
+          })
+          .select()
+          .maybeSingle();
+
+        if (!error && data) return data;
+      } catch (err) {
+        console.warn('[Supabase createPasswordReset Warning]', err.message);
+      }
+    }
+
+    // 2. Direct PostgreSQL Pool
+    const p = initPool();
     if (p) {
       try {
         await ensureSchema();
@@ -1554,9 +1603,9 @@ const db = {
         await p.query('UPDATE password_resets SET used = true WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) AND used = false', [normalized]);
         const res = await p.query(
           `INSERT INTO password_resets (email, token, expires_at, used, created_at)
-           VALUES ($1, $2, $3, false, NOW())
+           VALUES ($1, $2, ($3)::timestamptz, false, ($4)::timestamptz)
            RETURNING *`,
-          [normalized, token, expiry]
+          [normalized, cleanToken, expiryIso, nowIso]
         );
         return res.rows[0];
       } catch (err) {
@@ -1565,6 +1614,7 @@ const db = {
       }
     }
 
+    // 3. Local JSON Fallback Store
     const store = getLocalStore();
     if (!store.password_resets) store.password_resets = [];
     store.password_resets.forEach(pr => {
@@ -1575,10 +1625,10 @@ const db = {
     const entry = {
       id: `pr-${Date.now()}-${Math.floor(Math.random()*1000)}`,
       email: normalized,
-      token,
-      expires_at: expiry.toISOString(),
+      token: cleanToken,
+      expires_at: expiryIso,
       used: false,
-      created_at: new Date().toISOString()
+      created_at: nowIso
     };
     store.password_resets.push(entry);
     saveLocalStore(store);
@@ -1587,55 +1637,99 @@ const db = {
 
   async verifyAndUsePasswordReset(email, token, newPasswordHash) {
     const normalized = (email || '').trim().toLowerCase();
-    const cleanToken = (token || '').trim();
-    const p = initPool();
+    const cleanToken = String(token || '').trim();
+    const nowIso = new Date().toISOString();
+    const nowTime = Date.now();
 
+    console.log(`[RESET VERIFY ATTEMPT] Verifying code for email: "${normalized}", token: "${cleanToken}"`);
+
+    // 1. Supabase Client Check (if configured)
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        const { data: record, error } = await supabase
+          .from('password_resets')
+          .select('*')
+          .ilike('email', normalized)
+          .eq('token', cleanToken)
+          .eq('used', false)
+          .gte('expires_at', nowIso)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (record && !error) {
+          // Mark token as used
+          await supabase
+            .from('password_resets')
+            .update({ used: true })
+            .eq('id', record.id);
+
+          // Update user password
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .update({ password_hash: newPasswordHash, updated_at: nowIso })
+            .ilike('email', normalized)
+            .select('id, email, name')
+            .maybeSingle();
+
+          if (userData && !userError) {
+            console.log(`[RESET SUCCESS] Verified and updated password in Supabase for: ${normalized}`);
+            return { success: true, user: userData };
+          }
+        }
+      } catch (err) {
+        console.warn('[Supabase verifyAndUsePasswordReset Warning]', err.message);
+      }
+    }
+
+    // 2. Direct PostgreSQL Pool Check
+    const p = initPool();
     if (p) {
       try {
         await ensureSchema();
         const res = await p.query(
           `SELECT * FROM password_resets 
-           WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) AND token = $2 AND used = false AND expires_at > NOW()
+           WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) 
+             AND TRIM(token) = $2 
+             AND used = false 
+             AND (expires_at >= ($3)::timestamptz OR expires_at >= NOW())
            ORDER BY created_at DESC LIMIT 1`,
-          [normalized, cleanToken]
+          [normalized, cleanToken, nowIso]
         );
 
-        if (!res.rows || res.rows.length === 0) {
-          return { success: false, error: 'Invalid or expired verification code. Please request a new code.' };
-        }
+        if (res.rows && res.rows.length > 0) {
+          const resetRecord = res.rows[0];
+          await p.query('UPDATE password_resets SET used = true WHERE id = $1', [resetRecord.id]);
+          const updateRes = await p.query(
+            'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE LOWER(TRIM(email)) = LOWER(TRIM($2)) RETURNING id, email, name',
+            [newPasswordHash, normalized]
+          );
 
-        const resetRecord = res.rows[0];
-        // Mark token as used
-        await p.query('UPDATE password_resets SET used = true WHERE id = $1', [resetRecord.id]);
-
-        // Update user password hash
-        const updateRes = await p.query(
-          'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE LOWER(TRIM(email)) = LOWER(TRIM($2)) RETURNING id, email, name',
-          [newPasswordHash, normalized]
-        );
-
-        if (!updateRes.rows || updateRes.rows.length === 0) {
+          if (updateRes.rows && updateRes.rows.length > 0) {
+            console.log(`[RESET SUCCESS] Verified and updated password in Postgres for: ${normalized}`);
+            return { success: true, user: updateRes.rows[0] };
+          }
           return { success: false, error: 'User account not found.' };
         }
-
-        return { success: true, user: updateRes.rows[0] };
       } catch (err) {
         console.error('[Campus2Career DB] Cloud verifyAndUsePasswordReset error:', err.message);
         lastDbError = err.message;
       }
     }
 
+    // 3. Local JSON Store Check
     const store = getLocalStore();
     if (!store.password_resets) store.password_resets = [];
-    const now = new Date();
     const entry = store.password_resets.find(pr => 
       pr.email && pr.email.toLowerCase() === normalized &&
-      pr.token === cleanToken &&
+      String(pr.token).trim() === cleanToken &&
       !pr.used &&
-      new Date(pr.expires_at) > now
+      (new Date(pr.expires_at).getTime() >= (nowTime - 60000))
     );
 
     if (!entry) {
+      console.warn(`[RESET FAIL] Code "${cleanToken}" not found, used, or expired for: ${normalized}`);
       return { success: false, error: 'Invalid or expired verification code. Please request a new code.' };
     }
 
@@ -1648,9 +1742,10 @@ const db = {
     }
 
     user.password_hash = newPasswordHash;
-    user.updated_at = now.toISOString();
+    user.updated_at = nowIso;
     saveLocalStore(store);
 
+    console.log(`[RESET SUCCESS] Verified and updated password in local store for: ${normalized}`);
     return { success: true, user: { id: user.id, email: user.email, name: user.name } };
   },
 

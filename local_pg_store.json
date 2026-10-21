@@ -13,12 +13,12 @@
       "id": "usr-1792429659906",
       "name": "Rohan Test",
       "email": "rohan.test@btech.ac.in",
-      "password_hash": "$2b$10$WmKSsTj8C7kgKjpw6ekGFeKtn7TimDAOnHNXlPsdYaiWHuC51LaUu",
+      "password_hash": "$2b$10$hzG4D5Z2FAojLeScuDrRPuQ8xanWyMQH8/dBsNLscQKer5J/4OT/6",
       "role": "learner",
       "stream": "ECE",
       "is_verified": true,
       "created_at": "2026-10-19T17:07:39.907Z",
-      "updated_at": "2026-10-21T08:21:02.854Z"
+      "updated_at": "2026-10-21T09:27:44.341Z"
     },
     {
       "id": "usr-1792442100499",
@@ -2646,6 +2646,14 @@
       "expires_at": "2026-10-21T08:36:01.819Z",
       "used": true,
       "created_at": "2026-10-21T08:21:01.820Z"
+    },
+    {
+      "id": "pr-1792574863311-548",
+      "email": "rohan.test@btech.ac.in",
+      "token": "826170",
+      "expires_at": "2026-10-21T09:42:43.296Z",
+      "used": true,
+      "created_at": "2026-10-21T09:27:43.310Z"
     }
   ],
   "user_domain_progress": [
