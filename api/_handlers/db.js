@@ -1559,10 +1559,80 @@ const db = {
   },
 
   // Password Reset OTP Management
+  async checkPasswordResetCooldown(email, cooldownSeconds = 60) {
+    const normalized = (email || '').trim().toLowerCase();
+    const cutoff = new Date(Date.now() - cooldownSeconds * 1000).toISOString();
+
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        const { data } = await supabase
+          .from('password_resets')
+          .select('created_at')
+          .ilike('email', normalized)
+          .gt('created_at', cutoff)
+          .limit(1)
+          .maybeSingle();
+        if (data) return true;
+      } catch (e) {}
+    }
+
+    const p = initPool();
+    if (p) {
+      try {
+        await ensureSchema();
+        const res = await p.query(
+          `SELECT created_at FROM password_resets 
+           WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) 
+             AND created_at > ($2)::timestamptz 
+           LIMIT 1`,
+          [normalized, cutoff]
+        );
+        if (res.rows && res.rows.length > 0) return true;
+      } catch (e) {}
+    }
+
+    const store = getLocalStore();
+    if (store.password_resets && Array.isArray(store.password_resets)) {
+      const recent = store.password_resets.find(pr => 
+        pr.email && pr.email.toLowerCase() === normalized &&
+        new Date(pr.created_at).getTime() > (Date.now() - cooldownSeconds * 1000)
+      );
+      if (recent) return true;
+    }
+
+    return false;
+  },
+
+  async purgePasswordResets(email) {
+    const normalized = (email || '').trim().toLowerCase();
+
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        await supabase.from('password_resets').delete().ilike('email', normalized);
+      } catch (e) {}
+    }
+
+    const p = initPool();
+    if (p) {
+      try {
+        await ensureSchema();
+        await p.query('DELETE FROM password_resets WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))', [normalized]);
+      } catch (e) {}
+    }
+
+    const store = getLocalStore();
+    if (store.password_resets) {
+      store.password_resets = store.password_resets.filter(pr => !(pr.email && pr.email.toLowerCase() === normalized));
+      saveLocalStore(store);
+    }
+  },
+
   async createPasswordReset(email, token, expiresAt) {
     const normalized = (email || '').trim().toLowerCase();
-    const expiryDate = expiresAt || new Date(Date.now() + 15 * 60 * 1000); // 15 mins
-    const expiryIso = expiryDate.toISOString();
+    const expiryDate = expiresAt || new Date(Date.now() + 5 * 60 * 1000); // 5 mins strict
+    const expiryIso = expiryDate.toISOString ? expiryDate.toISOString() : new Date(expiryDate).toISOString();
     const nowIso = new Date().toISOString();
     const cleanToken = String(token || '').trim();
 
@@ -1570,21 +1640,19 @@ const db = {
     const supabase = getSupabaseClient();
     if (supabase) {
       try {
+        // Purge old codes for this email
         await supabase
           .from('password_resets')
-          .update({ used: true })
-          .ilike('email', normalized)
-          .eq('used', false);
+          .delete()
+          .ilike('email', normalized);
 
         const { data, error } = await supabase
           .from('password_resets')
-          .insert({
+          .insert([{
             email: normalized,
             token: cleanToken,
-            expires_at: expiryIso,
-            used: false,
-            created_at: nowIso
-          })
+            expires_at: expiryIso
+          }])
           .select()
           .maybeSingle();
 
@@ -1599,11 +1667,11 @@ const db = {
     if (p) {
       try {
         await ensureSchema();
-        // Invalidate previous unused reset tokens for this email
-        await p.query('UPDATE password_resets SET used = true WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) AND used = false', [normalized]);
+        // Delete previous tokens for this email
+        await p.query('DELETE FROM password_resets WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))', [normalized]);
         const res = await p.query(
-          `INSERT INTO password_resets (email, token, expires_at, used, created_at)
-           VALUES ($1, $2, ($3)::timestamptz, false, ($4)::timestamptz)
+          `INSERT INTO password_resets (email, token, expires_at, created_at)
+           VALUES ($1, $2, ($3)::timestamptz, ($4)::timestamptz)
            RETURNING *`,
           [normalized, cleanToken, expiryIso, nowIso]
         );
@@ -1617,17 +1685,12 @@ const db = {
     // 3. Local JSON Fallback Store
     const store = getLocalStore();
     if (!store.password_resets) store.password_resets = [];
-    store.password_resets.forEach(pr => {
-      if (pr.email && pr.email.toLowerCase() === normalized) {
-        pr.used = true;
-      }
-    });
+    store.password_resets = store.password_resets.filter(pr => !(pr.email && pr.email.toLowerCase() === normalized));
     const entry = {
       id: `pr-${Date.now()}-${Math.floor(Math.random()*1000)}`,
       email: normalized,
       token: cleanToken,
       expires_at: expiryIso,
-      used: false,
       created_at: nowIso
     };
     store.password_resets.push(entry);
@@ -1647,27 +1710,21 @@ const db = {
     const supabase = getSupabaseClient();
     if (supabase) {
       try {
-        const { data: record, error } = await supabase
+        const { data: record, error: fetchErr } = await supabase
           .from('password_resets')
           .select('*')
           .ilike('email', cleanEmail)
           .eq('token', cleanCode)
-          .eq('used', false)
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
 
-        if (record && !error) {
+        if (record && !fetchErr) {
           if (new Date(record.expires_at).getTime() < nowTime) {
             console.warn(`[RESET EXPIRED] Code expired for: ${cleanEmail}`);
-            return { success: false, error: 'Verification code has expired. Please request a new code.' };
+            await supabase.from('password_resets').delete().eq('id', record.id);
+            return { success: false, error: 'Verification code has expired (validity is 5 minutes). Please request a new code.' };
           }
-
-          // Mark token as used
-          await supabase
-            .from('password_resets')
-            .update({ used: true })
-            .eq('id', record.id);
 
           // Update user password
           const { data: userData, error: userError } = await supabase
@@ -1676,6 +1733,9 @@ const db = {
             .ilike('email', cleanEmail)
             .select('id, email, name')
             .maybeSingle();
+
+          // Immediately delete OTP from database upon successful reset
+          await supabase.from('password_resets').delete().eq('id', record.id);
 
           if (userData && !userError) {
             console.log(`[RESET SUCCESS] Verified and updated password in Supabase for: ${cleanEmail}`);
@@ -1696,7 +1756,6 @@ const db = {
           `SELECT * FROM password_resets 
            WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) 
              AND TRIM(token) = $2 
-             AND used = false 
            ORDER BY created_at DESC LIMIT 1`,
           [cleanEmail, cleanCode]
         );
@@ -1705,14 +1764,17 @@ const db = {
           const record = res.rows[0];
           if (new Date(record.expires_at).getTime() < nowTime) {
             console.warn(`[RESET EXPIRED] Code expired for: ${cleanEmail}`);
-            return { success: false, error: 'Verification code has expired. Please request a new code.' };
+            await p.query('DELETE FROM password_resets WHERE id = $1', [record.id]);
+            return { success: false, error: 'Verification code has expired (validity is 5 minutes). Please request a new code.' };
           }
 
-          await p.query('UPDATE password_resets SET used = true WHERE id = $1', [record.id]);
           const updateRes = await p.query(
             'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE LOWER(TRIM(email)) = LOWER(TRIM($2)) RETURNING id, email, name',
             [newPasswordHash, cleanEmail]
           );
+
+          // Immediately delete OTP from database upon successful reset
+          await p.query('DELETE FROM password_resets WHERE id = $1', [record.id]);
 
           if (updateRes.rows && updateRes.rows.length > 0) {
             console.log(`[RESET SUCCESS] Verified and updated password in Postgres for: ${cleanEmail}`);
@@ -1729,27 +1791,33 @@ const db = {
     // 3. Local JSON Store Check
     const store = getLocalStore();
     if (!store.password_resets) store.password_resets = [];
-    const entry = store.password_resets.slice().reverse().find(pr => 
+    const entryIndex = store.password_resets.slice().reverse().findIndex(pr => 
       pr.email && pr.email.toLowerCase() === cleanEmail &&
-      String(pr.token).trim() === cleanCode &&
-      !pr.used
+      String(pr.token).trim() === cleanCode
     );
 
-    if (!entry) {
-      console.warn(`[RESET FAIL] Code "${cleanCode}" not found or used for: ${cleanEmail}`);
+    if (entryIndex === -1) {
+      console.warn(`[RESET FAIL] Code "${cleanCode}" not found for: ${cleanEmail}`);
       return { success: false, error: 'Code not found. Please request a new code.' };
     }
 
+    const realIndex = store.password_resets.length - 1 - entryIndex;
+    const entry = store.password_resets[realIndex];
+
     if (new Date(entry.expires_at).getTime() < nowTime) {
       console.warn(`[RESET EXPIRED] Local code expired for: ${cleanEmail}`);
-      return { success: false, error: 'Verification code has expired. Please request a new code.' };
+      store.password_resets.splice(realIndex, 1);
+      saveLocalStore(store);
+      return { success: false, error: 'Verification code has expired (validity is 5 minutes). Please request a new code.' };
     }
 
-    entry.used = true;
+    // Delete immediately on success
+    store.password_resets.splice(realIndex, 1);
 
     // Update user in store
     const user = (store.users || []).find(u => u.email && u.email.toLowerCase() === cleanEmail);
     if (!user) {
+      saveLocalStore(store);
       return { success: false, error: 'User account not found.' };
     }
 

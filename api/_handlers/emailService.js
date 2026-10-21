@@ -90,7 +90,7 @@ async function sendVerificationEmail({ to, name = 'Student', pin, token, baseUrl
       </p>
       
       <div style="background: #1E293B; border: 2px dashed #008080; border-radius: 16px; padding: 24px; text-align: center; margin: 24px 0;">
-        <span style="font-family: monospace; font-size: 38px; font-weight: 900; letter-spacing: 8px; color: #2DD4BF;">${pin}</span>
+        <span style="font-family: monospace; font-size: 38px; font-weight: 900; letter-spacing: 8px; color: #2DD4BF; white-space: nowrap !important; word-break: keep-all;">${pin}</span>
         <p style="margin: 8px 0 0 0; font-size: 11px; color: #94A3B8;">This verification code expires in 15 minutes. Never share this code with anyone.</p>
       </div>
 
@@ -175,9 +175,24 @@ async function sendPasswordResetOtpEmail({ to, name = 'Student', code }) {
         We received a request to reset your password for your Campus2Career account. Enter the 6-digit verification code below to set a new password:
       </p>
       
-      <div style="background: #1E293B; border: 2px dashed #008080; border-radius: 16px; padding: 24px; text-align: center; margin: 24px 0;">
-        <span style="font-family: monospace; font-size: 38px; font-weight: 900; letter-spacing: 8px; color: #2DD4BF;">${code}</span>
-        <p style="margin: 8px 0 0 0; font-size: 11px; color: #94A3B8;">This verification code expires in 15 minutes. Never share this code with anyone.</p>
+      <div style="text-align: center; margin: 24px 0;">
+        <span style="
+          display: inline-block;
+          font-size: 32px;
+          font-weight: 700;
+          letter-spacing: 6px;
+          color: #22c55e;
+          background: rgba(34, 197, 94, 0.1);
+          padding: 12px 24px;
+          border-radius: 8px;
+          border: 1px solid rgba(34, 197, 94, 0.25);
+          white-space: nowrap !important;
+          word-break: keep-all;
+          font-family: 'Courier New', Courier, monospace;
+        ">
+          ${code}
+        </span>
+        <p style="margin: 12px 0 0 0; font-size: 11px; color: #94A3B8;">This verification code expires in 5 minutes. Never share this code with anyone.</p>
       </div>
 
       <p style="margin: 28px 0 0 0; font-size: 12px; color: #64748B; border-top: 1px solid #1E293B; padding-top: 16px;">
@@ -187,7 +202,7 @@ async function sendPasswordResetOtpEmail({ to, name = 'Student', code }) {
   </div>
   `;
 
-  const textContent = `Hello ${name},\n\nYour 6-digit Campus2Career password reset code is: ${code}\n\nThis code expires in 15 minutes.\n\nIf you did not request this, please ignore this email.`;
+  const textContent = `Hello ${name},\n\nYour 6-digit Campus2Career password reset code is: ${code}\n\nThis code expires in 5 minutes.\n\nIf you did not request this, please ignore this email.`;
 
   console.log(`[RESET ATTEMPT] Initiating OTP send for: ${to}`);
   console.log(`[PASSWORD RESET OTP]: ${code} for ${to}`);

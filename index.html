@@ -30899,6 +30899,7 @@ function onWizardBranchChanged(branchKey) {
         if (modalTitle) modalTitle.innerText = "Reset Your Password";
         if (upTab) upTab.className = "py-2.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all font-semibold";
         if (inTab) inTab.className = "py-2.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all font-semibold";
+        updateForgotPasswordCooldownUI();
         return;
       }
 
@@ -30948,13 +30949,69 @@ function onWizardBranchChanged(branchKey) {
       alertEl.classList.remove('hidden');
     }
 
+    // 60-Second Cooldown Timer State for Forgot Password Modal
+    let forgotPasswordCooldown = 0;
+    let forgotPasswordCooldownTimer = null;
+
+    function setCooldown(seconds) {
+      forgotPasswordCooldown = seconds;
+      updateForgotPasswordCooldownUI();
+
+      if (forgotPasswordCooldownTimer) {
+        clearTimeout(forgotPasswordCooldownTimer);
+        forgotPasswordCooldownTimer = null;
+      }
+
+      function tick() {
+        if (forgotPasswordCooldown > 0) {
+          forgotPasswordCooldownTimer = setTimeout(() => {
+            forgotPasswordCooldown--;
+            updateForgotPasswordCooldownUI();
+            tick();
+          }, 1000);
+        } else {
+          forgotPasswordCooldown = 0;
+          updateForgotPasswordCooldownUI();
+        }
+      }
+
+      if (seconds > 0) {
+        tick();
+      }
+    }
+
+    function updateForgotPasswordCooldownUI() {
+      const btn = document.getElementById('forgotSendCodeBtn');
+      if (!btn) return;
+      if (forgotPasswordCooldown > 0) {
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+        btn.innerText = `Resend in ${forgotPasswordCooldown}s`;
+      } else {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        const otpSection = document.getElementById('forgotOtpSection');
+        const hasSent = Boolean(pendingResetEmail || (otpSection && !otpSection.classList.contains('hidden')));
+        btn.innerText = hasSent ? "Resend Code" : "Send Code";
+      }
+    }
+
     async function sendPasswordResetEmail() {
+      if (forgotPasswordCooldown > 0) return;
+
       const emailInput = document.getElementById('forgotEmailInput');
       const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
       if (!email) {
         showAuthAlert("Please enter your registered email address.");
         triggerAlertShake('authStatusAlert');
         return;
+      }
+
+      const btn = document.getElementById('forgotSendCodeBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+        btn.innerText = 'Sending...';
       }
 
       showAuthAlert("Contacting security server & verifying account...", true);
@@ -30968,6 +31025,11 @@ function onWizardBranchChanged(branchKey) {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok || !data.success) {
+          if (response.status === 429) {
+            setCooldown(60);
+          } else {
+            updateForgotPasswordCooldownUI();
+          }
           showAuthAlert(data.error || "No account found matching this email address.");
           triggerAlertShake('authStatusAlert');
           return;
@@ -30977,7 +31039,10 @@ function onWizardBranchChanged(branchKey) {
         const otpSection = document.getElementById('forgotOtpSection');
         if (otpSection) otpSection.classList.remove('hidden');
 
-        showAuthAlert(`✓ Verification email sent to ${email}! Check your Gmail inbox or spam folder for your 6-digit reset code.`, true);
+        // Initiate 60-second cooldown timer
+        setCooldown(60);
+
+        showAuthAlert(`✓ Verification email sent to ${email}! Check your Gmail inbox or spam folder for your 6-digit reset code (valid for 5 minutes).`, true);
         const otpInput = document.getElementById('forgotOtpInput');
         if (otpInput) {
           otpInput.value = '';
@@ -30985,6 +31050,7 @@ function onWizardBranchChanged(branchKey) {
         }
       } catch (err) {
         console.error('[Forgot Password Error]', err);
+        updateForgotPasswordCooldownUI();
         showAuthAlert("Network error while requesting password reset. Please try again.");
         triggerAlertShake('authStatusAlert');
       }
@@ -31038,12 +31104,16 @@ function onWizardBranchChanged(branchKey) {
         } catch (e) {}
 
         showAuthAlert("✓ Password reset successfully! You can now log in.", true);
+        setCooldown(0);
+        const resetEmailCopy = pendingResetEmail;
+        pendingResetEmail = null;
+
         setTimeout(() => {
           switchAuthTab('signin');
           const passInput = document.getElementById('authPassInput');
           if (passInput) passInput.value = newPass;
           const emailInput = document.getElementById('authEmailInput');
-          if (emailInput && pendingResetEmail) emailInput.value = pendingResetEmail;
+          if (emailInput && resetEmailCopy) emailInput.value = resetEmailCopy;
         }, 1200);
       } catch (err) {
         console.error('[Reset Password Error]', err);
