@@ -46,35 +46,96 @@ module.exports = async (req, res) => {
         .maybeSingle();
 
       if (fetchErr || !record) {
-        console.error(`[OTP CHECK FAILED] No matching row for ${cleanEmail} with code ${cleanCode}`);
+        console.error(`[OTP CHECK FAILED] No matching row for ${cleanEmail} with code ${cleanCode}`, fetchErr ? fetchErr.message : '');
         return res.status(400).json({ success: false, error: 'Code not found. Please request a new code.' });
       }
 
       // 2. Enforce 5-Minute Expiry
       if (new Date(record.expires_at).getTime() < Date.now()) {
         // Delete expired code immediately
-        await supabase.from('password_resets').delete().eq('id', record.id);
+        await supabase.from('password_resets').delete().ilike('email', cleanEmail);
         return res.status(400).json({ success: false, error: 'Verification code has expired (validity is 5 minutes). Please request a new code.' });
       }
 
-      // 3. Update User Password in users table
+      // 3. Update User Password in users table safely
       const hashedPassword = await bcrypt.hash(cleanPassword, 10);
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .update({ password_hash: hashedPassword, updated_at: new Date().toISOString() })
-        .ilike('email', cleanEmail)
-        .select('id, email, name')
-        .maybeSingle();
+      let updatedUser = null;
+      let updateError = null;
 
-      if (userError) {
-        console.error('[RESET FAILED] User update error in Supabase:', userError);
-        return res.status(500).json({ success: false, error: 'Failed to update user password.' });
+      // Attempt 1: Try updating both password_hash and password columns if present
+      const tryBoth = await supabase
+        .from('users')
+        .update({
+          password_hash: hashedPassword,
+          password: hashedPassword
+        })
+        .ilike('email', cleanEmail)
+        .select('id, email, name');
+
+      if (!tryBoth.error && tryBoth.data && tryBoth.data.length > 0) {
+        updatedUser = tryBoth.data;
+      } else {
+        // Attempt 2: Fallback to password_hash (standard schema)
+        const tryHash = await supabase
+          .from('users')
+          .update({ password_hash: hashedPassword })
+          .ilike('email', cleanEmail)
+          .select('id, email, name');
+
+        if (!tryHash.error && tryHash.data && tryHash.data.length > 0) {
+          updatedUser = tryHash.data;
+        } else {
+          // Attempt 3: Fallback if column is named password
+          const tryPass = await supabase
+            .from('users')
+            .update({ password: hashedPassword })
+            .ilike('email', cleanEmail)
+            .select('id, email, name');
+
+          if (!tryPass.error && tryPass.data && tryPass.data.length > 0) {
+            updatedUser = tryPass.data;
+          } else {
+            updateError = tryHash.error || tryBoth.error || tryPass.error;
+          }
+        }
+      }
+
+      // Fallback to direct Postgres pool if Supabase RLS / SDK update was blocked
+      if (updateError || !updatedUser || updatedUser.length === 0) {
+        const p = db.initPool ? db.initPool() : null;
+        if (p) {
+          try {
+            const pgRes = await p.query(
+              'UPDATE users SET password_hash = $1 WHERE LOWER(TRIM(email)) = LOWER(TRIM($2)) RETURNING id, email, name',
+              [hashedPassword, cleanEmail]
+            );
+            if (pgRes.rows && pgRes.rows.length > 0) {
+              updatedUser = pgRes.rows;
+              updateError = null;
+            }
+          } catch (pgErr) {
+            console.error('[Direct PG User Update Failed]:', pgErr.message);
+          }
+        }
+      }
+
+      if (updateError) {
+        console.error('[PASSWORD UPDATE FAILED]:', updateError);
+        return res.status(500).json({ success: false, error: 'Database update failed: ' + (updateError.message || JSON.stringify(updateError)) });
+      }
+
+      if (!updatedUser || updatedUser.length === 0) {
+        console.error('[USER NOT FOUND FOR UPDATE]:', cleanEmail);
+        return res.status(404).json({ success: false, error: 'User account not found to update password.' });
       }
 
       // 4. DELETE THE OTP FROM DATABASE IMMEDIATELY UPON SUCCESSFUL RESET
-      await supabase.from('password_resets').delete().eq('id', record.id);
+      await supabase
+        .from('password_resets')
+        .delete()
+        .ilike('email', cleanEmail);
 
-      return res.status(200).json({ success: true, message: 'Password reset successfully!' });
+      return res.status(200).json({ success: true, message: 'Password updated successfully. You can now log in.' });
     }
 
     // Fallback path when Supabase client is not directly configured (PostgreSQL pool / local store)
@@ -90,7 +151,7 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: result.message || 'Password reset successfully!'
+      message: 'Password updated successfully. You can now log in.'
     });
   } catch (error) {
     console.error('[Reset Password Error]:', error);

@@ -31103,18 +31103,21 @@ function onWizardBranchChanged(branchKey) {
           }
         } catch (e) {}
 
-        showAuthAlert("✓ Password reset successfully! You can now log in.", true);
+        const successMsg = data.message || "Password updated successfully. You can now log in.";
+        if (typeof showToast === 'function') {
+          showToast(successMsg);
+        }
+        showAuthAlert("✓ " + successMsg, true);
         setCooldown(0);
         const resetEmailCopy = pendingResetEmail;
         pendingResetEmail = null;
 
-        setTimeout(() => {
-          switchAuthTab('signin');
-          const passInput = document.getElementById('authPassInput');
-          if (passInput) passInput.value = newPass;
-          const emailInput = document.getElementById('authEmailInput');
-          if (emailInput && resetEmailCopy) emailInput.value = resetEmailCopy;
-        }, 1200);
+        // Immediately redirect to the Log In view
+        switchAuthTab('signin');
+        const passInput = document.getElementById('authPassInput');
+        if (passInput) passInput.value = newPass;
+        const emailInput = document.getElementById('authEmailInput');
+        if (emailInput && resetEmailCopy) emailInput.value = resetEmailCopy;
       } catch (err) {
         console.error('[Reset Password Error]', err);
         showAuthAlert("Network error while resetting password. Please try again.");

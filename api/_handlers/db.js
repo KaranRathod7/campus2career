@@ -1726,16 +1726,31 @@ const db = {
             return { success: false, error: 'Verification code has expired (validity is 5 minutes). Please request a new code.' };
           }
 
-          // Update user password
-          const { data: userData, error: userError } = await supabase
+          // Update user password safely
+          let userData = null;
+          let userError = null;
+          const res1 = await supabase
             .from('users')
-            .update({ password_hash: newPasswordHash, updated_at: nowIso })
+            .update({ password_hash: newPasswordHash })
             .ilike('email', cleanEmail)
-            .select('id, email, name')
-            .maybeSingle();
+            .select('id, email, name');
+          if (!res1.error && res1.data && res1.data.length > 0) {
+            userData = res1.data[0];
+          } else {
+            const res2 = await supabase
+              .from('users')
+              .update({ password: newPasswordHash })
+              .ilike('email', cleanEmail)
+              .select('id, email, name');
+            if (!res2.error && res2.data && res2.data.length > 0) {
+              userData = res2.data[0];
+            } else {
+              userError = res1.error || res2.error;
+            }
+          }
 
           // Immediately delete OTP from database upon successful reset
-          await supabase.from('password_resets').delete().eq('id', record.id);
+          await supabase.from('password_resets').delete().ilike('email', cleanEmail);
 
           if (userData && !userError) {
             console.log(`[RESET SUCCESS] Verified and updated password in Supabase for: ${cleanEmail}`);
@@ -1769,12 +1784,12 @@ const db = {
           }
 
           const updateRes = await p.query(
-            'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE LOWER(TRIM(email)) = LOWER(TRIM($2)) RETURNING id, email, name',
+            'UPDATE users SET password_hash = $1 WHERE LOWER(TRIM(email)) = LOWER(TRIM($2)) RETURNING id, email, name',
             [newPasswordHash, cleanEmail]
           );
 
           // Immediately delete OTP from database upon successful reset
-          await p.query('DELETE FROM password_resets WHERE id = $1', [record.id]);
+          await p.query('DELETE FROM password_resets WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))', [cleanEmail]);
 
           if (updateRes.rows && updateRes.rows.length > 0) {
             console.log(`[RESET SUCCESS] Verified and updated password in Postgres for: ${cleanEmail}`);
