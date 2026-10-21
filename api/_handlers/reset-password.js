@@ -20,11 +20,12 @@ module.exports = async (req, res) => {
 
   try {
     const { email, code, otp, newPassword } = req.body || {};
-    const normalizedEmail = (email || '').trim().toLowerCase();
-    const cleanCode = (code || otp || '').trim();
-    const cleanPassword = (newPassword || '').trim();
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const rawCode = (code !== undefined && code !== null) ? code : otp;
+    const cleanCode = String(rawCode || '').trim();
+    const cleanPassword = String(newPassword || '').trim();
 
-    if (!normalizedEmail || !cleanCode) {
+    if (!cleanEmail || !cleanCode) {
       return res.status(400).json({ success: false, error: 'Email and verification code are required.' });
     }
 
@@ -36,7 +37,7 @@ module.exports = async (req, res) => {
     const hashedPassword = await bcrypt.hash(cleanPassword, 10);
 
     // Verify OTP and update password
-    const result = await db.verifyAndUsePasswordReset(normalizedEmail, cleanCode, hashedPassword);
+    const result = await db.verifyAndUsePasswordReset(cleanEmail, cleanCode, hashedPassword);
 
     if (!result.success) {
       return res.status(400).json({
@@ -47,7 +48,7 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Password reset successfully! You can now log in.'
+      message: result.message || 'Password reset successful!'
     });
   } catch (error) {
     console.error('[Reset Password Error]:', error);

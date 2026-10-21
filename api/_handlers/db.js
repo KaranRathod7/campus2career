@@ -1636,12 +1636,12 @@ const db = {
   },
 
   async verifyAndUsePasswordReset(email, token, newPasswordHash) {
-    const normalized = (email || '').trim().toLowerCase();
-    const cleanToken = String(token || '').trim();
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanCode = String(token || '').trim();
     const nowIso = new Date().toISOString();
     const nowTime = Date.now();
 
-    console.log(`[RESET VERIFY ATTEMPT] Verifying code for email: "${normalized}", token: "${cleanToken}"`);
+    console.log(`[RESET VERIFY ATTEMPT] Verifying code for email: "${cleanEmail}", token: "${cleanCode}"`);
 
     // 1. Supabase Client Check (if configured)
     const supabase = getSupabaseClient();
@@ -1650,15 +1650,19 @@ const db = {
         const { data: record, error } = await supabase
           .from('password_resets')
           .select('*')
-          .ilike('email', normalized)
-          .eq('token', cleanToken)
+          .ilike('email', cleanEmail)
+          .eq('token', cleanCode)
           .eq('used', false)
-          .gte('expires_at', nowIso)
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
 
         if (record && !error) {
+          if (new Date(record.expires_at).getTime() < nowTime) {
+            console.warn(`[RESET EXPIRED] Code expired for: ${cleanEmail}`);
+            return { success: false, error: 'Verification code has expired. Please request a new code.' };
+          }
+
           // Mark token as used
           await supabase
             .from('password_resets')
@@ -1669,13 +1673,13 @@ const db = {
           const { data: userData, error: userError } = await supabase
             .from('users')
             .update({ password_hash: newPasswordHash, updated_at: nowIso })
-            .ilike('email', normalized)
+            .ilike('email', cleanEmail)
             .select('id, email, name')
             .maybeSingle();
 
           if (userData && !userError) {
-            console.log(`[RESET SUCCESS] Verified and updated password in Supabase for: ${normalized}`);
-            return { success: true, user: userData };
+            console.log(`[RESET SUCCESS] Verified and updated password in Supabase for: ${cleanEmail}`);
+            return { success: true, message: 'Password reset successful!', user: userData };
           }
         }
       } catch (err) {
@@ -1693,22 +1697,26 @@ const db = {
            WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) 
              AND TRIM(token) = $2 
              AND used = false 
-             AND (expires_at >= ($3)::timestamptz OR expires_at >= NOW())
            ORDER BY created_at DESC LIMIT 1`,
-          [normalized, cleanToken, nowIso]
+          [cleanEmail, cleanCode]
         );
 
         if (res.rows && res.rows.length > 0) {
-          const resetRecord = res.rows[0];
-          await p.query('UPDATE password_resets SET used = true WHERE id = $1', [resetRecord.id]);
+          const record = res.rows[0];
+          if (new Date(record.expires_at).getTime() < nowTime) {
+            console.warn(`[RESET EXPIRED] Code expired for: ${cleanEmail}`);
+            return { success: false, error: 'Verification code has expired. Please request a new code.' };
+          }
+
+          await p.query('UPDATE password_resets SET used = true WHERE id = $1', [record.id]);
           const updateRes = await p.query(
             'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE LOWER(TRIM(email)) = LOWER(TRIM($2)) RETURNING id, email, name',
-            [newPasswordHash, normalized]
+            [newPasswordHash, cleanEmail]
           );
 
           if (updateRes.rows && updateRes.rows.length > 0) {
-            console.log(`[RESET SUCCESS] Verified and updated password in Postgres for: ${normalized}`);
-            return { success: true, user: updateRes.rows[0] };
+            console.log(`[RESET SUCCESS] Verified and updated password in Postgres for: ${cleanEmail}`);
+            return { success: true, message: 'Password reset successful!', user: updateRes.rows[0] };
           }
           return { success: false, error: 'User account not found.' };
         }
@@ -1721,22 +1729,26 @@ const db = {
     // 3. Local JSON Store Check
     const store = getLocalStore();
     if (!store.password_resets) store.password_resets = [];
-    const entry = store.password_resets.find(pr => 
-      pr.email && pr.email.toLowerCase() === normalized &&
-      String(pr.token).trim() === cleanToken &&
-      !pr.used &&
-      (new Date(pr.expires_at).getTime() >= (nowTime - 60000))
+    const entry = store.password_resets.slice().reverse().find(pr => 
+      pr.email && pr.email.toLowerCase() === cleanEmail &&
+      String(pr.token).trim() === cleanCode &&
+      !pr.used
     );
 
     if (!entry) {
-      console.warn(`[RESET FAIL] Code "${cleanToken}" not found, used, or expired for: ${normalized}`);
-      return { success: false, error: 'Invalid or expired verification code. Please request a new code.' };
+      console.warn(`[RESET FAIL] Code "${cleanCode}" not found or used for: ${cleanEmail}`);
+      return { success: false, error: 'Code not found. Please request a new code.' };
+    }
+
+    if (new Date(entry.expires_at).getTime() < nowTime) {
+      console.warn(`[RESET EXPIRED] Local code expired for: ${cleanEmail}`);
+      return { success: false, error: 'Verification code has expired. Please request a new code.' };
     }
 
     entry.used = true;
 
     // Update user in store
-    const user = (store.users || []).find(u => u.email && u.email.toLowerCase() === normalized);
+    const user = (store.users || []).find(u => u.email && u.email.toLowerCase() === cleanEmail);
     if (!user) {
       return { success: false, error: 'User account not found.' };
     }
@@ -1745,8 +1757,8 @@ const db = {
     user.updated_at = nowIso;
     saveLocalStore(store);
 
-    console.log(`[RESET SUCCESS] Verified and updated password in local store for: ${normalized}`);
-    return { success: true, user: { id: user.id, email: user.email, name: user.name } };
+    console.log(`[RESET SUCCESS] Verified and updated password in local store for: ${cleanEmail}`);
+    return { success: true, message: 'Password reset successful!', user: { id: user.id, email: user.email, name: user.name } };
   },
 
   async getPasswordReset(email) {
@@ -3071,24 +3083,41 @@ const db = {
   },
 
   // Sync / Upsert Student Skill Progress
-  async syncStudentSkills({ user_id, user_email, skills }) {
+  async syncStudentSkills({ user_id, user_email, stream, skills }) {
     if (!skills) return [];
     const skillList = Array.isArray(skills) ? skills : [skills];
     const p = initPool();
     const synced = [];
 
     let resolvedUserId = user_id;
+    let resolvedStream = stream;
     if (p) {
       try {
         await ensureSchema();
         if (!resolvedUserId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(resolvedUserId))) {
           if (user_email) {
-            const uRes = await p.query('SELECT id FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) LIMIT 1', [user_email.trim().toLowerCase()]);
-            if (uRes.rows[0]) resolvedUserId = uRes.rows[0].id;
+            const uRes = await p.query('SELECT id, stream FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) LIMIT 1', [user_email.trim().toLowerCase()]);
+            if (uRes.rows[0]) {
+              resolvedUserId = uRes.rows[0].id;
+              if (!resolvedStream && uRes.rows[0].stream) resolvedStream = uRes.rows[0].stream;
+            }
           }
         }
 
         const validUuid = (resolvedUserId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(resolvedUserId))) ? String(resolvedUserId) : null;
+
+        // Wipe previous stream skills for this user to ensure discipline stream isolation
+        if (validUuid) {
+          await p.query('DELETE FROM student_skill_progress WHERE user_id = $1', [validUuid]);
+          const sb = getSupabaseClient();
+          if (sb) {
+            try {
+              await sb.from('student_skill_progress').delete().eq('user_id', validUuid);
+            } catch (sbDelErr) {
+              console.warn('[Supabase Skill Wipe Warning]:', sbDelErr.message);
+            }
+          }
+        }
 
         for (const s of skillList) {
           const skillName = (s.skill_name || s.name || '').trim();
@@ -3108,22 +3137,18 @@ const db = {
                  user_id, skill_id, skill_name, category, base_percentage, total_score, status, lectures_completed, current_milestone, next_milestone, updated_at
                )
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
-               ON CONFLICT (user_id, skill_name) 
-               DO UPDATE SET 
-                 skill_id = EXCLUDED.skill_id,
-                 category = EXCLUDED.category,
-                 base_percentage = EXCLUDED.base_percentage,
-                 total_score = EXCLUDED.total_score,
-                 status = EXCLUDED.status,
-                 lectures_completed = GREATEST(student_skill_progress.lectures_completed, EXCLUDED.lectures_completed),
-                 current_milestone = COALESCE(EXCLUDED.current_milestone, student_skill_progress.current_milestone),
-                 next_milestone = COALESCE(EXCLUDED.next_milestone, student_skill_progress.next_milestone),
-                 updated_at = NOW()
                RETURNING *;`,
               [validUuid, skillId, skillName, category, basePct, totalScore, status, lecturesCompleted, currentMilestone, nextMilestone]
             );
             if (res.rows[0]) synced.push(res.rows[0]);
           }
+        }
+
+        // If stream was passed or resolved, keep user and candidate stream synchronized
+        if (validUuid && resolvedStream) {
+          const cleanStreamKey = resolveStreamKey(resolvedStream);
+          await p.query('UPDATE users SET stream = $1, branch = $2 WHERE id = $3', [cleanStreamKey.toUpperCase(), cleanStreamKey, validUuid]);
+          await p.query('UPDATE candidates SET stream = $1, skills = $2 WHERE user_id = $3', [cleanStreamKey.toUpperCase(), skillList.map(s => s.skill_name || s.name), validUuid]);
         }
 
         if (synced.length > 0) return synced;
@@ -3139,6 +3164,11 @@ const db = {
     const normEmail = (user_email || '').trim().toLowerCase();
     const effectiveUserId = resolvedUserId || user_id || (normEmail ? `usr-${normEmail}` : 'usr-default');
 
+    // Wipe previous skills for this user in local store as well
+    store.student_skill_progress = store.student_skill_progress.filter(item => 
+      item.user_id !== effectiveUserId && (item.user_email ? item.user_email.toLowerCase() !== normEmail : true)
+    );
+
     for (const s of skillList) {
       const skillName = (s.skill_name || s.name || '').trim();
       if (!skillName) continue;
@@ -3151,41 +3181,33 @@ const db = {
       const nextMilestone = (s.next_milestone || s.nextMilestone || 'Production architecture & high-throughput concurrency').trim();
       const lecturesCompleted = Math.max(0, parseInt(s.lectures_completed || 0, 10));
 
-      let existing = store.student_skill_progress.find(item => 
-        (item.user_id === effectiveUserId || (item.user_email && item.user_email === normEmail)) &&
-        item.skill_name.toLowerCase() === skillName.toLowerCase()
-      );
+      const newItem = {
+        id: `ssp-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        user_id: effectiveUserId,
+        user_email: normEmail,
+        skill_id: skillId,
+        skill_name: skillName,
+        category,
+        base_percentage: basePct,
+        total_score: totalScore,
+        status,
+        lectures_completed: lecturesCompleted,
+        current_milestone: currentMilestone,
+        next_milestone: nextMilestone,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      store.student_skill_progress.push(newItem);
+      synced.push(newItem);
+    }
 
-      if (existing) {
-        existing.skill_id = skillId;
-        existing.category = category;
-        existing.base_percentage = basePct;
-        existing.total_score = totalScore;
-        existing.status = status;
-        existing.lectures_completed = Math.max(existing.lectures_completed || 0, lecturesCompleted);
-        existing.current_milestone = currentMilestone || existing.current_milestone;
-        existing.next_milestone = nextMilestone || existing.next_milestone;
-        existing.updated_at = new Date().toISOString();
-        synced.push(existing);
-      } else {
-        const newItem = {
-          id: `ssp-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          user_id: effectiveUserId,
-          user_email: normEmail,
-          skill_id: skillId,
-          skill_name: skillName,
-          category,
-          base_percentage: basePct,
-          total_score: totalScore,
-          status,
-          lectures_completed: lecturesCompleted,
-          current_milestone: currentMilestone,
-          next_milestone: nextMilestone,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        store.student_skill_progress.push(newItem);
-        synced.push(newItem);
+    if (resolvedStream && normEmail) {
+      const cleanStreamKey = resolveStreamKey(resolvedStream);
+      const u = (store.users || []).find(usr => usr.email.toLowerCase() === normEmail);
+      if (u) {
+        u.stream = cleanStreamKey.toUpperCase();
+        u.branch = cleanStreamKey;
+        u.skills = skillList.map(s => s.skill_name || s.name);
       }
     }
 
@@ -3240,6 +3262,13 @@ const db = {
         await ensureSchema();
         const validUuid = (resolvedUserId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(resolvedUserId))) ? String(resolvedUserId) : null;
         if (validUuid) {
+          // Wipe previous skills for this user to avoid stream mixing
+          await p.query('DELETE FROM student_skill_progress WHERE user_id = $1', [validUuid]);
+          const sb = getSupabaseClient();
+          if (sb) {
+            try { await sb.from('student_skill_progress').delete().eq('user_id', validUuid); } catch (_) {}
+          }
+
           for (const s of defaultSkills) {
             await p.query(
               `INSERT INTO student_skill_progress (
@@ -3270,48 +3299,46 @@ const db = {
           }
         }
       } catch (err) {
-        console.warn('[Campus2Career DB] Cloud autoSeedStudentSkills notice:', err.message);
+        console.warn('[Campus2Career DB] Cloud autoSeed notice (falling back to local):', err.message);
       }
     }
 
-    // In-memory local fallback store
+    // Local fallback store
     const store = getLocalStore();
     if (!store.student_skill_progress) store.student_skill_progress = [];
-    if (!store.candidates) store.candidates = [];
-
     const normEmail = (user_email || '').trim().toLowerCase();
     const effectiveUserId = resolvedUserId || user_id || (normEmail ? `usr-${normEmail}` : 'usr-default');
-    const result = [];
 
+    // Wipe previous skills for this user in local store
+    store.student_skill_progress = store.student_skill_progress.filter(item => 
+      item.user_id !== effectiveUserId && (item.user_email ? item.user_email.toLowerCase() !== normEmail : true)
+    );
+
+    const seededLocal = [];
     for (const s of defaultSkills) {
-      let existing = store.student_skill_progress.find(item => 
-        (item.user_id === effectiveUserId || (item.user_email && item.user_email === normEmail)) &&
-        item.skill_name.toLowerCase() === s.name.toLowerCase()
-      );
-      if (!existing) {
-        existing = {
-          id: `ssp-${Date.now()}-${s.id}`,
-          user_id: effectiveUserId,
-          user_email: normEmail || null,
-          skill_id: s.id,
-          skill_name: s.name,
-          category: s.category,
-          base_percentage: base_percentage,
-          diagnostic_score: 0,
-          lecture_score: 0,
-          marathon_score: 0,
-          total_score: base_percentage,
-          latest_exam_score: 0,
-          status: 'UNVERIFIED BASELINE',
-          verified: false,
-          current_milestone: s.current_milestone,
-          next_milestone: s.next_milestone,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        store.student_skill_progress.push(existing);
-      }
-      result.push(existing);
+      const newItem = {
+        id: `ssp-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        user_id: effectiveUserId,
+        user_email: normEmail,
+        skill_id: s.id,
+        skill_name: s.name,
+        category: s.category || 'Core Skill',
+        base_percentage: base_percentage,
+        diagnostic_score: 0,
+        lecture_score: 0,
+        marathon_score: 0,
+        total_score: base_percentage,
+        latest_exam_score: 0,
+        status: 'UNVERIFIED BASELINE',
+        verified: false,
+        lectures_completed: 0,
+        current_milestone: s.current_milestone,
+        next_milestone: s.next_milestone,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      store.student_skill_progress.push(newItem);
+      seededLocal.push(newItem);
     }
 
     if (store.candidates) {
@@ -3332,11 +3359,14 @@ const db = {
           created_at: new Date().toISOString()
         };
         store.candidates.push(cand);
+      } else {
+        cand.stream = streamKey.toUpperCase();
+        cand.skills = defaultSkills.map(s => s.name);
       }
     }
 
     saveLocalStore(store);
-    return result;
+    return seededLocal;
   },
 
   // Get Persisted Student Skill Progress (Auto-initializes if empty)
@@ -3383,6 +3413,20 @@ const db = {
              ORDER BY skill_name ASC`,
             [validUuid]
           );
+          // Stream Sanitization: If user is non-IT, check if existing rows are stale auto-seeded IT skills
+          if (resolvedStream) {
+            const streamKey = resolveStreamKey(resolvedStream);
+            const itSkillNames = new Set(['Java & Multithreading', 'Spring Boot & Microservices', 'PostgreSQL & SQL Tuning', 'Docker & Containers', 'Production Debugging']);
+            if (streamKey !== 'it' && res.rows && res.rows.length > 0 && res.rows.every(r => itSkillNames.has(r.skill_name))) {
+              console.log(`[STREAM ISOLATION] User ${validUuid} is registered as ${streamKey} but has stale default IT skills. Auto-re-seeding ${streamKey}...`);
+              return await this.autoSeedStudentSkills({
+                user_id: validUuid,
+                user_email,
+                stream: resolvedStream
+              });
+            }
+          }
+
           if (res.rows && res.rows.length > 0) {
             return res.rows;
           }
@@ -3415,6 +3459,18 @@ const db = {
       (effectiveUserId && item.user_id === effectiveUserId) ||
       (normEmail && item.user_email && item.user_email === normEmail)
     );
+
+    if (resolvedStream) {
+      const streamKey = resolveStreamKey(resolvedStream);
+      const itSkillNames = new Set(['Java & Multithreading', 'Spring Boot & Microservices', 'PostgreSQL & SQL Tuning', 'Docker & Containers', 'Production Debugging']);
+      if (streamKey !== 'it' && skills.length > 0 && skills.every(r => itSkillNames.has(r.skill_name))) {
+        return await this.autoSeedStudentSkills({
+          user_id: effectiveUserId,
+          user_email: normEmail,
+          stream: resolvedStream
+        });
+      }
+    }
 
     if (skills.length === 0 && (effectiveUserId || normEmail)) {
       if (resolvedStream) {

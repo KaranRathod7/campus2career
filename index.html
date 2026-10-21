@@ -24830,11 +24830,39 @@ function getActiveDomainKey() {
       updateActiveStudentHeaderBadge();
 
       // Check if current stack belongs to this stream, if not apply new preset stack
+      const streamSkillNames = new Set((stream.allSkills || []).map(s => (s.name || '').toLowerCase()));
+      const streamSkillIds = new Set((stream.allSkills || []).map(s => (s.id || '').toLowerCase()));
+      if (stream.presets) {
+        Object.values(stream.presets).forEach(p => {
+          (p.skills || []).forEach(ps => {
+            if (ps.name) streamSkillNames.add(ps.name.toLowerCase());
+            if (ps.id) streamSkillIds.add(ps.id.toLowerCase());
+          });
+        });
+      }
+
       if (!preserveCurrentStack) {
-        const firstSkill = appState.currentStack && appState.currentStack[0];
-        const streamSkillIds = new Set((stream.allSkills || []).map(s => s.id));
-        const isStackValidForStream = firstSkill && streamSkillIds.has(firstSkill.id);
+        const isStackValidForStream = Array.isArray(appState.currentStack) && appState.currentStack.length > 0 &&
+          appState.currentStack.some(s => streamSkillIds.has((s.id || '').toLowerCase()) || streamSkillNames.has((s.name || '').toLowerCase()));
         if (!isStackValidForStream) {
+          applyPresetStack(defPresetKey);
+        } else {
+          // Purge any leaked cross-stream skills (e.g. IT skills leaking into Mechanical)
+          appState.currentStack = appState.currentStack.filter(s => 
+            streamSkillIds.has((s.id || '').toLowerCase()) || streamSkillNames.has((s.name || '').toLowerCase())
+          );
+          if (appState.currentStack.length === 0) {
+            applyPresetStack(defPresetKey);
+          }
+        }
+      } else if (Array.isArray(appState.currentStack) && appState.currentStack.length > 0) {
+        // Even when preserving stack, purge any leaked cross-stream skills
+        const filtered = appState.currentStack.filter(s => 
+          streamSkillIds.has((s.id || '').toLowerCase()) || streamSkillNames.has((s.name || '').toLowerCase())
+        );
+        if (filtered.length >= 2) {
+          appState.currentStack = filtered;
+        } else {
           applyPresetStack(defPresetKey);
         }
       }
@@ -25438,40 +25466,54 @@ function renderLearnerMarketPulse(targetDomainKey = null) {
 /* ========================================================================= */
 
 function getWizardActiveStreamKey() {
+  let raw = null;
+  if (appState.user && (appState.user.stream || appState.user.branch)) {
+    raw = appState.user.stream || appState.user.branch;
+  }
+  if (!raw && appState.selectedStream) {
+    raw = appState.selectedStream;
+  }
   const obBranchEl = document.getElementById('obBranch');
-  let b = (obBranchEl && obBranchEl.value) || appState.selectedStream;
-  if (!b && appState.user && appState.user.branch) b = appState.user.branch;
-  if (b === 'mech') b = 'mechanical';
-  if (!b || !STREAM_DATA[b]) b = 'it';
-  return b;
+  if (!raw && obBranchEl && obBranchEl.value) {
+    raw = obBranchEl.value;
+  }
+  return normalizeStreamKey(raw || 'mechanical');
 }
 
 function onWizardBranchChanged(branchKey) {
-  if (!STREAM_DATA[branchKey]) return;
-  appState.selectedStream = branchKey;
+  const normKey = normalizeStreamKey(branchKey);
+  if (!STREAM_DATA[normKey]) return;
+  appState.selectedStream = normKey;
+  if (appState.user) {
+    appState.user.stream = normKey;
+    appState.user.branch = normKey;
+  }
 
   const obBranchEl = document.getElementById('obBranch');
-  if (obBranchEl && obBranchEl.value !== branchKey) {
-    obBranchEl.value = branchKey;
+  if (obBranchEl && obBranchEl.value !== normKey) {
+    obBranchEl.value = normKey;
   }
 
   // Synchronize navbar stream selector if present
   const navSelect = document.getElementById('navStreamSelect');
-  if (navSelect && navSelect.value !== branchKey) {
-    navSelect.value = branchKey;
+  if (navSelect && navSelect.value !== normKey) {
+    navSelect.value = normKey;
   }
   if (typeof updateNavStreamLabel === 'function') {
-    updateNavStreamLabel(branchKey);
+    updateNavStreamLabel(normKey);
   }
 
-  renderWizardPresets(branchKey);
+  renderWizardPresets(normKey);
 
-  const defPreset = (STREAM_DATA[branchKey] && (STREAM_DATA[branchKey].defaultPreset || Object.keys(STREAM_DATA[branchKey].presets)[0])) || 'firmware';
+  const defPreset = (STREAM_DATA[normKey] && (STREAM_DATA[normKey].defaultPreset || Object.keys(STREAM_DATA[normKey].presets)[0])) || 'firmware';
   selectWizardPreset(defPreset);
 
   const streamLabel = document.getElementById('wizardStreamLabel');
   if (streamLabel) {
-    streamLabel.innerText = `Stream: ${STREAM_DATA[branchKey].shortName || STREAM_DATA[branchKey].name}`;
+    const userRaw = appState.user && (appState.user.stream || appState.user.branch);
+    const meta = STREAM_DATA[normKey];
+    const displayTag = (userRaw && userRaw.length <= 4) ? userRaw.toUpperCase() : ((meta && (meta.shortName || meta.name)) || normKey.toUpperCase());
+    streamLabel.innerText = `Stream: ${displayTag}`;
   }
 }
 
@@ -25506,45 +25548,70 @@ function onWizardBranchChanged(branchKey) {
     };
 
     function getDomainMasteryPercent(domainKey, branchKey) {
-      if (!branchKey) branchKey = (typeof getWizardActiveStreamKey === 'function') ? getWizardActiveStreamKey() : (appState.selectedStream || 'ece');
-      const stream = STREAM_DATA[branchKey] || STREAM_DATA.ece;
+      if (!branchKey) branchKey = (typeof getWizardActiveStreamKey === 'function') ? getWizardActiveStreamKey() : (appState.selectedStream || 'mechanical');
+      branchKey = normalizeStreamKey(branchKey);
+      const stream = STREAM_DATA[branchKey] || STREAM_DATA.mechanical || STREAM_DATA.it;
       const presets = Object.assign({}, (typeof SENIOR_ROLE_PRESETS !== 'undefined' ? SENIOR_ROLE_PRESETS : {}), (stream && stream.presets) || {});
       const preset = presets[domainKey];
       if (!preset || !Array.isArray(preset.skills) || preset.skills.length === 0) return 0;
 
-      let totalScore = 0;
-      let scoredSkills = 0;
+      // 1. Check persisted domain progress
+      if (appState.user_domain_progress && appState.user_domain_progress[domainKey]) {
+        const dp = appState.user_domain_progress[domainKey];
+        const pVal = Number(dp.mastery_percent || dp.mastery || dp.score || 0);
+        if (pVal > 0) return Math.round(pVal);
+      }
+
+      let totalVerifiedScore = 0;
+      let verifiedCount = 0;
 
       preset.skills.forEach(skill => {
-        // 1. Look in currentStack
+        const sNameLower = (skill.name || '').toLowerCase();
+        const sIdLower = (skill.id || '').toLowerCase();
+
+        // 2. Check mcqHistory for verified test attempts
+        const mcqAttempts = (appState.mcqHistory || []).filter(h => 
+          (h.skill_name && h.skill_name.toLowerCase() === sNameLower) ||
+          (h.skill_id && h.skill_id.toLowerCase() === sIdLower)
+        );
+        if (mcqAttempts.length > 0) {
+          const latest = mcqAttempts[mcqAttempts.length - 1];
+          const testScore = Number(latest.score || latest.total_score || 0);
+          if (testScore > 0) {
+            totalVerifiedScore += testScore;
+            verifiedCount++;
+            return;
+          }
+        }
+
+        // 3. Check studentAnalytics / cachedStudentSkills for verified rows
+        const analyticsSkills = (appState.studentAnalytics && appState.studentAnalytics.skill_competencies) || appState.cachedStudentSkills || [];
+        const inAnalytics = analyticsSkills.find(s => 
+          (s.name && s.name.toLowerCase() === sNameLower) ||
+          (s.skill_id && s.skill_id.toLowerCase() === sIdLower)
+        );
+        if (inAnalytics) {
+          const isVerified = Boolean(inAnalytics.verified || inAnalytics.status === 'LIVE VERIFIED' || inAnalytics.latest_exam_score > 0 || inAnalytics.diagnostic_score > 0);
+          if (isVerified) {
+            totalVerifiedScore += Number(inAnalytics.score || inAnalytics.total_score || inAnalytics.latest_exam_score || 0);
+            verifiedCount++;
+            return;
+          }
+        }
+
+        // 4. Check currentStack ONLY for verified scores (never raw unverified baseline 35%)
         const inStack = (appState.currentStack || []).find(s => 
           (s.id && skill.id && s.id === skill.id) ||
-          (s.name && skill.name && s.name.toLowerCase() === skill.name.toLowerCase())
+          (s.name && skill.name && s.name.toLowerCase() === sNameLower)
         );
-        if (inStack && typeof inStack.score === 'number' && inStack.score > 0) {
-          totalScore += inStack.score;
-          scoredSkills++;
-        } else {
-          // 2. Look in mcq history
-          const mcq = (appState.mcqHistory || []).filter(h => 
-            h.skill_name && skill.name && h.skill_name.toLowerCase() === skill.name.toLowerCase()
-          );
-          if (mcq.length > 0) {
-            totalScore += Number(mcq[mcq.length - 1].score || 0);
-            scoredSkills++;
-          } else if (appState.user_domain_progress && appState.user_domain_progress[domainKey] && appState.user_domain_progress[domainKey].skill_scores) {
-            const stored = appState.user_domain_progress[domainKey].skill_scores[skill.id || skill.name];
-            if (stored) {
-              totalScore += Number(stored);
-              scoredSkills++;
-            }
-          }
+        if (inStack && (inStack.status === 'LIVE VERIFIED' || inStack.verified === true || Number(inStack.lectures_completed) > 0 || Number(inStack.tests_completed) > 0)) {
+          totalVerifiedScore += Number(inStack.score || 0);
+          verifiedCount++;
         }
       });
 
-      if (scoredSkills === 0) return 0;
-      // Formula: Domain % = (Sum of Skill Scores) / (Total Skills in Domain)
-      return Math.round(totalScore / preset.skills.length);
+      if (verifiedCount === 0) return 0;
+      return Math.round(totalVerifiedScore / preset.skills.length);
     }
 
     function renderWizardPresets(branchKey) {
@@ -25593,7 +25660,7 @@ function onWizardBranchChanged(branchKey) {
           }
           badgeHtml = domainPct > 0 
             ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/15 text-[#008080] dark:text-teal-300 border border-teal-500/30 font-mono">${domainPct}% Mastery</span>`
-            : `<span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 font-mono">Unexplored (0%)</span>`;
+            : `<span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 font-mono">Unexplored</span>`;
         }
 
         const btn = document.createElement('button');
@@ -25814,6 +25881,17 @@ function onWizardBranchChanged(branchKey) {
     }
 
     function getStarterRadarSkills() {
+      // 1. If student has active stack from DB or onboarding, strictly project those active skills
+      if (Array.isArray(appState.currentStack) && appState.currentStack.length >= 3) {
+        return appState.currentStack.map(s => ({
+          name: s.name || s.id || 'Skill',
+          score: Number.isFinite(Number(s.score)) ? Math.max(10, Math.min(100, Number(s.score))) : 35,
+          category: s.category || 'Discipline',
+          verified: Boolean(s.status === 'LIVE VERIFIED' || s.score >= 80 || s.verified)
+        }));
+      }
+
+      // 2. If student analytics has competencies matching active stream
       if (appState.studentAnalytics && Array.isArray(appState.studentAnalytics.skill_competencies) && appState.studentAnalytics.skill_competencies.length >= 3) {
         return appState.studentAnalytics.skill_competencies.map(s => ({
           name: s.name,
@@ -25830,19 +25908,10 @@ function onWizardBranchChanged(branchKey) {
       const hasSessions = appState.progress && Array.isArray(appState.progress.learningSessions) && appState.progress.learningSessions.length > 0;
       const hasActivity = (studyMins > 0) || hasMcqHistory || hasSessions;
 
-      // 1. If student has active stack from DB or onboarding, use real evaluated scores
-      if (Array.isArray(appState.currentStack) && appState.currentStack.length >= 3) {
-        return appState.currentStack.map(s => ({
-          name: s.name || s.id || 'Skill',
-          score: Number.isFinite(Number(s.score)) ? Math.max(10, Math.min(100, Number(s.score))) : 35,
-          category: s.category || 'Discipline',
-          verified: Boolean(s.status === 'LIVE VERIFIED' || s.score >= 80 || s.verified)
-        }));
-      }
-
-      // 2. Check stream preset skills
-      const streamKey = (appState.user && (appState.user.stream || appState.user.branch)) || appState.selectedStream || 'it';
-      const streamData = (typeof STREAM_DATA !== 'undefined' && (STREAM_DATA[streamKey] || STREAM_DATA.it || STREAM_DATA.cse)) || null;
+      // 3. Fallback to active stream preset skills
+      const rawStream = (appState.user && (appState.user.stream || appState.user.branch)) || appState.selectedStream || 'mechanical';
+      const streamKey = normalizeStreamKey(rawStream);
+      const streamData = (typeof STREAM_DATA !== 'undefined' && STREAM_DATA[streamKey]) || STREAM_DATA.mechanical || STREAM_DATA.it;
 
       if (streamData && streamData.presets) {
         const presetKey = (appState.user && appState.user.activeTrackPreset && streamData.presets[appState.user.activeTrackPreset])
@@ -25858,13 +25927,21 @@ function onWizardBranchChanged(branchKey) {
         }
       }
 
-      // 3. Fallback standard stream disciplines (DSA, Web Dev, DBMS, OS, Computer Networks) with flat 20% baseline
+      // 4. Fallback based on stream allSkills
+      if (streamData && Array.isArray(streamData.allSkills) && streamData.allSkills.length >= 3) {
+        return streamData.allSkills.slice(0, 5).map(s => ({
+          name: s.name,
+          score: 20,
+          category: s.category || 'Discipline'
+        }));
+      }
+
       return [
-        { name: 'Data Structures & Algorithms', score: 20 },
-        { name: 'Web Dev & Full-Stack', score: 20 },
-        { name: 'Database Systems & SQL', score: 20 },
-        { name: 'Operating Systems & Concurrency', score: 20 },
-        { name: 'Computer Networks & APIs', score: 20 }
+        { name: '3D Parametric CAD', score: 20 },
+        { name: 'Finite Element Analysis', score: 20 },
+        { name: 'CFD & Thermal Systems', score: 20 },
+        { name: 'Vehicle Dynamics', score: 20 },
+        { name: 'Smart Manufacturing', score: 20 }
       ];
     }
 
@@ -26281,17 +26358,25 @@ function onWizardBranchChanged(branchKey) {
         }
       }
 
-      const branchKey = (document.getElementById('obBranch') && document.getElementById('obBranch').value) 
+      const rawBranch = (appState.user && (appState.user.stream || appState.user.branch)) 
         || appState.selectedStream 
-        || (appState.user && appState.user.branch) 
-        || 'ece';
+        || (document.getElementById('obBranch') && document.getElementById('obBranch').value) 
+        || 'mechanical';
+      const branchKey = normalizeStreamKey(rawBranch);
       appState.selectedStream = branchKey;
+      const obBranchEl = document.getElementById('obBranch');
+      if (obBranchEl && obBranchEl.value !== branchKey) {
+        obBranchEl.value = branchKey;
+      }
 
       // Handle Step 2 dynamic population of focus cluster presets
       if (appState.currentWizardStep === 2) {
         const streamLabel = document.getElementById('wizardStreamLabel');
-        if (streamLabel && STREAM_DATA[branchKey]) {
-          streamLabel.innerText = `Stream: ${STREAM_DATA[branchKey].shortName || STREAM_DATA[branchKey].name}`;
+        if (streamLabel) {
+          const userRaw = (appState.user && (appState.user.stream || appState.user.branch));
+          const meta = STREAM_DATA[branchKey];
+          const displayTag = (userRaw && userRaw.length <= 4) ? userRaw.toUpperCase() : ((meta && (meta.shortName || meta.name)) || branchKey.toUpperCase());
+          streamLabel.innerText = `Stream: ${displayTag}`;
         }
         renderWizardPresets(branchKey);
         if (!appState.currentStack || appState.currentStack.length === 0) {
@@ -26500,10 +26585,15 @@ function onWizardBranchChanged(branchKey) {
       document.getElementById('onboardingModal').classList.add('flex');
       lockBodyScroll(true);
 
-      const branch = (appState.user && (appState.user.stream || appState.user.branch)) || appState.selectedStream || 'ece';
-      appState.selectedStream = branch;
+      const raw = (appState.user && (appState.user.stream || appState.user.branch)) || appState.selectedStream || 'mechanical';
+      const branchKey = normalizeStreamKey(raw);
+      appState.selectedStream = branchKey;
+      if (appState.user) {
+        appState.user.stream = branchKey;
+        appState.user.branch = branchKey;
+      }
       const obBranchEl = document.getElementById('obBranch');
-      if (obBranchEl) obBranchEl.value = branch;
+      if (obBranchEl) obBranchEl.value = branchKey;
 
       // Jump directly to Step 2: Stream Focus Cluster
       appState.currentWizardStep = 2;

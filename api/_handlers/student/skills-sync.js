@@ -39,10 +39,12 @@ module.exports = async (req, res) => {
       });
     }
 
+    const stream = body.stream || (auth.valid && auth.user && (auth.user.stream || auth.user.branch)) || null;
     const skills = body.skills || (Array.isArray(body) ? body : [body]);
     const synced = await db.syncStudentSkills({
       user_id,
       user_email,
+      stream,
       skills
     });
 
