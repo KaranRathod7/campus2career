@@ -55,7 +55,7 @@ module.exports = async (req, res) => {
       }
     } catch (err) {
       console.error('[DB Username Lookup Error]:', err.message, err.detail);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ success: false, error: 'Registration check failed. Please try again later.' });
     }
 
     // Check if user already exists
@@ -64,7 +64,7 @@ module.exports = async (req, res) => {
       existing = await db.getUserByEmail(normalizedEmail);
     } catch (err) {
       console.error('[DB Lookup Error]:', err.message, err.detail);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ success: false, error: 'Registration check failed. Please try again later.' });
     }
 
     if (existing && !isWhitelisted) {
@@ -105,7 +105,7 @@ module.exports = async (req, res) => {
       }
     } catch (err) {
       console.error('[DB Insert Error]:', err.message, err.detail);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ success: false, error: 'Failed to create user account. Please try again later.' });
     }
 
     // Seed chosen skills or auto-seed stream skills
@@ -152,7 +152,7 @@ module.exports = async (req, res) => {
       await db.createPendingVerification(normalizedEmail, pin, token);
     } catch (err) {
       console.error('[DB Insert Error]:', err.message, err.detail);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ success: false, error: 'Failed to create user account. Please try again later.' });
     }
 
     // Determine Base URL for email verification link
@@ -186,6 +186,6 @@ module.exports = async (req, res) => {
     });
   } catch (error) {
     console.error('[Registration Error]', error);
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ success: false, error: 'An unexpected error occurred during registration. Please try again later.' });
   }
 };

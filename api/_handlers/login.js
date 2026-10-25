@@ -53,7 +53,7 @@ module.exports = async (req, res) => {
       user = await db.getUserByEmail(normalizedEmail);
     } catch (err) {
       console.error('[DB Login Lookup Error]:', err.message, err.detail);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ success: false, error: 'Unable to process login at this time. Please try again later.' });
     }
 
     if (!user) {
@@ -153,6 +153,6 @@ module.exports = async (req, res) => {
     });
   } catch (err) {
     console.error('[Login Error]', err);
-    return res.status(500).json({ success: false, error: `Login error: ${err.message}` });
+    return res.status(500).json({ success: false, error: 'An unexpected error occurred during login. Please try again later.' });
   }
 };

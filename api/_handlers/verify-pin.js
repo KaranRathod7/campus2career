@@ -44,7 +44,7 @@ module.exports = async (req, res) => {
       pending = await db.getPendingVerification(normalizedEmail, cleanPin);
     } catch (err) {
       console.error('[DB Lookup Error]:', err.message, err.detail);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ success: false, error: 'Verification check failed. Please try again.' });
     }
 
     if (!pending) {
@@ -69,7 +69,7 @@ module.exports = async (req, res) => {
       await db.deletePendingVerification(normalizedEmail);
     } catch (err) {
       console.error('[DB Update Error]:', err.message, err.detail);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ success: false, error: 'Failed to update verification status. Please try again.' });
     }
 
     // Fetch verified user from database
@@ -78,7 +78,7 @@ module.exports = async (req, res) => {
       user = await db.getUserByEmail(normalizedEmail);
     } catch (err) {
       console.error('[DB Lookup Error]:', err.message, err.detail);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ success: false, error: 'Verification check failed. Please try again.' });
     }
 
     if (!user) {
@@ -115,6 +115,6 @@ module.exports = async (req, res) => {
     });
   } catch (err) {
     console.error('[Verify PIN Error]', err);
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: 'An unexpected verification error occurred. Please try again.' });
   }
 };

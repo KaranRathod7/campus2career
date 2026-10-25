@@ -30943,10 +30943,41 @@ function onWizardBranchChanged(branchKey) {
       }
     }
 
+    function sanitizeAuthErrorMessage(msg, fallback = "Unable to complete request at this time. Please try again.") {
+      if (!msg) return fallback;
+      const str = String(msg);
+      const lower = str.toLowerCase();
+      if (
+        lower.includes('column') ||
+        lower.includes('table') ||
+        lower.includes('relation') ||
+        lower.includes('schema') ||
+        lower.includes('database') ||
+        lower.includes('pgrst') ||
+        lower.includes('syntax') ||
+        lower.includes('violates') ||
+        lower.includes('foreign key') ||
+        lower.includes('null value') ||
+        lower.includes('sql') ||
+        lower.includes('pg_') ||
+        lower.includes('cache') ||
+        lower.includes('select ') ||
+        lower.includes('insert ') ||
+        lower.includes('update ') ||
+        lower.includes('delete from') ||
+        lower.includes('postgrest') ||
+        lower.includes('pool')
+      ) {
+        return fallback;
+      }
+      return str;
+    }
+
     function showAuthAlert(msg, isSuccess = false) {
       const alertEl = document.getElementById('authStatusAlert');
       if (!alertEl) return;
-      alertEl.innerHTML = msg;
+      const displayMsg = isSuccess ? msg : sanitizeAuthErrorMessage(msg);
+      alertEl.innerHTML = displayMsg;
       alertEl.className = isSuccess
         ? "text-xs p-3 rounded-xl font-bold text-center border bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
         : "text-xs p-3 rounded-xl font-bold text-center border bg-rose-50 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800";
@@ -31065,7 +31096,14 @@ function onWizardBranchChanged(branchKey) {
       const newPassInput = document.getElementById('forgotNewPassInput');
       const otp = otpInput ? otpInput.value.trim() : '';
       const newPass = newPassInput ? newPassInput.value.trim() : '';
+      const emailInput = document.getElementById('forgotEmailInput');
+      const resetEmail = (pendingResetEmail || (emailInput ? emailInput.value : '')).trim().toLowerCase();
 
+      if (!resetEmail) {
+        showAuthAlert("Please enter your registered email address.");
+        triggerAlertShake('authStatusAlert');
+        return;
+      }
       if (!otp || otp.length < 6) {
         showAuthAlert("Please enter the 6-digit verification code sent to your email.");
         triggerAlertShake('authStatusAlert');
@@ -31077,6 +31115,12 @@ function onWizardBranchChanged(branchKey) {
         return;
       }
 
+      const submitBtn = document.getElementById('forgotResetSubmitBtn');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span><i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Updating Password &amp; Logging In...</span>`;
+      }
+
       showAuthAlert("Verifying code and resetting password...", true);
 
       try {
@@ -31084,7 +31128,7 @@ function onWizardBranchChanged(branchKey) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            email: pendingResetEmail,
+            email: resetEmail,
             code: otp,
             newPassword: newPass
           })
@@ -31092,7 +31136,11 @@ function onWizardBranchChanged(branchKey) {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok || !data.success) {
-          showAuthAlert(data.error || "Invalid or expired verification code. Please check your email.");
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `Save New Password &amp; Log In &rarr;`;
+          }
+          showAuthAlert(data.error || "Invalid or expired verification code. Please request a new code.");
           triggerAlertShake('authStatusAlert');
           return;
         }
@@ -31100,31 +31148,85 @@ function onWizardBranchChanged(branchKey) {
         // Synchronize local storage mock cache if present
         try {
           const db = getUsersDB();
-          const userIdx = db.findIndex(u => u.email.toLowerCase() === pendingResetEmail);
+          const userIdx = db.findIndex(u => u.email.toLowerCase() === resetEmail);
           if (userIdx !== -1) {
             db[userIdx].password = newPass;
             saveUsersDB(db);
           }
         } catch (e) {}
 
-        const successMsg = data.message || "Password updated successfully. You can now log in.";
+        const successMsg = data.message || "Password updated successfully!";
+        setCooldown(0);
+        pendingResetEmail = null;
+
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `Save New Password &amp; Log In &rarr;`;
+        }
+
+        // If backend issued session & user profile, log user straight in!
+        if (data.user) {
+          clearUserClientStorage();
+          const foundUser = data.user;
+          appState.user = foundUser;
+          appState.selectedStream = normalizeStreamKey(foundUser.stream || foundUser.branch || 'it');
+          appState.activeRole = foundUser.role || 'learner';
+          appState.mcqHistory = foundUser.mcqHistory || [];
+          appState.progress = {
+            completedResourceIds: [],
+            completedChallenges: [],
+            totalStudyMinutes: Number(foundUser.total_study_minutes || foundUser.totalStudyMinutes || 0),
+            streakDays: Number(foundUser.streakDays || 0),
+            learningSessions: foundUser.learningSessions || []
+          };
+
+          saveStateToStorage();
+          updateAuthUI();
+          closeAuthModal();
+
+          if (typeof showToast === 'function') {
+            showToast("Password updated! Logged in successfully.");
+          }
+
+          if (foundUser.role === 'recruiter') {
+            setRole('recruiter');
+            navigateTo('recruiter-candidates');
+          } else {
+            setRole('learner');
+            if (typeof hasCompletedOnboarding === 'function' && !hasCompletedOnboarding(foundUser)) {
+              openOnboardingModal(foundUser.stream || foundUser.branch || null);
+            } else {
+              if (foundUser.stream || foundUser.branch) {
+                applyStreamChange(foundUser.stream || foundUser.branch, true);
+              }
+              navigateTo('analyzer');
+            }
+            if (typeof fetchStudentSkills === 'function') fetchStudentSkills();
+            if (typeof renderSkillLevelDiagram === 'function') renderSkillLevelDiagram();
+            if (typeof updateGrowthSummaryCards === 'function') updateGrowthSummaryCards();
+            if (typeof updateCharts === 'function') updateCharts();
+            if (typeof fetchStudentAnalytics === 'function') fetchStudentAnalytics();
+          }
+          return;
+        }
+
+        // Fallback: Transition to Sign In tab with prefilled credentials
         if (typeof showToast === 'function') {
           showToast(successMsg);
         }
         showAuthAlert("✓ " + successMsg, true);
-        setCooldown(0);
-        const resetEmailCopy = pendingResetEmail;
-        pendingResetEmail = null;
-
-        // Immediately redirect to the Log In view
         switchAuthTab('signin');
         const passInput = document.getElementById('authPassInput');
         if (passInput) passInput.value = newPass;
-        const emailInput = document.getElementById('authEmailInput');
-        if (emailInput && resetEmailCopy) emailInput.value = resetEmailCopy;
+        const signinEmailInput = document.getElementById('authEmailInput');
+        if (signinEmailInput && resetEmail) signinEmailInput.value = resetEmail;
       } catch (err) {
         console.error('[Reset Password Error]', err);
-        showAuthAlert("Network error while resetting password. Please try again.");
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `Save New Password &amp; Log In &rarr;`;
+        }
+        showAuthAlert("Network connection error while resetting password. Please try again.");
         triggerAlertShake('authStatusAlert');
       }
     }

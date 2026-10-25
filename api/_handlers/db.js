@@ -455,6 +455,7 @@ async function ensureSchema() {
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS avg_exam_score NUMERIC(5,2) DEFAULT 0;",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS dynamic_competence_percent NUMERIC(5,2) DEFAULT 25.0;",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INT DEFAULT 1;",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;",
         "ALTER TABLE users DROP COLUMN IF EXISTS password;"
       ];
       for (const colSql of userCols) {
@@ -875,6 +876,15 @@ const db = {
   // Users
   async getUserByEmail(email) {
     const normalized = (email || '').trim().toLowerCase();
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('users').select('*').ilike('email', normalized).maybeSingle();
+        if (data && !error) return data;
+      } catch (supaErr) {
+        console.warn('[Campus2Career DB] Supabase getUserByEmail error:', supaErr.message);
+      }
+    }
     const p = initPool();
     if (p) {
       try {
@@ -1773,16 +1783,25 @@ const db = {
             ? Number(existingUser.token_version)
             : 1) + 1;
 
-          // Update user password_hash and token_version safely
-          const res1 = await supabase
+          // Update user password_hash safely (strictly NO updated_at)
+          let res1 = await supabase
             .from('users')
             .update({
               password_hash: newPasswordHash,
-              token_version: nextTokenVersion,
-              updated_at: nowIso
+              token_version: nextTokenVersion
             })
             .ilike('email', cleanEmail)
-            .select('id, email, name, token_version');
+            .select('id, email, name, role, stream, branch, skills, college, year, token_version');
+
+          if (res1.error && res1.error.message && res1.error.message.includes('token_version')) {
+            res1 = await supabase
+              .from('users')
+              .update({
+                password_hash: newPasswordHash
+              })
+              .ilike('email', cleanEmail)
+              .select('id, email, name, role, stream, branch, skills, college, year');
+          }
 
           // Delete OTP from database immediately upon successful reset
           await supabase.from('password_resets').delete().ilike('email', cleanEmail);
@@ -1849,10 +1868,18 @@ const db = {
             };
           }
 
-          const updateRes = await p.query(
-            'UPDATE users SET password_hash = $1, token_version = COALESCE(token_version, 1) + 1, updated_at = NOW() WHERE LOWER(TRIM(email)) = LOWER(TRIM($2)) RETURNING id, email, name, token_version',
-            [newPasswordHash, cleanEmail]
-          );
+          let updateRes;
+          try {
+            updateRes = await p.query(
+              'UPDATE users SET password_hash = $1, token_version = COALESCE(token_version, 1) + 1 WHERE LOWER(TRIM(email)) = LOWER(TRIM($2)) RETURNING id, email, name, role, stream, branch, skills, college, year, token_version',
+              [newPasswordHash, cleanEmail]
+            );
+          } catch (tokErr) {
+            updateRes = await p.query(
+              'UPDATE users SET password_hash = $1 WHERE LOWER(TRIM(email)) = LOWER(TRIM($2)) RETURNING id, email, name, role, stream, branch, skills, college, year',
+              [newPasswordHash, cleanEmail]
+            );
+          }
 
           // Delete OTP from database immediately upon successful reset
           await p.query('DELETE FROM password_resets WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))', [cleanEmail]);

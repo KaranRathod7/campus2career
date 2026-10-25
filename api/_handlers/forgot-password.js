@@ -35,7 +35,7 @@ module.exports = async (req, res) => {
       user = await db.getUserByEmail(cleanEmail);
     } catch (err) {
       console.error('[DB Forgot Password Error]:', err.message);
-      return res.status(500).json({ success: false, error: 'Database error occurred. Please try again later.' });
+      return res.status(500).json({ success: false, error: 'Unable to process your request at this time. Please try again later.' });
     }
 
     if (!user) {
@@ -81,7 +81,7 @@ module.exports = async (req, res) => {
 
       if (insertError) {
         console.error('FATAL: Error inserting OTP into password_resets:', insertError);
-        return res.status(500).json({ success: false, error: 'Database failed to store OTP.' });
+        return res.status(500).json({ success: false, error: 'Unable to generate verification code. Please try again later.' });
       }
     } else {
       // Fallback path when Supabase client is not directly configured (PostgreSQL pool / local store)
@@ -93,7 +93,7 @@ module.exports = async (req, res) => {
       await db.createPasswordReset(cleanEmail, resetCode, new Date(expiresAt));
     }
 
-    // Immediate Server Console OTP Output (Testing Fallback)
+    // Immediate Server Console OTP Output (For logging/auditing)
     console.log('==============================================');
     console.log(`[PASSWORD RESET CODE]: ${resetCode} FOR ${cleanEmail} (Valid for 5 mins)`);
     console.log('==============================================');
@@ -115,8 +115,7 @@ module.exports = async (req, res) => {
         console.error('[EMAIL DISPATCH FAILURE]:', JSON.stringify(errorObj, null, 2));
         return res.status(500).json({
           success: false,
-          error: 'Email service error: ' + errorObj.message,
-          devOtp: resetCode
+          error: 'Failed to send verification email. Please check that your email address is correct and try again.'
         });
       }
     } catch (emailErr) {
@@ -128,18 +127,16 @@ module.exports = async (req, res) => {
       console.error('[EMAIL DISPATCH FAILURE]:', JSON.stringify(errorObj, null, 2));
       return res.status(500).json({
         success: false,
-        error: 'Email service error: ' + errorObj.message,
-        devOtp: resetCode
+        error: 'Failed to send verification email. Please check that your email address is correct and try again.'
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: `Verification code sent to ${cleanEmail}. Please check your inbox and spam folder.`,
-      devOtp: resetCode
+      message: `Verification code sent to ${cleanEmail}. Please check your inbox and spam folder.`
     });
   } catch (error) {
     console.error('[Forgot Password Error]:', error);
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ success: false, error: 'An unexpected error occurred. Please try again later.' });
   }
 };

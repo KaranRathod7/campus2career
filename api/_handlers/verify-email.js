@@ -144,7 +144,8 @@ module.exports = async (req, res) => {
         redirect
       });
     } catch (err) {
-      return res.status(500).json({ success: false, error: err.message });
+      console.error('[Verify Email Error]:', err);
+      return res.status(500).json({ success: false, error: 'An unexpected error occurred during email verification. Please try again.' });
     }
   }
 

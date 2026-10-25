@@ -52,6 +52,7 @@ ON public.users FOR ALL TO service_role USING (true) WITH CHECK (true);
 -- ----------------------------------------------------------------------------------------------------
 ALTER TABLE public.users DROP COLUMN IF EXISTS password;
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS token_version INT DEFAULT 1;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE public.password_resets ADD COLUMN IF NOT EXISTS attempts INT DEFAULT 0;
 
 -- Candidates Table Extensions

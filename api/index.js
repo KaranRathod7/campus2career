@@ -29,7 +29,7 @@ if (!process.listeners('unhandledRejection').some(fn => fn.name === 'campus2care
   });
 }
 
-// Helper: Wrap handler for Express execution
+// Helper: Wrap handler for Express execution with safe error responses
 const adapt = (handler) => async (req, res, next) => {
   try {
     await handler(req, res);
@@ -38,8 +38,7 @@ const adapt = (handler) => async (req, res, next) => {
     if (!res.headersSent) {
       res.status(500).json({
         success: false,
-        error: err.message,
-        detail: err.detail || (err.stack ? err.stack.split('\n')[0] : undefined)
+        error: 'An unexpected server error occurred. Please try again later.'
       });
     }
   }
