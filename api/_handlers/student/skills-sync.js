@@ -56,6 +56,6 @@ module.exports = async (req, res) => {
     });
   } catch (err) {
     console.error('[Student Skills Sync Error]', err);
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: 'Unable to sync skills at this time. Please try again.' });
   }
 };

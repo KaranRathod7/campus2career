@@ -186,7 +186,7 @@ async function submitTestScore(req, res) {
     });
   } catch (error) {
     console.error('Submission error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ success: false, error: 'Unable to submit assessment at this time. Please try again.' });
   }
 }
 

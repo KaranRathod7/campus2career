@@ -1293,17 +1293,11 @@
     </div>
 
     <!-- Active Stack Quick Switcher Pills -->
-    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between gap-3">
       <div class="flex items-center space-x-2 flex-wrap">
         <span class="text-xs font-bold text-slate-800">Your Target Skills:</span>
         <div id="activeStackPills" class="flex flex-wrap gap-1.5">
           <!-- Rendered via JS -->
-        </div>
-      </div>
-      <div class="flex items-center space-x-2 flex-wrap">
-        <span class="text-xs font-bold text-slate-500">Focus Track:</span>
-        <div id="analyzerPresetButtons" class="flex flex-wrap gap-1.5">
-          <!-- Dynamically populated based on active stream -->
         </div>
       </div>
     </div>
@@ -25545,60 +25539,98 @@ function onWizardBranchChanged(branchKey) {
       // 1. Check persisted domain progress
       if (appState.user_domain_progress && appState.user_domain_progress[domainKey]) {
         const dp = appState.user_domain_progress[domainKey];
-        const pVal = Number(dp.mastery_percent || dp.mastery || dp.score || 0);
+        const pVal = Number(dp.mastery_percent || dp.mastery || dp.readiness_score || dp.score || 0);
         if (pVal > 0) return Math.round(pVal);
       }
 
-      let totalVerifiedScore = 0;
-      let verifiedCount = 0;
+      const activePreset = (appState.user && (appState.user.active_domain || appState.user.activeTrackPreset)) || appState.selectedPreset;
+
+      // 2. If this preset matches the active chosen preset and currentStack has skills:
+      if (domainKey === activePreset && Array.isArray(appState.currentStack) && appState.currentStack.length > 0) {
+        const stackScores = appState.currentStack.map(s => {
+          if (typeof calculateSkillBreakdown === 'function') {
+            const b = calculateSkillBreakdown(s);
+            if (b && b.total > 0) return b.total;
+          }
+          return Number(s.score !== undefined ? s.score : (s.baseScore !== undefined ? s.baseScore : (s.total_score || 35)));
+        });
+        const avg = Math.round(stackScores.reduce((a, b) => a + b, 0) / stackScores.length);
+        if (avg > 0) return avg;
+      }
+
+      // 3. Check individual skills in preset against test attempts, analytics, and currentStack
+      let totalScore = 0;
+      let evaluatedCount = 0;
 
       preset.skills.forEach(skill => {
-        const sNameLower = (skill.name || '').toLowerCase();
-        const sIdLower = (skill.id || '').toLowerCase();
+        const sNameLower = (skill.name || '').toLowerCase().trim();
+        const sIdLower = (skill.id || '').toLowerCase().trim();
 
-        // 2. Check mcqHistory for verified test attempts
+        // Check mcqHistory for verified test attempts
         const mcqAttempts = (appState.mcqHistory || []).filter(h => 
-          (h.skill_name && h.skill_name.toLowerCase() === sNameLower) ||
-          (h.skill_id && h.skill_id.toLowerCase() === sIdLower)
+          (h.skill_name && h.skill_name.toLowerCase().trim() === sNameLower) ||
+          (h.skill_id && h.skill_id.toLowerCase().trim() === sIdLower)
         );
         if (mcqAttempts.length > 0) {
           const latest = mcqAttempts[mcqAttempts.length - 1];
-          const testScore = Number(latest.score || latest.total_score || 0);
+          const testScore = Number(latest.score || latest.score_percentage || latest.total_score || 0);
           if (testScore > 0) {
-            totalVerifiedScore += testScore;
-            verifiedCount++;
+            totalScore += testScore;
+            evaluatedCount++;
             return;
           }
         }
 
-        // 3. Check studentAnalytics / cachedStudentSkills for verified rows
+        // Check studentAnalytics / cachedStudentSkills
         const analyticsSkills = (appState.studentAnalytics && appState.studentAnalytics.skill_competencies) || appState.cachedStudentSkills || [];
         const inAnalytics = analyticsSkills.find(s => 
-          (s.name && s.name.toLowerCase() === sNameLower) ||
-          (s.skill_id && s.skill_id.toLowerCase() === sIdLower)
+          (s.name && s.name.toLowerCase().trim() === sNameLower) ||
+          (s.skill_name && s.skill_name.toLowerCase().trim() === sNameLower) ||
+          (s.skill_id && s.skill_id.toLowerCase().trim() === sIdLower)
         );
         if (inAnalytics) {
-          const isVerified = Boolean(inAnalytics.verified || inAnalytics.status === 'LIVE VERIFIED' || inAnalytics.latest_exam_score > 0 || inAnalytics.diagnostic_score > 0);
-          if (isVerified) {
-            totalVerifiedScore += Number(inAnalytics.score || inAnalytics.total_score || inAnalytics.latest_exam_score || 0);
-            verifiedCount++;
+          const aScore = Number(inAnalytics.total_score || inAnalytics.score || inAnalytics.latest_exam_score || inAnalytics.base_percentage || 0);
+          if (aScore > 0) {
+            totalScore += aScore;
+            evaluatedCount++;
             return;
           }
         }
 
-        // 4. Check currentStack ONLY for verified scores (never raw unverified baseline 35%)
+        // Check currentStack for matching skills (including user-configured skill levels)
         const inStack = (appState.currentStack || []).find(s => 
           (s.id && skill.id && s.id === skill.id) ||
-          (s.name && skill.name && s.name.toLowerCase() === sNameLower)
+          (s.name && skill.name && s.name.toLowerCase().trim() === sNameLower)
         );
-        if (inStack && (inStack.status === 'LIVE VERIFIED' || inStack.verified === true || Number(inStack.lectures_completed) > 0 || Number(inStack.tests_completed) > 0)) {
-          totalVerifiedScore += Number(inStack.score || 0);
-          verifiedCount++;
+        if (inStack) {
+          let sVal = 0;
+          if (typeof calculateSkillBreakdown === 'function') {
+            const b = calculateSkillBreakdown(inStack);
+            if (b && b.total > 0) sVal = b.total;
+          }
+          if (!sVal) sVal = Number(inStack.score !== undefined ? inStack.score : (inStack.baseScore !== undefined ? inStack.baseScore : (inStack.total_score || 0)));
+          if (sVal > 0) {
+            totalScore += sVal;
+            evaluatedCount++;
+          }
         }
       });
 
-      if (verifiedCount === 0) return 0;
-      return Math.round(totalVerifiedScore / preset.skills.length);
+      if (evaluatedCount > 0) {
+        return Math.round(totalScore / evaluatedCount);
+      }
+
+      // If active preset but no skill matches found, fallback to user's dynamic competence or target score
+      if (domainKey === activePreset) {
+        const overallEl = document.getElementById('overallStackScore');
+        const scoreVal = overallEl ? parseInt(overallEl.innerText, 10) : 0;
+        if (scoreVal > 0) return scoreVal;
+        if (appState.user && appState.user.dynamic_competence_percent) {
+          return Math.round(Number(appState.user.dynamic_competence_percent));
+        }
+      }
+
+      return 0;
     }
 
     function renderWizardPresets(branchKey) {
@@ -25626,29 +25658,15 @@ function onWizardBranchChanged(branchKey) {
         || appState.selectedPreset 
         || (isSenior ? 'mgmt_lead' : (STREAM_DATA[branchKey] && STREAM_DATA[branchKey].defaultPreset) || Object.keys(presetsToRender)[0]);
 
-      const isDemo = Boolean(appState.user && appState.user.isDemo);
-      const isFreshUser = !appState.isChangingCoreSkills && (!appState.user || !appState.user.verified || appState.user.isGuest || !appState.user.onboarded);
-
       Object.keys(presetsToRender).forEach(key => {
         const p = presetsToRender[key];
         const isSelected = activePreset === key;
 
-        let badgeHtml = '';
-        if (isFreshUser && !isDemo) {
-          // Fresh Sign-Up Onboarding: 0% verified history -> neutral chip
-          badgeHtml = `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">Standard Track</span>`;
-        } else {
-          let domainPct = getDomainMasteryPercent(key, branchKey);
-          // For Demo Mode: ensure consistency with Target Stack Readiness score card
-          if (isDemo && key === activePreset) {
-            const overallEl = document.getElementById('overallStackScore');
-            const scoreVal = overallEl ? parseInt(overallEl.innerText, 10) : 0;
-            if (scoreVal > 0) domainPct = scoreVal;
-          }
-          badgeHtml = domainPct > 0 
-            ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/15 text-[#008080] dark:text-teal-300 border border-teal-500/30 font-mono">${domainPct}% Mastery</span>`
-            : `<span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 font-mono">Unexplored</span>`;
-        }
+        let domainPct = getDomainMasteryPercent(key, branchKey);
+
+        const badgeHtml = domainPct > 0 
+          ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/15 text-[#008080] dark:text-teal-300 border border-teal-500/30 font-mono">${domainPct}% Readiness</span>`
+          : `<span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 font-mono">Unexplored</span>`;
 
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -25691,10 +25709,18 @@ function onWizardBranchChanged(branchKey) {
       }
       if (!preset) return;
 
-      // Default all skills to Intermediate (35%)
+      // Preserve previously evaluated/customized skill scores if matching
       const clonedSkills = JSON.parse(JSON.stringify(preset.skills));
       clonedSkills.forEach(s => {
-        if (s.score === undefined || s.score === null) s.score = 35;
+        const existing = (appState.currentStack || []).find(old => 
+          (old.id && s.id && old.id === s.id) || 
+          (old.name && s.name && old.name.toLowerCase().trim() === s.name.toLowerCase().trim())
+        );
+        if (existing && existing.score !== undefined && existing.score !== null) {
+          s.score = existing.score;
+        } else if (s.score === undefined || s.score === null) {
+          s.score = 35;
+        }
       });
       appState.currentStack = clonedSkills;
 
@@ -25704,6 +25730,8 @@ function onWizardBranchChanged(branchKey) {
         appState.user.skills = clonedSkills.map(s => s.name);
       }
       appState.selectedPreset = presetKey;
+      renderWizardPresets(branchKey);
+    }
 
       // Update users.active_domain and load the associated skills into the dashboard and radar chart
       if (appState.user && appState.user.email) {

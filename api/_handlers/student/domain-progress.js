@@ -35,6 +35,6 @@ module.exports = async (req, res) => {
     return res.status(200).json({ success: true, records });
   } catch (err) {
     console.error('[Domain Progress Error]', err);
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: 'Unable to update domain progress at this time. Please try again.' });
   }
 };

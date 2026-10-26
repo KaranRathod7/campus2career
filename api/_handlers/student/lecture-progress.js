@@ -67,6 +67,6 @@ module.exports = async (req, res) => {
     return res.status(200).json(result);
   } catch (err) {
     console.error('[Lecture Progress API Error]', err);
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: 'Unable to update lecture progress at this time. Please try again.' });
   }
 };

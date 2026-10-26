@@ -2462,6 +2462,18 @@ const db = {
           dynamic_competence_percent: 25.0
         };
 
+        // Update candidates table dynamic competence
+        try {
+          if (validUuid || normalizedEmail) {
+            await pool.query(
+              `UPDATE candidates 
+               SET dynamic_competence_percent = $1, readiness_score = GREATEST(candidates.readiness_score, $1)
+               WHERE user_id = $2 OR LOWER(email) = $3`,
+              [Number(metrics.dynamic_competence_percent) || 25.0, validUuid, normalizedEmail]
+            );
+          }
+        } catch (candActErr) {}
+
         return {
           activity: insertRes.rows[0],
           competence: {
@@ -2694,6 +2706,36 @@ const db = {
             [validUuid, cleanSkill, currentBase, newDiag, currentLec, currentMar, newTotal, numScore, newStatus, isVerified]
           );
           summary = upRes.rows[0];
+        }
+
+        // Aggregate user competence and update users & candidates tables
+        try {
+          if (validUuid) {
+            const aggRes = await p.query(
+              `SELECT AVG(total_score)::numeric(5,2) as avg_comp,
+                      AVG(CASE WHEN latest_exam_score > 0 THEN latest_exam_score END)::numeric(5,2) as avg_exam
+               FROM student_skill_progress WHERE user_id = $1`,
+              [validUuid]
+            );
+            if (aggRes.rows && aggRes.rows[0]) {
+              const compVal = Number(aggRes.rows[0].avg_comp) || numScore;
+              const examVal = Number(aggRes.rows[0].avg_exam) || numScore;
+              await p.query(
+                'UPDATE users SET dynamic_competence_percent = $1, avg_exam_score = $2 WHERE id = $3',
+                [compVal, examVal, validUuid]
+              );
+              await p.query(
+                `UPDATE candidates 
+                 SET readiness_score = $1, skill_score = $1, dynamic_competence_percent = $1,
+                     status = CASE WHEN $1 >= 80 THEN 'LIVE VERIFIED' ELSE status END,
+                     verified_status = CASE WHEN $1 >= 80 THEN 'LIVE VERIFIED' ELSE verified_status END
+                 WHERE user_id = $2 OR LOWER(email) = LOWER($3)`,
+                [compVal, validUuid, String(user_id)]
+              );
+            }
+          }
+        } catch (aggErr) {
+          console.warn('[Test Attempt Aggregation Notice]:', aggErr.message);
         }
 
         return { attempt, summary };
@@ -3337,12 +3379,17 @@ const db = {
           }
         }
 
+        const skillNames = skillList.map(s => (s.skill_name || s.name || '').trim()).filter(Boolean);
+        const avgScore = Math.round(
+          skillList.reduce((acc, s) => acc + (Number(s.total_score !== undefined ? s.total_score : (s.score !== undefined ? s.score : s.base_percentage)) || 35), 0) / (skillList.length || 1)
+        );
+
         for (const s of skillList) {
           const skillName = (s.skill_name || s.name || '').trim();
           if (!skillName) continue;
           const skillId = (s.skill_id || s.id || skillName.toLowerCase().replace(/[^a-z0-9]/g, '_')).trim();
           const category = (s.category || 'Core Skill').trim();
-          const basePct = Math.min(48, Math.max(20, parseInt(s.base_percentage !== undefined ? s.base_percentage : (s.baseScore !== undefined ? s.baseScore : s.score), 10) || 35));
+          const basePct = Math.min(100, Math.max(0, parseInt(s.base_percentage !== undefined ? s.base_percentage : (s.baseScore !== undefined ? s.baseScore : s.score), 10) || 35));
           const totalScore = Math.min(100, Math.max(0, parseInt(s.total_score !== undefined ? s.total_score : s.score, 10) || basePct));
           const status = (s.status || (totalScore >= 80 ? 'LIVE VERIFIED' : 'UNVERIFIED BASELINE')).trim();
           const currentMilestone = (s.current_milestone || s.currentMilestone || 'Fundamental syntax & baseline concepts').trim();
@@ -3362,11 +3409,104 @@ const db = {
           }
         }
 
-        // If stream was passed or resolved, keep user and candidate stream synchronized
-        if (validUuid && resolvedStream) {
-          const cleanStreamKey = resolveStreamKey(resolvedStream);
-          await p.query('UPDATE users SET stream = $1, branch = $2 WHERE id = $3', [cleanStreamKey.toUpperCase(), cleanStreamKey, validUuid]);
-          await p.query('UPDATE candidates SET stream = $1, skills = $2 WHERE user_id = $3', [cleanStreamKey.toUpperCase(), skillList.map(s => s.skill_name || s.name), validUuid]);
+        // Keep users and candidates tables completely synchronized with evaluated readiness
+        if (validUuid) {
+          const cleanStreamKey = resolveStreamKey(resolvedStream || 'it');
+          await p.query(
+            'UPDATE users SET stream = $1, branch = $2, skills = $3, dynamic_competence_percent = $4 WHERE id = $5',
+            [cleanStreamKey.toUpperCase(), cleanStreamKey, skillNames, avgScore, validUuid]
+          );
+
+          // Get user details for candidates upsert
+          let uEmail = (user_email || '').trim().toLowerCase();
+          let uName = 'Student';
+          try {
+            const uInfo = await p.query('SELECT name, email FROM users WHERE id = $1 LIMIT 1', [validUuid]);
+            if (uInfo.rows[0]) {
+              uName = uInfo.rows[0].name || uName;
+              uEmail = (uInfo.rows[0].email || uEmail).toLowerCase();
+            }
+          } catch (e) {}
+
+          if (uEmail) {
+            const domainName = (skillNames[0] || 'Core Engineering');
+            await p.query(
+              `INSERT INTO candidates (
+                 user_id, name, email, stream, domain, experience_level, skill_score, 
+                 dynamic_competence_percent, readiness_score, skills, status, verified_status
+               )
+               VALUES ($1, $2, $3, $4, $5, 'Student / Candidate', $6, $6, $6, $7, $8, $8)
+               ON CONFLICT (email) DO UPDATE SET
+                 user_id = COALESCE(candidates.user_id, EXCLUDED.user_id),
+                 stream = EXCLUDED.stream,
+                 skills = EXCLUDED.skills,
+                 skill_score = EXCLUDED.skill_score,
+                 dynamic_competence_percent = EXCLUDED.dynamic_competence_percent,
+                 readiness_score = EXCLUDED.readiness_score,
+                 status = EXCLUDED.status,
+                 verified_status = EXCLUDED.verified_status;`,
+              [
+                validUuid,
+                uName,
+                uEmail,
+                cleanStreamKey.toUpperCase(),
+                domainName,
+                avgScore,
+                skillNames,
+                avgScore >= 80 ? 'LIVE VERIFIED' : 'UNVERIFIED BASELINE'
+              ]
+            );
+          }
+
+          // Mirror into Supabase Client if configured
+          const sbClient = getSupabaseClient();
+          if (sbClient) {
+            try {
+              const supaRows = skillList.map(s => {
+                const sName = (s.skill_name || s.name || '').trim();
+                const sId = (s.skill_id || s.id || sName.toLowerCase().replace(/[^a-z0-9]/g, '_')).trim();
+                const bPct = Math.min(100, Math.max(0, parseInt(s.base_percentage !== undefined ? s.base_percentage : (s.baseScore !== undefined ? s.baseScore : s.score), 10) || 35));
+                const tScore = Math.min(100, Math.max(0, parseInt(s.total_score !== undefined ? s.total_score : s.score, 10) || bPct));
+                return {
+                  user_id: validUuid,
+                  skill_id: sId,
+                  skill_name: sName,
+                  category: (s.category || 'Core Skill').trim(),
+                  base_percentage: bPct,
+                  total_score: tScore,
+                  status: (s.status || (tScore >= 80 ? 'LIVE VERIFIED' : 'UNVERIFIED BASELINE')).trim(),
+                  lectures_completed: Math.max(0, parseInt(s.lectures_completed || 0, 10)),
+                  current_milestone: (s.current_milestone || s.currentMilestone || 'Fundamental syntax & baseline concepts').trim(),
+                  next_milestone: (s.next_milestone || s.nextMilestone || 'Production architecture & high-throughput concurrency').trim()
+                };
+              });
+              await sbClient.from('student_skill_progress').insert(supaRows);
+              await sbClient.from('users').update({
+                stream: cleanStreamKey.toUpperCase(),
+                branch: cleanStreamKey,
+                skills: skillNames,
+                dynamic_competence_percent: avgScore
+              }).eq('id', validUuid);
+              if (uEmail) {
+                await sbClient.from('candidates').upsert({
+                  user_id: validUuid,
+                  name: uName,
+                  email: uEmail,
+                  stream: cleanStreamKey.toUpperCase(),
+                  domain: skillNames[0] || 'Core Engineering',
+                  experience_level: 'Student / Candidate',
+                  skill_score: avgScore,
+                  dynamic_competence_percent: avgScore,
+                  readiness_score: avgScore,
+                  skills: skillNames,
+                  status: avgScore >= 80 ? 'LIVE VERIFIED' : 'UNVERIFIED BASELINE',
+                  verified_status: avgScore >= 80 ? 'LIVE VERIFIED' : 'UNVERIFIED BASELINE'
+                }, { onConflict: 'email' });
+              }
+            } catch (sbSyncErr) {
+              console.warn('[Supabase Skill Sync Warning]:', sbSyncErr.message);
+            }
+          }
         }
 
         if (synced.length > 0) return synced;
@@ -3392,7 +3532,7 @@ const db = {
       if (!skillName) continue;
       const skillId = (s.skill_id || s.id || skillName.toLowerCase().replace(/[^a-z0-9]/g, '_')).trim();
       const category = (s.category || 'Core Skill').trim();
-      const basePct = Math.min(48, Math.max(20, parseInt(s.base_percentage !== undefined ? s.base_percentage : (s.baseScore !== undefined ? s.baseScore : s.score), 10) || 35));
+      const basePct = Math.min(100, Math.max(0, parseInt(s.base_percentage !== undefined ? s.base_percentage : (s.baseScore !== undefined ? s.baseScore : s.score), 10) || 35));
       const totalScore = Math.min(100, Math.max(0, parseInt(s.total_score !== undefined ? s.total_score : s.score, 10) || basePct));
       const status = (s.status || (totalScore >= 80 ? 'LIVE VERIFIED' : 'UNVERIFIED BASELINE')).trim();
       const currentMilestone = (s.current_milestone || s.currentMilestone || 'Fundamental syntax & baseline concepts').trim();
@@ -3771,6 +3911,27 @@ const db = {
             [uniqueCompleted, validUuid, cleanSkill]
           );
 
+          // Synchronize overall user & candidate competence dynamically
+          try {
+            const avgRes = await p.query(
+              'SELECT ROUND(AVG(total_score), 1) as avg_score FROM student_skill_progress WHERE user_id = $1',
+              [validUuid]
+            );
+            if (avgRes.rows[0] && avgRes.rows[0].avg_score !== null) {
+              const newAvg = parseFloat(avgRes.rows[0].avg_score);
+              await p.query(
+                'UPDATE users SET dynamic_competence_percent = $1 WHERE id = $2',
+                [newAvg, validUuid]
+              );
+              await p.query(
+                'UPDATE candidates SET readiness_score = $1, dynamic_competence_percent = $1, skill_score = $2 WHERE user_id = $3',
+                [newAvg, Math.round(newAvg), validUuid]
+              );
+            }
+          } catch (syncErr) {
+            console.warn('[DB Lecture Sync Warning]:', syncErr.message);
+          }
+
           return {
             success: true,
             completed: true,
@@ -3830,7 +3991,7 @@ const db = {
       );
       if (match) {
         match.lectures_completed = uniqueCount;
-        const base = Math.min(48, Math.max(20, match.base_percentage || 35));
+        const base = Math.min(100, Math.max(0, match.base_percentage || 35));
         const testB = (match.status === 'LIVE VERIFIED') ? 34 : 0;
         match.total_score = Math.min(100, base + uniqueCount + testB);
         match.updated_at = new Date().toISOString();

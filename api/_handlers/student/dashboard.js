@@ -96,6 +96,6 @@ module.exports = async (req, res) => {
     });
   } catch (err) {
     console.error('[Student Dashboard Handler Error]', err);
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: 'Unable to load dashboard data at this time. Please try again.' });
   }
 };

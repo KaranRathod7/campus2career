@@ -116,6 +116,6 @@ module.exports = async (req, res) => {
     });
   } catch (err) {
     console.error('[Student Activity Handler Error]', err);
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: 'Unable to record student activity at this time. Please try again.' });
   }
 };
