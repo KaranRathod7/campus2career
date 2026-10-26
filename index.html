@@ -2284,7 +2284,7 @@
   </div>
 
   <!-- SHARE WITH FRIENDS MODAL (Modern Share Sheet) -->
-  <div id="shareModal" class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm hidden items-center justify-center p-4">
+  <div id="shareModal" class="fixed inset-0 z-[70] bg-slate-950/70 backdrop-blur-sm hidden items-center justify-center p-4" onclick="if(event.target === this) closeShareModal()">
     <div class="bg-white dark:bg-[#0F172A] rounded-3xl max-w-md w-full max-w-[calc(100vw-32px)] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden p-4 sm:p-6 space-y-4 sm:space-y-5">
       <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
         <div class="flex items-center space-x-2">
@@ -2300,6 +2300,12 @@
           <i class="fa-solid fa-xmark text-lg"></i>
         </button>
       </div>
+
+      <!-- Option 0: Device Native Share (when available) -->
+      <button id="deviceShareBtn" onclick="triggerDeviceNativeShare()" class="w-full flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 text-teal-600 dark:text-teal-400 border border-teal-500/30 text-xs font-bold transition-all shadow-xs">
+        <i class="fa-solid fa-arrow-up-from-bracket"></i>
+        <span>Share via Device Share Sheet</span>
+      </button>
 
       <!-- Option 1: Copy Link of Site -->
       <div class="space-y-1.5">
@@ -25731,7 +25737,6 @@ function onWizardBranchChanged(branchKey) {
       }
       appState.selectedPreset = presetKey;
       renderWizardPresets(branchKey);
-    }
 
       // Update users.active_domain and load the associated skills into the dashboard and radar chart
       if (appState.user && appState.user.email) {
@@ -28908,8 +28913,37 @@ function onWizardBranchChanged(branchKey) {
       if (modal) {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
+        modal.style.display = 'flex';
+      }
+      const deviceBtn = document.getElementById('deviceShareBtn');
+      if (deviceBtn) {
+        if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+          deviceBtn.classList.remove('hidden');
+        } else {
+          deviceBtn.classList.add('hidden');
+        }
       }
       lockBodyScroll(true);
+    }
+
+    function triggerDeviceNativeShare() {
+      const url = getPlatformShareUrl();
+      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+        navigator.share({
+          title: 'Campus2Career — Engineering Benchmark & Skill Diagnostic Platform',
+          text: 'Master core discipline skills alongside essential real-world engineering and management workflows on Campus2Career:',
+          url: url
+        }).then(() => {
+          showToast('✓ Shared successfully!');
+          closeShareModal();
+        }).catch((err) => {
+          if (err && err.name !== 'AbortError') {
+            console.warn('[Share Notice]', err);
+          }
+        });
+      } else {
+        copyPlatformShareLink();
+      }
     }
 
     function closeShareModal() {
@@ -28917,6 +28951,7 @@ function onWizardBranchChanged(branchKey) {
       if (modal) {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
+        modal.style.display = 'none';
       }
       lockBodyScroll(false);
     }
