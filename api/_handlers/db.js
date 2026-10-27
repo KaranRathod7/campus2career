@@ -449,6 +449,8 @@ async function ensureSchema() {
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS branch VARCHAR(100);",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS college VARCHAR(255);",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS year INT;",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarded BOOLEAN DEFAULT FALSE;",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS target_role VARCHAR(100);",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS skills TEXT[];",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS total_study_minutes INT DEFAULT 0;",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS total_lecture_minutes INT DEFAULT 0;",
@@ -1141,7 +1143,8 @@ const db = {
                college = COALESCE($3, college),
                year = COALESCE($4, year),
                skills = COALESCE($5, skills),
-               active_domain = COALESCE($6, active_domain)
+               active_domain = COALESCE($6, active_domain),
+               onboarded = TRUE
            WHERE LOWER(email) = $7
            RETURNING *`,
           [cleanStream, cleanBranch, college || null, year ? parseInt(year, 10) : null, cleanSkills, active_domain || null, normalized]

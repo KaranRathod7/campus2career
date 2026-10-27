@@ -1047,7 +1047,7 @@
   <!-- ========================================================================= -->
   <!-- MODAL: MULTI-STEP ONBOARDING & DIAGNOSTIC WIZARD (STREAM-AWARE)           -->
   <!-- ========================================================================= -->
-  <div id="onboardingModal" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm hidden items-center justify-center p-4">
+  <div id="onboardingModal" class="fixed inset-0 z-[80] bg-slate-900/70 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-150">
       
       <!-- Wizard Stepper Header -->
@@ -23833,6 +23833,11 @@ const defaultMarketReports = [
             if (typeof fetchStudentSkills === 'function') await fetchStudentSkills();
             renderSkillLevelDiagram();
             if (typeof fetchStudentAnalytics === 'function') fetchStudentAnalytics();
+            if (appState.user && appState.user.role !== 'recruiter' && !hasCompletedOnboarding(appState.user)) {
+              if (appState.activeScreen !== 'home') {
+                setTimeout(() => openOnboardingModal(appState.user.stream || appState.user.branch || null), 200);
+              }
+            }
             return;
           }
         }
@@ -24333,12 +24338,13 @@ const defaultMarketReports = [
     function hasCompletedOnboarding(user) {
       if (!user) return false;
       if (user.role === 'recruiter') return true;
-      if (user.isGuest) return true;
-      if (user.onboarded) return true;
-      const stream = (user.stream || user.branch || '').toLowerCase();
-      const hasStream = stream && stream !== 'all';
-      const hasSkills = Array.isArray(user.skills) && user.skills.length > 0;
-      return Boolean(hasStream && hasSkills);
+      if (user.isDemo) return true;
+      if (user.onboarded === true) return true;
+      // Only considered onboarded if user has explicitly completed onboarding & selected their year
+      if (user.year && user.year >= 1 && Array.isArray(user.skills) && user.skills.length > 0 && user.onboarded) {
+        return true;
+      }
+      return false;
     }
 
     function navigateTo(screenId) {
@@ -26202,8 +26208,12 @@ function onWizardBranchChanged(branchKey) {
     }
 
     function openOnboardingModal(branchOverride = null) {
-      document.getElementById('onboardingModal').classList.remove('hidden');
-      document.getElementById('onboardingModal').classList.add('flex');
+      const modal = document.getElementById('onboardingModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        modal.style.display = 'flex';
+      }
       lockBodyScroll(true);
       appState.currentWizardStep = 1;
 
@@ -26212,10 +26222,19 @@ function onWizardBranchChanged(branchKey) {
       const obBranchEl = document.getElementById('obBranch');
       if (obBranchEl) obBranchEl.value = branch;
       
-      // Default state: nothing selected by default (selectedYear = null)
+      // Default state: populate existing year if any, otherwise null
       appState.selectedYear = (appState.user && appState.user.year) ? appState.user.year : null;
       const alertEl = document.getElementById('obYearAlert');
       if (alertEl) alertEl.classList.add('hidden');
+
+      if (appState.user && appState.user.college) {
+        const colEl = document.getElementById('obCollege');
+        if (colEl) colEl.value = appState.user.college;
+      }
+
+      if (typeof selectWizardRole === 'function') {
+        selectWizardRole(appState.selectedRole || (appState.user && appState.user.role) || 'student');
+      }
 
       onWizardBranchChanged(branch);
       updateWizardYearButtons();
@@ -26224,8 +26243,12 @@ function onWizardBranchChanged(branchKey) {
 
     function closeOnboardingModal() {
       appState.isChangingCoreSkills = false;
-      document.getElementById('onboardingModal').classList.add('hidden');
-      document.getElementById('onboardingModal').classList.remove('flex');
+      const modal = document.getElementById('onboardingModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        modal.style.display = 'none';
+      }
       lockBodyScroll(false);
 
       // Revert navbar stream selector to active stream if modal cancelled
@@ -26579,7 +26602,8 @@ function onWizardBranchChanged(branchKey) {
               active_domain: appState.selectedPreset || (appState.user && appState.user.active_domain),
               skills: chosenStack.map(s => s.name),
               college: appState.user.college,
-              year: appState.user.year
+              year: appState.user.year,
+              onboarded: true
             })
           }).catch(e => console.warn('[Onboarding Sync Notice]', e));
         }
@@ -31632,14 +31656,8 @@ function onWizardBranchChanged(branchKey) {
           navigateTo('recruiter-candidates');
         } else {
           setRole('learner');
-          if (!hasCompletedOnboarding(verifiedUser)) {
-            openOnboardingModal(verifiedUser.stream || verifiedUser.branch || null);
-          } else {
-            if (verifiedUser.stream || verifiedUser.branch) {
-              applyStreamChange(verifiedUser.stream || verifiedUser.branch, true);
-            }
-            navigateTo('analyzer');
-          }
+          // For newly verified student, always open onboarding modal immediately
+          openOnboardingModal(verifiedUser.stream || verifiedUser.branch || null);
         }
 
         pendingRegistrationUser = null;
@@ -31842,14 +31860,8 @@ function onWizardBranchChanged(branchKey) {
               navigateTo('recruiter-candidates');
             } else {
               setRole('learner');
-              if (!hasCompletedOnboarding(verifiedUser)) {
-                openOnboardingModal(verifiedUser.stream || verifiedUser.branch || null);
-              } else {
-                if (verifiedUser.stream || verifiedUser.branch) {
-                  applyStreamChange(verifiedUser.stream || verifiedUser.branch, true);
-                }
-                navigateTo('analyzer');
-              }
+              // For newly verified student, launch onboarding modal immediately
+              openOnboardingModal(verifiedUser.stream || verifiedUser.branch || null);
               renderSkillLevelDiagram();
               updateGrowthSummaryCards();
               updateCharts();

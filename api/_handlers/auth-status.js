@@ -64,6 +64,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({
         success: true,
         is_verified: true,
+          onboarded: Boolean(user.onboarded),
         verified: true,
         authenticated: true,
         user: {

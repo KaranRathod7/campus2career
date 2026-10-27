@@ -85,6 +85,7 @@ module.exports = async (req, res) => {
         active_domain: dbUser.active_domain || null,
         domain_progress: dbUser.domain_progress || null,
         is_verified: dbUser.is_verified,
+        onboarded: Boolean(dbUser.onboarded),
         total_study_minutes: Number(dbUser.total_study_minutes) || 0,
         total_lecture_minutes: Number(dbUser.total_lecture_minutes) || 0,
         avg_exam_score: Number(dbUser.avg_exam_score) || 0,

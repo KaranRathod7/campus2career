@@ -108,7 +108,8 @@ module.exports = async (req, res) => {
         skills: user.skills || null,
         college: user.college || null,
         year: user.year || null,
-        is_verified: true
+        is_verified: true,
+        onboarded: Boolean(user.onboarded)
       },
       token,
       redirect

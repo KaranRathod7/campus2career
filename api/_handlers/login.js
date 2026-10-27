@@ -143,6 +143,7 @@ module.exports = async (req, res) => {
         year: user.year || null,
         token_version: user.token_version || 1,
         is_verified: true,
+        onboarded: Boolean(user.onboarded),
         total_study_minutes: Number(user.total_study_minutes) || 0,
         total_lecture_minutes: Number(user.total_lecture_minutes) || 0,
         avg_exam_score: Number(user.avg_exam_score) || 0,
