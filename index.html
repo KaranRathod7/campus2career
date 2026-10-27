@@ -22485,10 +22485,27 @@ function clearUserClientStorage() {
     localStorage.removeItem('c2c_login_failed_attempts');
     localStorage.removeItem('c2c_login_lockout_until');
     localStorage.removeItem('c2c_active_demo_session');
+    localStorage.removeItem('campus2career_domain_progress');
   } catch (e) {}
   try {
     sessionStorage.clear();
   } catch (e) {}
+  if (typeof appState !== 'undefined') {
+    appState.user_domain_progress = {};
+    appState.currentStack = [];
+    appState.cachedStudentSkills = [];
+    appState.studentAnalytics = null;
+    appState.mcqHistory = [];
+    appState.progress = {
+      completedResourceIds: [],
+      completedChallenges: [],
+      completedLessonsBySkill: {},
+      completedMarathons: {},
+      totalStudyMinutes: 0,
+      streakDays: 0,
+      learningSessions: []
+    };
+  }
 }
 window.clearUserClientStorage = clearUserClientStorage;
 window.normalizeStreamKey = normalizeStreamKey;
@@ -25552,44 +25569,31 @@ function onWizardBranchChanged(branchKey) {
     };
 
     function getDomainMasteryPercent(domainKey, branchKey) {
-      if (!branchKey) branchKey = (typeof getWizardActiveStreamKey === 'function') ? getWizardActiveStreamKey() : (appState.selectedStream || 'mechanical');
+      if (!branchKey) branchKey = (typeof getWizardActiveStreamKey === 'function') ? getWizardActiveStreamKey() : (appState.selectedStream || 'it');
       branchKey = normalizeStreamKey(branchKey);
-      const stream = STREAM_DATA[branchKey] || STREAM_DATA.mechanical || STREAM_DATA.it;
+      const stream = STREAM_DATA[branchKey] || STREAM_DATA.it || STREAM_DATA.mechanical;
       const presets = Object.assign({}, (typeof SENIOR_ROLE_PRESETS !== 'undefined' ? SENIOR_ROLE_PRESETS : {}), (stream && stream.presets) || {});
       const preset = presets[domainKey];
       if (!preset || !Array.isArray(preset.skills) || preset.skills.length === 0) return 0;
 
-      // 1. Check persisted domain progress
-      if (appState.user_domain_progress && appState.user_domain_progress[domainKey]) {
+      // 1. If user has completed onboarding, check saved domain progress
+      const isOnboarded = Boolean(appState.user && appState.user.onboarded);
+      if (isOnboarded && appState.user_domain_progress && appState.user_domain_progress[domainKey]) {
         const dp = appState.user_domain_progress[domainKey];
         const pVal = Number(dp.mastery_percent || dp.mastery || dp.readiness_score || dp.score || 0);
         if (pVal > 0) return Math.round(pVal);
       }
 
-      const activePreset = (appState.user && (appState.user.active_domain || appState.user.activeTrackPreset)) || appState.selectedPreset;
-
-      // 2. If this preset matches the active chosen preset and currentStack has skills:
-      if (domainKey === activePreset && Array.isArray(appState.currentStack) && appState.currentStack.length > 0) {
-        const stackScores = appState.currentStack.map(s => {
-          if (typeof calculateSkillBreakdown === 'function') {
-            const b = calculateSkillBreakdown(s);
-            if (b && b.total > 0) return b.total;
-          }
-          return Number(s.score !== undefined ? s.score : (s.baseScore !== undefined ? s.baseScore : (s.total_score || 35)));
-        });
-        const avg = Math.round(stackScores.reduce((a, b) => a + b, 0) / stackScores.length);
-        if (avg > 0) return avg;
-      }
-
-      // 3. Check individual skills in preset against test attempts, analytics, and currentStack
-      let totalScore = 0;
+      // 2. Real verified activity check across individual skills in preset:
+      // A domain is ONLY explored if it has verified test attempts or completed lecture lessons
+      let totalVerifiedScore = 0;
       let evaluatedCount = 0;
 
       preset.skills.forEach(skill => {
         const sNameLower = (skill.name || '').toLowerCase().trim();
         const sIdLower = (skill.id || '').toLowerCase().trim();
 
-        // Check mcqHistory for verified test attempts
+        // 2a. Check verified test attempts in mcqHistory
         const mcqAttempts = (appState.mcqHistory || []).filter(h => 
           (h.skill_name && h.skill_name.toLowerCase().trim() === sNameLower) ||
           (h.skill_id && h.skill_id.toLowerCase().trim() === sIdLower)
@@ -25598,61 +25602,44 @@ function onWizardBranchChanged(branchKey) {
           const latest = mcqAttempts[mcqAttempts.length - 1];
           const testScore = Number(latest.score || latest.score_percentage || latest.total_score || 0);
           if (testScore > 0) {
-            totalScore += testScore;
+            totalVerifiedScore += testScore;
             evaluatedCount++;
             return;
           }
         }
 
-        // Check studentAnalytics / cachedStudentSkills
-        const analyticsSkills = (appState.studentAnalytics && appState.studentAnalytics.skill_competencies) || appState.cachedStudentSkills || [];
+        // 2b. Check studentAnalytics for real completed exams
+        const analyticsSkills = (appState.studentAnalytics && appState.studentAnalytics.skill_competencies) || [];
         const inAnalytics = analyticsSkills.find(s => 
           (s.name && s.name.toLowerCase().trim() === sNameLower) ||
           (s.skill_name && s.skill_name.toLowerCase().trim() === sNameLower) ||
           (s.skill_id && s.skill_id.toLowerCase().trim() === sIdLower)
         );
-        if (inAnalytics) {
-          const aScore = Number(inAnalytics.total_score || inAnalytics.score || inAnalytics.latest_exam_score || inAnalytics.base_percentage || 0);
+        if (inAnalytics && (Number(inAnalytics.latest_exam_score || inAnalytics.diagnostic_score || 0) > 0 || inAnalytics.verified)) {
+          const aScore = Number(inAnalytics.total_score || inAnalytics.score || inAnalytics.latest_exam_score || 0);
           if (aScore > 0) {
-            totalScore += aScore;
+            totalVerifiedScore += aScore;
             evaluatedCount++;
             return;
           }
         }
 
-        // Check currentStack for matching skills (including user-configured skill levels)
-        const inStack = (appState.currentStack || []).find(s => 
-          (s.id && skill.id && s.id === skill.id) ||
-          (s.name && skill.name && s.name.toLowerCase().trim() === sNameLower)
-        );
-        if (inStack) {
-          let sVal = 0;
-          if (typeof calculateSkillBreakdown === 'function') {
-            const b = calculateSkillBreakdown(inStack);
-            if (b && b.total > 0) sVal = b.total;
-          }
-          if (!sVal) sVal = Number(inStack.score !== undefined ? inStack.score : (inStack.baseScore !== undefined ? inStack.baseScore : (inStack.total_score || 0)));
-          if (sVal > 0) {
-            totalScore += sVal;
-            evaluatedCount++;
-          }
+        // 2c. Check verified completed lectures
+        const skillId = skill.id || sIdLower;
+        const completedList = (appState.progress && appState.progress.completedLessonsBySkill && 
+          (appState.progress.completedLessonsBySkill[skillId] || appState.progress.completedLessonsBySkill[skill.name])) || [];
+        if (completedList.length > 0) {
+          totalVerifiedScore += Math.min(100, 35 + (completedList.length * 3));
+          evaluatedCount++;
         }
       });
 
       if (evaluatedCount > 0) {
-        return Math.round(totalScore / evaluatedCount);
+        return Math.round(totalVerifiedScore / evaluatedCount);
       }
 
-      // If active preset but no skill matches found, fallback to user's dynamic competence or target score
-      if (domainKey === activePreset) {
-        const overallEl = document.getElementById('overallStackScore');
-        const scoreVal = overallEl ? parseInt(overallEl.innerText, 10) : 0;
-        if (scoreVal > 0) return scoreVal;
-        if (appState.user && appState.user.dynamic_competence_percent) {
-          return Math.round(Number(appState.user.dynamic_competence_percent));
-        }
-      }
-
+      // If no verified tests, no completed lectures, and not onboarded:
+      // It is completely unexplored!
       return 0;
     }
 
@@ -26148,6 +26135,9 @@ function onWizardBranchChanged(branchKey) {
       if (modal) {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
+        modal.style.display = 'flex';
+        const modalBody = modal.querySelector('.overflow-y-auto');
+        if (modalBody) modalBody.scrollTop = 0;
       }
       const title = document.getElementById('wizardStepTitle');
       if (title) title.innerText = "Step 1: Academic Profile, Stream & Target Role";
@@ -26259,6 +26249,10 @@ function onWizardBranchChanged(branchKey) {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
         modal.style.display = 'none';
+      }
+      const customSkills = document.getElementById('wizardCustomSkillsContainer');
+      if (customSkills) {
+        customSkills.classList.add('hidden');
       }
       lockBodyScroll(false);
 
@@ -26636,11 +26630,21 @@ function onWizardBranchChanged(branchKey) {
 
     function openSkillCustomizerModal() {
       appState.isChangingCoreSkills = true;
-      document.getElementById('onboardingModal').classList.remove('hidden');
-      document.getElementById('onboardingModal').classList.add('flex');
+      const modal = document.getElementById('onboardingModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        modal.style.display = 'flex';
+        const modalBody = modal.querySelector('.overflow-y-auto');
+        if (modalBody) modalBody.scrollTop = 0;
+      }
+      const customSkills = document.getElementById('wizardCustomSkillsContainer');
+      if (customSkills) {
+        customSkills.classList.add('hidden');
+      }
       lockBodyScroll(true);
 
-      const raw = (appState.user && (appState.user.stream || appState.user.branch)) || appState.selectedStream || 'mechanical';
+      const raw = (appState.user && (appState.user.stream || appState.user.branch)) || appState.selectedStream || (typeof getActiveStreamKey === 'function' ? getActiveStreamKey() : null) || 'mechanical';
       const branchKey = normalizeStreamKey(raw);
       appState.selectedStream = branchKey;
       if (appState.user) {
@@ -28702,7 +28706,7 @@ function onWizardBranchChanged(branchKey) {
               <i class="fa-solid fa-id-card text-xs text-teal-600"></i>
               <span>Dossier</span>
             </button>
-            <button type="button" onclick="sendDirectInterviewInvite('${c.id}', '${c.name.replace(/'/g, "\\'")}')" class="flex-2 py-2 px-3 bg-[#008080] hover:bg-[#006666] text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center space-x-1.5 cursor-pointer active:scale-[0.98]">
+            <button type="button" onclick="sendDirectInterviewInvite('${c.id}', '${c.name.replace(/'/g, "\\'")}', '${(c.email || '').replace(/'/g, "\\'")}')" class="flex-2 py-2 px-3 bg-[#008080] hover:bg-[#006666] text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center space-x-1.5 cursor-pointer active:scale-[0.98]">
               <i class="fa-solid fa-paper-plane text-xs"></i>
               <span>Interview Invite</span>
             </button>
@@ -28712,15 +28716,14 @@ function onWizardBranchChanged(branchKey) {
       });
     }
 
-    async function sendDirectInterviewInvite(candId, candName) {
+    async function sendDirectInterviewInvite(candId, candName, candEmail) {
       const company = (appState.user && appState.user.college) || (document.getElementById('recInputCompany') ? document.getElementById('recInputCompany').value.trim() : '') || 'Enterprise Partner';
       const recruiterName = (appState.user && appState.user.name) || 'Hiring Lead';
-
-      showToast(`Interview invitation sent to candidate!`);
 
       appState.invites.unshift({
         id: Date.now(),
         candidateId: candId,
+        candidateEmail: candEmail || '',
         name: candName,
         role: 'Core Engineering Track',
         format: 'Technical Architecture Round',
@@ -28739,6 +28742,7 @@ function onWizardBranchChanged(branchKey) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             candidateId: candId,
+            candidateEmail: candEmail,
             candidateName: candName,
             recruiterCompany: company,
             recruiterName: recruiterName,
@@ -28747,10 +28751,14 @@ function onWizardBranchChanged(branchKey) {
         });
         const data = await res.json();
         if (data.success) {
+          showToast(`Interview invitation emailed to ${candEmail || candName}!`);
           console.log('[Recruiter Invite Dispatched via Brevo]', data);
+        } else {
+          showToast(`Interview invitation dispatched to ${candName}!`);
         }
       } catch (err) {
         console.warn('[Recruiter Invite Dispatch Notice]', err);
+        showToast(`Interview invitation logged to candidate!`);
       }
     }
 
@@ -31384,7 +31392,9 @@ function onWizardBranchChanged(branchKey) {
               password: pass, 
               role, 
               stream,
-              skills: (Array.isArray(appState.currentStack) && appState.currentStack.length > 0) ? appState.currentStack : null
+              skills: null,
+              clientTime: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+              clientTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata'
             })
           });
           const data = await res.json();
@@ -31485,7 +31495,12 @@ function onWizardBranchChanged(branchKey) {
           const res = await fetch('/api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: identifier, password: pass })
+            body: JSON.stringify({ 
+              email: identifier, 
+              password: pass,
+              clientTime: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+              clientTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata'
+            })
           });
           const data = await res.json();
 

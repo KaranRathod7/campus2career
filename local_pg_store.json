@@ -7,7 +7,9 @@
       "password_hash": "$2b$10$x0AgxdV8b/d7IS1zrd9wnO8NEI.jSOrzt9RPjRswqzvNioAbkL9Da",
       "role": "admin",
       "is_verified": true,
-      "stream": "ALL"
+      "stream": "ALL",
+      "last_login_at": "2026-10-27T12:38:07.991Z",
+      "last_login_time": "27/10/2026, 18:08:07 (Asia/Kolkata)"
     },
     {
       "id": "usr-1792429659906",
@@ -543,6 +545,76 @@
       "stream": "ME",
       "is_verified": false,
       "created_at": "2026-10-21T10:20:55.856Z"
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000002",
+      "name": "Karansinh Rajput",
+      "username": "karansinh_rajput",
+      "email": "karansinhrrr@gmail.com",
+      "password_hash": "\\.sQe2UX8qRDsqEbB3SqeJ5fSOxnwNkOi9oL.RuiZbYPSnlmT43.",
+      "role": "learner",
+      "stream": "ECE",
+      "branch": "ECE",
+      "college": "VJTI Mumbai",
+      "year": 3,
+      "is_verified": true,
+      "onboarded": true,
+      "skills": [
+        "Embedded C & ARM Cortex-M",
+        "FreeRTOS & Real-Time Kernels",
+        "Hardware-in-Loop Debugging",
+        "Serial Protocols (I2C, SPI, CAN)"
+      ],
+      "total_study_minutes": 95,
+      "total_lecture_minutes": 65,
+      "avg_exam_score": 96,
+      "dynamic_competence_percent": 96,
+      "created_at": "2026-10-27T12:08:09.510Z",
+      "updated_at": "2026-10-27T12:08:09.510Z"
+    },
+    {
+      "id": "usr-1793102943375",
+      "name": "Speed Test Student",
+      "username": "speed_1793102943208",
+      "email": "test_speed_1793102943208@btech.ac.in",
+      "password_hash": "$2b$10$.2EnM0vkVAKUgAZ1YEbKGe8WNMipzzg0A5ZxOTEl8qKrRSBrOfWvq",
+      "role": "learner",
+      "stream": "IT",
+      "is_verified": false,
+      "created_at": "2026-10-27T12:09:03.375Z"
+    },
+    {
+      "id": "usr-1793102981130",
+      "name": "Speed Test Student",
+      "username": "speed_1793102981028",
+      "email": "test_speed_1793102981028@btech.ac.in",
+      "password_hash": "$2b$10$3sJ3dUsB1uOCL3rO//BmU.Kh1NAVQloqlLBsnH2C2RtonOJw48VGC",
+      "role": "learner",
+      "stream": "IT",
+      "is_verified": false,
+      "created_at": "2026-10-27T12:09:41.130Z"
+    },
+    {
+      "id": "usr-1793103031482",
+      "name": "Speed Test Student",
+      "username": "speed_1793103031375",
+      "email": "test_speed_1793103031375@btech.ac.in",
+      "password_hash": "$2b$10$J/yMnWz9atO/lMmncY1mneQ6yelvpY5C2iiWIkM.iOW3hFG/i3Gt.",
+      "role": "learner",
+      "stream": "IT",
+      "is_verified": false,
+      "created_at": "2026-10-27T12:10:31.482Z"
+    },
+    {
+      "id": "usr-1793104688237",
+      "name": "Speed Test Student",
+      "username": "speed_1793104688015",
+      "email": "test_speed_1793104688015@btech.ac.in",
+      "password_hash": "$2b$10$ZTNICIo1pjDAquNzN5v9uueA2DS93nsFZETjl8aEIZsbOLISgUBA.",
+      "role": "learner",
+      "stream": "IT",
+      "is_verified": false,
+      "created_at": "2026-10-27T12:38:08.237Z"
     }
   ],
   "login_attempts": [
@@ -653,6 +725,50 @@
       "ip_address": "127.0.0.1",
       "user_agent": "Jest-Automated-TestSuite/1.0",
       "created_at": "2026-10-20T20:15:54.238Z"
+    },
+    {
+      "id": "login-1793102943192-518",
+      "user_id": null,
+      "email": "admin@campus2career.org",
+      "status": "SUCCESS",
+      "ip_address": "127.0.0.1",
+      "user_agent": "TestRunner/1.0",
+      "login_time": "27/10/2026, 17:39:03 (Asia/Kolkata)",
+      "login_hour": 17,
+      "created_at": "2026-10-27T12:09:03.192Z"
+    },
+    {
+      "id": "login-1793102981022-314",
+      "user_id": null,
+      "email": "admin@campus2career.org",
+      "status": "SUCCESS",
+      "ip_address": "127.0.0.1",
+      "user_agent": "TestRunner/1.0",
+      "login_time": "27/10/2026, 17:39:41 (Asia/Kolkata)",
+      "login_hour": 17,
+      "created_at": "2026-10-27T12:09:41.022Z"
+    },
+    {
+      "id": "login-1793103031368-575",
+      "user_id": null,
+      "email": "admin@campus2career.org",
+      "status": "SUCCESS",
+      "ip_address": "127.0.0.1",
+      "user_agent": "TestRunner/1.0",
+      "login_time": "27/10/2026, 17:40:31 (Asia/Kolkata)",
+      "login_hour": 17,
+      "created_at": "2026-10-27T12:10:31.368Z"
+    },
+    {
+      "id": "login-1793104687983-331",
+      "user_id": null,
+      "email": "admin@campus2career.org",
+      "status": "SUCCESS",
+      "ip_address": "127.0.0.1",
+      "user_agent": "TestRunner/1.0",
+      "login_time": "27/10/2026, 18:08:07 (Asia/Kolkata)",
+      "login_hour": 18,
+      "created_at": "2026-10-27T12:38:07.983Z"
     }
   ],
   "pending_verifications": [
@@ -695,6 +811,38 @@
       "token": "2ef2a45faedc5e6175627a9b05b0d39797ddb73a2382f36afbe7af7135c98873",
       "expires_at": "2026-10-20T20:26:37.978Z",
       "created_at": "2026-10-20T20:11:37.978Z"
+    },
+    {
+      "id": "pv-1793102943379",
+      "email": "test_speed_1793102943208@btech.ac.in",
+      "pin": "653520",
+      "token": "497665df2a8c61c6f37f52fbf7a9bd21cf4c17817bfef243198e0fa67199eae5",
+      "expires_at": "2026-10-27T12:24:03.379Z",
+      "created_at": "2026-10-27T12:09:03.379Z"
+    },
+    {
+      "id": "pv-1793102981132",
+      "email": "test_speed_1793102981028@btech.ac.in",
+      "pin": "637823",
+      "token": "7b586b47605031c72866dbdef597179c2a4a5e5e833ee017541fa0a3bff3804d",
+      "expires_at": "2026-10-27T12:24:41.132Z",
+      "created_at": "2026-10-27T12:09:41.132Z"
+    },
+    {
+      "id": "pv-1793103031484",
+      "email": "test_speed_1793103031375@btech.ac.in",
+      "pin": "504999",
+      "token": "2a79f2e2000bd1a984ccbee530dee34a0b762c31a86d981366611e269377afa5",
+      "expires_at": "2026-10-27T12:25:31.484Z",
+      "created_at": "2026-10-27T12:10:31.484Z"
+    },
+    {
+      "id": "pv-1793104688243",
+      "email": "test_speed_1793104688015@btech.ac.in",
+      "pin": "701763",
+      "token": "13ac7bcaf106d0c500c37bfc79102d26e825f5d2b75483620c675154009bc53c",
+      "expires_at": "2026-10-27T12:53:08.243Z",
+      "created_at": "2026-10-27T12:38:08.243Z"
     }
   ],
   "candidates": [
@@ -1060,6 +1208,34 @@
         "Failure Analysis & Reliability"
       ],
       "created_at": "2026-10-20T20:11:37.975Z"
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000002",
+      "user_id": "a0000000-0000-4000-8000-000000000002",
+      "name": "Karansinh Rajput",
+      "email": "karansinhrrr@gmail.com",
+      "stream": "ECE",
+      "domain": "Embedded Firmware & RTOS",
+      "experience_level": "Fresher (0-1 yr)",
+      "skill_score": 96,
+      "dynamic_competence_percent": 96,
+      "dynamic_competence_level": 5,
+      "dynamic_competence_label": "Level 5: Elite Systems Master",
+      "readiness_score": 96,
+      "status": "LIVE VERIFIED",
+      "verified_status": "LIVE VERIFIED",
+      "total_study_minutes": 95,
+      "total_lecture_minutes": 65,
+      "verified_exam_score": 96,
+      "is_verified_talent": true,
+      "skills": [
+        "Embedded C & ARM Cortex-M",
+        "FreeRTOS & Real-Time Kernels",
+        "Hardware-in-Loop Debugging",
+        "Serial Protocols (I2C, SPI, CAN)"
+      ],
+      "capstone_proof": "Engineered deterministic CAN bus telemetry node with DMA-driven SPI drivers on STM32F4 with zero frame loss under bus load stress.",
+      "created_at": "2026-10-27T12:08:09.497Z"
     }
   ],
   "market_signals": [

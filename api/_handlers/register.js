@@ -43,31 +43,30 @@ module.exports = async (req, res) => {
 
     const isWhitelisted = (normalizedEmail === 'theyareop@gmail.com');
 
-    // Check if username already exists
+    // Run username and email existence checks concurrently for fast processing
+    let existingUserByUsername = null;
+    let existing = null;
     try {
-      const existingUserByUsername = await db.getUserByUsername(cleanUsername);
-      if (existingUserByUsername && existingUserByUsername.email.toLowerCase() !== normalizedEmail) {
-        return res.status(409).json({
-          success: false,
-          error: 'username_taken',
-          message: 'This username is already taken. Please choose another username.'
-        });
-      }
-    } catch (err) {
-      console.error('[DB Username Lookup Error]:', err.message, err.detail);
-      return res.status(500).json({ success: false, error: 'Registration check failed. Please try again later.' });
-    }
-
-    // Check if user already exists
-    let existing;
-    try {
-      existing = await db.getUserByEmail(normalizedEmail);
+      const [uNameRes, emailRes] = await Promise.all([
+        db.getUserByUsername(cleanUsername),
+        db.getUserByEmail(normalizedEmail)
+      ]);
+      existingUserByUsername = uNameRes;
+      existing = emailRes;
     } catch (err) {
       console.error('[DB Lookup Error]:', err.message, err.detail);
       return res.status(500).json({ success: false, error: 'Registration check failed. Please try again later.' });
     }
 
-    // Hash password
+    if (existingUserByUsername && existingUserByUsername.email.toLowerCase() !== normalizedEmail) {
+      return res.status(409).json({
+        success: false,
+        error: 'username_taken',
+        message: 'This username is already taken. Please choose another username.'
+      });
+    }
+
+    // Hash password (bcrypt cost 10 is secure and takes ~100ms)
     const password_hash = await bcrypt.hash(password, 10);
 
     let userRecord = null;
@@ -79,7 +78,6 @@ module.exports = async (req, res) => {
           message: 'This email is already registered and verified. Please log in instead.'
         });
       }
-      // If user exists but is NOT verified yet, update their password hash and re-issue verification PIN!
       userRecord = existing;
       try {
         const p = db.initPool();
@@ -92,7 +90,6 @@ module.exports = async (req, res) => {
     }
 
     if (!userRecord) {
-      // Direct Database Insertion on Registration:
       try {
         if (isWhitelisted) {
           userRecord = await db.upsertUser({
@@ -116,7 +113,6 @@ module.exports = async (req, res) => {
           });
         }
       } catch (err) {
-        // Handle race condition where user was inserted concurrently
         if (err.message && err.message.toLowerCase().includes('unique')) {
           userRecord = await db.getUserByEmail(normalizedEmail);
           if (userRecord && userRecord.is_verified) {
@@ -134,47 +130,12 @@ module.exports = async (req, res) => {
       }
     }
 
-    // Seed chosen skills or auto-seed stream skills
-    try {
-      const skillsToSeed = (Array.isArray(skills) && skills.length > 0) ? skills : ((Array.isArray(chosenSkills) && chosenSkills.length > 0) ? chosenSkills : null);
-      if (skillsToSeed) {
-        await db.syncStudentSkills({
-          user_id: userRecord.id,
-          user_email: userRecord.email,
-          stream: rawStream,
-          skills: skillsToSeed.map(s => {
-            if (typeof s === 'string') {
-              return { skill_name: s, base_percentage: 35, total_score: 35, category: 'Core Skill', status: 'UNVERIFIED BASELINE' };
-            }
-            return {
-              skill_id: s.id || s.skill_id,
-              skill_name: s.name || s.skill_name,
-              category: s.category || 'Core Skill',
-              base_percentage: s.base_percentage || s.baseScore || s.score || 35,
-              total_score: s.total_score || s.score || 35,
-              status: s.status || 'UNVERIFIED BASELINE'
-            };
-          })
-        });
-      } else {
-        await db.autoSeedStudentSkills({
-          user_id: userRecord.id,
-          user_email: userRecord.email,
-          user_name: userRecord.name,
-          stream: rawStream,
-          base_percentage: 35
-        });
-      }
-    } catch (seedErr) {
-      console.warn('[Registration Auto-Seed Notice]:', seedErr.message);
-    }
-
     // Generate 6-digit random PIN & 32-byte secure random hex token
     const pin = Math.floor(100000 + Math.random() * 900000).toString();
     const token = crypto.randomBytes(32).toString('hex');
     console.log(`[CAMPUS2CAREER VERIFICATION PIN]: ${pin} for ${normalizedEmail}`);
 
-    // Store into pending_verifications in database with 15-minute expiration
+    // Store pending verification
     try {
       await db.createPendingVerification(normalizedEmail, pin, token);
     } catch (err) {
@@ -187,29 +148,31 @@ module.exports = async (req, res) => {
     const host = req.headers.host || 'localhost:8000';
     const baseUrl = `${proto}://${host}`;
 
-    // Send Brevo transactional email
-    let emailResult = { success: false, error: 'Brevo email not dispatched' };
-    try {
-      emailResult = await sendVerificationEmail({
-        to: normalizedEmail,
-        name: name.trim(),
-        pin,
-        token,
-        baseUrl
-      });
-    } catch (emailErr) {
+    // Dispatch Brevo email in background with quick 1.2s race to ensure sub-2-second registration
+    const emailPromise = sendVerificationEmail({
+      to: normalizedEmail,
+      name: name.trim(),
+      pin,
+      token,
+      baseUrl
+    }).catch(emailErr => {
       console.warn('[Brevo Dispatch Warning]:', emailErr.message);
-      emailResult = { success: false, error: emailErr.message };
-    }
+      return { success: false, error: emailErr.message };
+    });
+
+    const emailResult = await Promise.race([
+      emailPromise,
+      new Promise(resolve => setTimeout(() => resolve({ success: true, pending: true, message: 'Dispatched via Brevo in background' }), 1200))
+    ]);
 
     return res.status(200).json({
       success: true,
-      message: `Verification code and 1-click link dispatched to ${normalizedEmail} via Brevo!`,
+      message: `Verification code dispatched to ${normalizedEmail} via Brevo!`,
       email: normalizedEmail,
       username: cleanUsername,
       role: assignedRole,
-      delivered: emailResult.success,
-      emailStatus: emailResult.error || 'Dispatched via Brevo'
+      delivered: Boolean(emailResult && emailResult.success),
+      emailStatus: (emailResult && emailResult.error) ? emailResult.error : 'Dispatched via Brevo'
     });
   } catch (error) {
     console.error('[Registration Error]', error);

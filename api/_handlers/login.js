@@ -21,7 +21,7 @@ module.exports = async (req, res) => {
 
   try {
     const ip = getClientIp(req);
-    const { email, password } = req.body || {};
+    const { email, password, clientTime, clientTimezone } = req.body || {};
     const normalizedEmail = (email || '').trim().toLowerCase();
     const cleanPassword = (password || '').trim();
 
@@ -29,16 +29,19 @@ module.exports = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Email and password are required.' });
     }
 
-    // 1. Rate limiting check
+    // 1. Rate limiting check (fast)
     const rateStatus = await db.checkRateLimit(ip, normalizedEmail);
     if (rateStatus.isLocked) {
-      await db.recordLoginAttempt({
+      db.recordLoginAttempt({
         user_id: null,
         email: normalizedEmail,
         status: 'FAILED',
         ip_address: ip,
-        user_agent: req.headers['user-agent'] || 'Unknown'
-      });
+        user_agent: req.headers['user-agent'] || 'Unknown',
+        clientTime,
+        clientTimezone
+      }).catch(() => {});
+
       return res.status(429).json({
         success: false,
         error: `Security Alert: Too many failed login attempts. Locked for ${rateStatus.remainingSecs}s.`,
@@ -58,13 +61,16 @@ module.exports = async (req, res) => {
 
     if (!user) {
       const failed = await db.recordFailedAttempt(ip, normalizedEmail);
-      await db.recordLoginAttempt({
+      db.recordLoginAttempt({
         user_id: null,
         email: normalizedEmail,
         status: 'FAILED',
         ip_address: ip,
-        user_agent: req.headers['user-agent'] || 'Unknown'
-      });
+        user_agent: req.headers['user-agent'] || 'Unknown',
+        clientTime,
+        clientTimezone
+      }).catch(() => {});
+
       const remainingAttempts = Math.max(0, 5 - failed.attempts);
       return res.status(401).json({
         success: false,
@@ -80,13 +86,16 @@ module.exports = async (req, res) => {
     const isMatch = await bcrypt.compare(cleanPassword, user.password_hash);
     if (!isMatch) {
       const failed = await db.recordFailedAttempt(ip, normalizedEmail);
-      await db.recordLoginAttempt({
-        user_id: null,
+      db.recordLoginAttempt({
+        user_id: user.id || null,
         email: normalizedEmail,
         status: 'FAILED',
         ip_address: ip,
-        user_agent: req.headers['user-agent'] || 'Unknown'
-      });
+        user_agent: req.headers['user-agent'] || 'Unknown',
+        clientTime,
+        clientTimezone
+      }).catch(() => {});
+
       const remainingAttempts = Math.max(0, 5 - failed.attempts);
       return res.status(401).json({
         success: false,
@@ -98,17 +107,17 @@ module.exports = async (req, res) => {
       });
     }
 
-    // 4. Clear rate limit on successful credentials
-    await db.clearRateLimit(ip, normalizedEmail);
-
-    // Record successful login attempt
-    await db.recordLoginAttempt({
+    // 4. Asynchronous fast background cleanup & proper local hour login tracking
+    db.clearRateLimit(ip, normalizedEmail).catch(() => {});
+    db.recordLoginAttempt({
       user_id: user.id,
       email: user.email,
       status: 'SUCCESS',
       ip_address: ip,
-      user_agent: req.headers['user-agent'] || 'Unknown'
-    });
+      user_agent: req.headers['user-agent'] || 'Unknown',
+      clientTime,
+      clientTimezone
+    }).catch(e => console.warn('[Login Attempt Log Notice]:', e.message));
 
     // 5. Verification check
     if (!user.is_verified) {

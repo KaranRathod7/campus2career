@@ -458,6 +458,8 @@ async function ensureSchema() {
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS dynamic_competence_percent NUMERIC(5,2) DEFAULT 25.0;",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INT DEFAULT 1;",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_time VARCHAR(100);",
         "ALTER TABLE users DROP COLUMN IF EXISTS password;"
       ];
       for (const colSql of userCols) {
@@ -514,6 +516,8 @@ async function ensureSchema() {
         "ALTER TABLE login_attempts ALTER COLUMN failed_attempts DROP NOT NULL;",
         "CREATE INDEX IF NOT EXISTS idx_login_attempts_email ON login_attempts (LOWER(TRIM(email)));",
         "CREATE INDEX IF NOT EXISTS idx_login_attempts_created_at ON login_attempts (created_at DESC);",
+        "ALTER TABLE login_attempts ADD COLUMN IF NOT EXISTS login_time VARCHAR(100);",
+        "ALTER TABLE login_attempts ADD COLUMN IF NOT EXISTS login_hour INT;",
         "CREATE INDEX IF NOT EXISTS idx_login_rate_limits_ip_email ON login_rate_limits (ip_address, LOWER(TRIM(email)));"
       ];
       for (const lam of loginAttemptMigrations) {
@@ -1309,7 +1313,11 @@ const db = {
           await p.query('DELETE FROM login_attempts WHERE user_id = $1 OR LOWER(TRIM(email)) = $2', [deletedId, deletedEmail]);
           // 9. Delete login_rate_limits
           await p.query('DELETE FROM login_rate_limits WHERE LOWER(TRIM(email)) = $1', [deletedEmail]);
-          // 10. Delete user
+          // 10. Delete user_domain_progress
+          await p.query('DELETE FROM user_domain_progress WHERE LOWER(TRIM(user_email)) = $1', [deletedEmail]);
+          // 11. Delete diagnostics
+          await p.query('DELETE FROM diagnostics WHERE LOWER(TRIM(user_email)) = $1', [deletedEmail]);
+          // 12. Delete user
           await p.query('DELETE FROM users WHERE id = $1', [deletedId]);
         }
       } catch (err) {
@@ -1369,6 +1377,21 @@ const db = {
       Object.keys(store.login_rate_limits).forEach(k => {
         if (k.toLowerCase().includes(uEmail)) delete store.login_rate_limits[k];
       });
+    }
+    if (store.user_domain_progress) {
+      if (typeof store.user_domain_progress === 'object' && !Array.isArray(store.user_domain_progress)) {
+        Object.keys(store.user_domain_progress).forEach(k => {
+          const val = store.user_domain_progress[k];
+          if ((val && val.user_email && val.user_email.toLowerCase() === uEmail) || k.toLowerCase().includes(uEmail)) {
+            delete store.user_domain_progress[k];
+          }
+        });
+      } else if (Array.isArray(store.user_domain_progress)) {
+        store.user_domain_progress = store.user_domain_progress.filter(dp => (dp.user_email ? dp.user_email.toLowerCase() !== uEmail : true));
+      }
+    }
+    if (store.diagnostics && Array.isArray(store.diagnostics)) {
+      store.diagnostics = store.diagnostics.filter(d => (d.user_email ? d.user_email.toLowerCase() !== uEmail : true));
     }
     saveLocalStore(store);
     return Boolean(userToDel || deletedId);
@@ -1507,12 +1530,38 @@ const db = {
   },
 
   // Audit Log: Record Every Login Attempt (SUCCESS and FAILED)
-  async recordLoginAttempt({ user_id, email, status, ip_address, user_agent }) {
+  async recordLoginAttempt({ user_id, email, status, ip_address, user_agent, clientTime, clientTimezone }) {
     const cleanEmail = (email || '').trim().toLowerCase();
     const cleanStatus = (status || 'SUCCESS').toUpperCase();
     const cleanIp = ip_address || '127.0.0.1';
     const cleanAgent = user_agent || 'Unknown';
     let validUuid = (user_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(user_id))) ? String(user_id) : null;
+
+    const now = new Date();
+    const tz = clientTimezone || 'Asia/Kolkata';
+    let formattedTime = '';
+    let localHour = now.getHours();
+    try {
+      formattedTime = new Intl.DateTimeFormat('en-IN', {
+        timeZone: tz,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).format(now) + ` (${tz})`;
+      const hourPart = new Intl.DateTimeFormat('en-IN', {
+        timeZone: tz,
+        hour: 'numeric',
+        hour12: false
+      }).format(now);
+      localHour = parseInt(hourPart, 10);
+    } catch (e) {
+      formattedTime = now.toLocaleString() + ' (Asia/Kolkata)';
+      localHour = now.getHours();
+    }
 
     // Supabase SDK attempt if available
     const sb = this.getSupabaseClient();
@@ -1526,7 +1575,9 @@ const db = {
               email: cleanEmail,
               status: cleanStatus,
               ip_address: cleanIp,
-              user_agent: cleanAgent
+              user_agent: cleanAgent,
+              login_time: formattedTime,
+              login_hour: localHour
             }
           ])
           .select()
@@ -1547,11 +1598,19 @@ const db = {
           if (u.rows.length > 0) validUuid = u.rows[0].id;
         }
         const res = await p.query(
-          `INSERT INTO login_attempts (user_id, email, status, ip_address, user_agent, created_at)
-           VALUES ($1, $2, $3, $4, $5, NOW())
+          `INSERT INTO login_attempts (user_id, email, status, ip_address, user_agent, login_time, login_hour, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
            RETURNING *`,
-          [validUuid, cleanEmail, cleanStatus, cleanIp, cleanAgent]
+          [validUuid, cleanEmail, cleanStatus, cleanIp, cleanAgent, formattedTime, localHour]
         );
+
+        if (cleanStatus === 'SUCCESS') {
+          await p.query(
+            `UPDATE users SET last_login_at = NOW(), last_login_time = $1, updated_at = NOW() WHERE id = $2 OR LOWER(TRIM(email)) = $3`,
+            [formattedTime, validUuid, cleanEmail]
+          ).catch(() => {});
+        }
+
         return res.rows[0];
       } catch (err) {
         console.warn('[Campus2Career DB] Cloud recordLoginAttempt notice (falling back to local):', err.message);
@@ -1569,9 +1628,18 @@ const db = {
       status: cleanStatus,
       ip_address: cleanIp,
       user_agent: cleanAgent,
+      login_time: formattedTime,
+      login_hour: localHour,
       created_at: new Date().toISOString()
     };
     store.login_attempts.push(entry);
+    if (cleanStatus === 'SUCCESS') {
+      const u = (store.users || []).find(usr => (validUuid && usr.id === validUuid) || (usr.email && usr.email.toLowerCase() === cleanEmail));
+      if (u) {
+        u.last_login_at = new Date().toISOString();
+        u.last_login_time = formattedTime;
+      }
+    }
     saveLocalStore(store);
     return entry;
   },
@@ -2221,17 +2289,56 @@ const db = {
   },
 
   async getCandidateById(id) {
-    if (pool) {
+    if (!id) return null;
+    const cleanId = String(id).trim();
+    const cleanLower = cleanId.toLowerCase();
+    const p = initPool();
+    if (p) {
       try {
         await ensureSchema();
-        const res = await pool.query('SELECT * FROM candidates WHERE id::text = $1 OR email = $1 LIMIT 1', [id]);
+        const res = await pool.query(
+          'SELECT * FROM candidates WHERE id::text = $1 OR user_id::text = $1 OR LOWER(TRIM(email)) = $2 LIMIT 1',
+          [cleanId, cleanLower]
+        );
         if (res.rows[0]) return res.rows[0];
+
+        const uRes = await p.query(
+          'SELECT id, name, email, stream, role, dynamic_competence_percent AS skill_score FROM users WHERE id::text = $1 OR LOWER(TRIM(email)) = $2 LIMIT 1',
+          [cleanId, cleanLower]
+        );
+        if (uRes.rows[0]) {
+          return {
+            ...uRes.rows[0],
+            domain: `${uRes.rows[0].stream || 'Core'} Engineering Track`
+          };
+        }
       } catch (err) {
         console.warn('[Campus2Career DB] Cloud getCandidateById notice:', err.message);
       }
     }
     const store = getLocalStore();
-    return store.candidates.find(c => c.id === id || c.email === id) || null;
+    const cand = (store.candidates || []).find(c => 
+      (c.id && String(c.id).toLowerCase() === cleanLower) ||
+      (c.user_id && String(c.user_id).toLowerCase() === cleanLower) ||
+      (c.email && c.email.toLowerCase() === cleanLower)
+    );
+    if (cand) return cand;
+
+    const usr = (store.users || []).find(u => 
+      (u.id && String(u.id).toLowerCase() === cleanLower) ||
+      (u.email && u.email.toLowerCase() === cleanLower)
+    );
+    if (usr) {
+      return {
+        id: usr.id,
+        name: usr.name,
+        email: usr.email,
+        stream: usr.stream || 'IT',
+        domain: 'Core Engineering Track',
+        skill_score: usr.dynamic_competence_percent || 90
+      };
+    }
+    return null;
   },
 
   // Market Signals
@@ -3630,13 +3737,20 @@ const db = {
             try { await sb.from('student_skill_progress').delete().eq('user_id', validUuid); } catch (_) {}
           }
 
-          for (const s of defaultSkills) {
+          if (defaultSkills.length > 0) {
+            const placeholders = [];
+            const values = [];
+            let paramIdx = 1;
+            for (const s of defaultSkills) {
+              placeholders.push(`(${paramIdx++}, ${paramIdx++}, ${paramIdx++}, ${paramIdx++}, ${paramIdx++}, 0, 0, 0, ${paramIdx++}, 0, 'UNVERIFIED BASELINE', false, ${paramIdx++}, ${paramIdx++})`);
+              values.push(validUuid, s.id, s.name, s.category, base_percentage, base_percentage, s.current_milestone, s.next_milestone);
+            }
             await p.query(
               `INSERT INTO student_skill_progress (
                 user_id, skill_id, skill_name, category, base_percentage, diagnostic_score, lecture_score, marathon_score, total_score, latest_exam_score, status, verified, current_milestone, next_milestone
-              ) VALUES ($1, $2, $3, $4, $5, 0, 0, 0, $5, 0, 'UNVERIFIED BASELINE', false, $6, $7)
+              ) VALUES ${placeholders.join(', ')}
               ON CONFLICT (user_id, skill_name) DO NOTHING`,
-              [validUuid, s.id, s.name, s.category, base_percentage, s.current_milestone, s.next_milestone]
+              values
             );
           }
 

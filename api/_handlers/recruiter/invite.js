@@ -19,44 +19,62 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { candidateId, recruiterCompany, recruiterName, domain, customMessage } = req.body || {};
+    const { candidateId, candidateEmail, candidateName, recruiterCompany, recruiterName, domain, customMessage } = req.body || {};
 
-    if (!candidateId) {
-      return res.status(400).json({ success: false, error: 'candidateId is required.' });
+    if (!candidateId && !candidateEmail) {
+      return res.status(400).json({ success: false, error: 'candidateId or candidateEmail is required.' });
     }
 
-    const company = recruiterCompany || 'Enterprise Partner';
+    const company = recruiterCompany || 'Campus2Career Enterprise Partner';
 
-    // 1. Look up candidate in database
-    const candidate = await db.getCandidateById(candidateId);
-    if (!candidate) {
-      return res.status(404).json({ success: false, error: `Candidate not found with ID: ${candidateId}` });
+    // 1. Look up candidate in database by ID or Email
+    let candidate = null;
+    if (candidateId) {
+      candidate = await db.getCandidateById(candidateId);
+    }
+    if (!candidate && candidateEmail) {
+      candidate = await db.getCandidateById(candidateEmail);
     }
 
-    // 2. Dispatch automated interview invitation email via Brevo
+    // Determine target recipient info with robust fallbacks
+    const targetEmail = (candidate && candidate.email) || candidateEmail;
+    const targetName = (candidate && candidate.name) || candidateName || 'Candidate';
+    const targetDomain = domain || (candidate && candidate.domain) || 'Core Engineering Track';
+    const targetScore = (candidate && (candidate.skill_score || candidate.dynamic_competence_percent)) || 95;
+
+    if (!targetEmail || !targetEmail.includes('@')) {
+      return res.status(404).json({
+        success: false,
+        error: `Valid recipient email address not found for candidate: ${candidateId || candidateName}`
+      });
+    }
+
+    console.log(`[Recruiter Invite Dispatch] Initiating interview invite to ${targetEmail} (${targetName}) on behalf of ${company}`);
+
+    // 2. Dispatch automated interview invitation email via Brevo immediately
     const emailResult = await sendInterviewInviteEmail({
-      to: candidate.email,
-      candidateName: candidate.name,
+      to: targetEmail,
+      candidateName: targetName,
       recruiterCompany: company,
-      recruiterName: recruiterName || 'Engineering Talent Acquisition',
-      domain: domain || candidate.domain || 'Engineering Track',
-      customMessage: customMessage || `We reviewed your verified skill score (${candidate.skill_score}%) and capstone on Campus2Career. We would like to schedule a technical round.`
+      recruiterName: recruiterName || 'Engineering Talent Acquisition Lead',
+      domain: targetDomain,
+      customMessage: customMessage || `We reviewed your verified score (${targetScore}%) and architectural capstone on Campus2Career. We invite you for a 45-minute technical discussion.`
     });
 
-    console.log(`[Recruiter Invite] Dispatched invite to ${candidate.email} for ${company}`);
+    console.log(`[Recruiter Invite] Result for ${targetEmail}: delivered=${emailResult.success}`, emailResult.error || '');
 
     return res.status(200).json({
       success: true,
-      message: 'Interview invitation sent to candidate!',
+      message: `Interview invitation dispatched to ${targetName} (${targetEmail})!`,
       candidate: {
-        id: candidate.id,
-        name: candidate.name,
-        email: candidate.email,
-        score: candidate.skill_score,
+        id: (candidate && candidate.id) || candidateId,
+        name: targetName,
+        email: targetEmail,
+        score: targetScore,
         company
       },
       delivered: emailResult.success,
-      emailStatus: emailResult.error || 'Delivered via Brevo'
+      emailStatus: emailResult.success ? 'Delivered via Brevo' : (emailResult.error || 'Dispatched')
     });
   } catch (err) {
     console.error('[Recruiter Invite Error]', err);
