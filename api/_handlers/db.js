@@ -2053,8 +2053,8 @@ const db = {
         const res = await p.query(
           `SELECT * FROM pending_verifications 
            WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) 
-             AND (TRIM(token) = $2 OR TRIM(pin) = $2) 
-             AND expires_at > NOW()
+             AND (TRIM(token) = $2 OR TRIM(pin) = $2 OR pin::text = $2) 
+             AND expires_at > (NOW() - INTERVAL '2 minutes')
            ORDER BY created_at DESC LIMIT 1`,
           [normalized, cleanTokenOrPin]
         );

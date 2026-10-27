@@ -955,11 +955,14 @@
 
           <div class="space-y-1.5">
             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">Enter 6-Digit Email Verification Code</label>
-            <input type="text" id="authVerificationCodeInput" maxlength="6" placeholder="• • • • • •" class="w-full text-center text-lg font-mono tracking-[0.4em] p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-[#008080] focus:outline-none font-bold">
+            <input type="text" id="authVerificationCodeInput" maxlength="6" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" placeholder="• • • • • •" oninput="handleVerificationCodeInput(this)" class="w-full text-center text-lg font-mono tracking-[0.4em] p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-[#008080] focus:outline-none font-bold">
             <p class="text-[11px] text-slate-500 dark:text-slate-400 text-center">Check your Gmail inbox or spam folder for your 6-digit confirmation code.</p>
           </div>
 
-          <button type="button" id="authVerifySubmitBtn" onclick="verifyAndCompleteRegistration()" class="w-full py-3 bg-[#008080] hover:bg-[#006666] text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center justify-center space-x-1.5">
+          <!-- Dedicated Inline Verification Alert (Immediately above button) -->
+          <div id="authVerifyAlert" class="hidden text-xs p-3 rounded-xl font-bold text-center border"></div>
+
+          <button type="button" id="authVerifySubmitBtn" onclick="verifyAndCompleteRegistration()" class="w-full py-3 bg-[#008080] hover:bg-[#006666] text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center justify-center space-x-1.5 cursor-pointer">
             <span>Verify &amp; Create Account &rarr;</span>
           </button>
 
@@ -31421,6 +31424,10 @@ function onWizardBranchChanged(branchKey) {
             role: role,
             stream: stream
           };
+          try {
+            sessionStorage.setItem('c2c_pending_user', JSON.stringify(pendingRegistrationUser));
+            localStorage.setItem('c2c_pending_user', JSON.stringify(pendingRegistrationUser));
+          } catch (e) {}
 
           // Switch to Verification step view
           const standardFields = document.getElementById('authStandardFields');
@@ -31428,8 +31435,10 @@ function onWizardBranchChanged(branchKey) {
           const emailDisplay = document.getElementById('authVerifyEmailDisplay');
           const codeInput = document.getElementById('authVerificationCodeInput');
           const alertEl = document.getElementById('authStatusAlert');
+          const verifyAlertEl = document.getElementById('authVerifyAlert');
 
           if (alertEl) alertEl.classList.add('hidden');
+          if (verifyAlertEl) verifyAlertEl.classList.add('hidden');
           if (standardFields) standardFields.classList.add('hidden');
           if (verifyStep) verifyStep.classList.remove('hidden');
           if (emailDisplay) emailDisplay.innerText = email;
@@ -31497,6 +31506,10 @@ function onWizardBranchChanged(branchKey) {
           if (!res.ok || !data.success) {
             if (data.needs_verification || data.needsVerification) {
               pendingRegistrationUser = { email: identifier, role: data.role || 'learner' };
+              try {
+                sessionStorage.setItem('c2c_pending_user', JSON.stringify(pendingRegistrationUser));
+                localStorage.setItem('c2c_pending_user', JSON.stringify(pendingRegistrationUser));
+              } catch (e) {}
               const standardFields = document.getElementById('authStandardFields');
               const verifyStep = document.getElementById('authVerifyStep');
               const emailDisplay = document.getElementById('authVerifyEmailDisplay');
@@ -31580,32 +31593,103 @@ function onWizardBranchChanged(branchKey) {
       }
     }
 
-    async function verifyAndCompleteRegistration() {
-      const codeInput = document.getElementById('authVerificationCodeInput');
-      const enteredCode = codeInput ? codeInput.value.trim() : '';
+    function getPendingUser() {
+      if (pendingRegistrationUser && pendingRegistrationUser.email) return pendingRegistrationUser;
+      try {
+        const raw = sessionStorage.getItem('c2c_pending_user') || localStorage.getItem('c2c_pending_user');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.email) {
+            pendingRegistrationUser = parsed;
+            return parsed;
+          }
+        }
+      } catch (e) {}
+      const displayEmail = document.getElementById('authVerifyEmailDisplay')?.innerText?.trim();
+      const inputEmail = document.getElementById('authEmailInput')?.value?.trim();
+      const fallbackEmail = displayEmail || inputEmail;
+      if (fallbackEmail) {
+        pendingRegistrationUser = {
+          email: fallbackEmail,
+          name: document.getElementById('authNameInput')?.value?.trim() || 'Student',
+          username: document.getElementById('authUsernameInput')?.value?.trim() || fallbackEmail.split('@')[0],
+          role: 'learner',
+          stream: 'it'
+        };
+        return pendingRegistrationUser;
+      }
+      return null;
+    }
 
-      if (!pendingRegistrationUser || !pendingRegistrationUser.email) {
-        showAuthAlert("No pending registration session found. Please fill in the sign-up form.");
+    function showVerifyAlert(msg, isSuccess = false) {
+      const alertEl = document.getElementById('authVerifyAlert');
+      if (alertEl) {
+        const displayMsg = isSuccess ? msg : sanitizeAuthErrorMessage(msg);
+        alertEl.innerHTML = displayMsg;
+        alertEl.className = isSuccess
+          ? "text-xs p-3 rounded-xl font-bold text-center border bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+          : "text-xs p-3 rounded-xl font-bold text-center border bg-rose-50 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800";
+        alertEl.classList.remove('hidden');
+        triggerAlertShake('authVerifyAlert');
+      }
+      showAuthAlert(msg, isSuccess);
+    }
+
+    function handleVerificationCodeInput(el) {
+      if (!el) return;
+      const clean = el.value.replace(/\D/g, '').slice(0, 6);
+      if (el.value !== clean) el.value = clean;
+      const alertEl = document.getElementById('authVerifyAlert');
+      if (alertEl) alertEl.classList.add('hidden');
+      if (clean.length === 6) {
+        verifyAndCompleteRegistration();
+      }
+    }
+
+    async function verifyAndCompleteRegistration() {
+      const submitBtn = document.getElementById('authVerifySubmitBtn');
+      const codeInput = document.getElementById('authVerificationCodeInput');
+      const rawCode = codeInput ? codeInput.value : '';
+      const cleanCode = rawCode.replace(/\D/g, '').trim();
+
+      const userSession = getPendingUser();
+      const targetEmail = (userSession && userSession.email) ||
+        (document.getElementById('authVerifyEmailDisplay') && document.getElementById('authVerifyEmailDisplay').innerText.trim()) ||
+        (document.getElementById('authEmailInput') && document.getElementById('authEmailInput').value.trim());
+
+      if (!targetEmail) {
+        showVerifyAlert("No pending registration session found. Please fill in the sign-up form.");
         triggerAlertShake('authStatusAlert');
         switchAuthTab('signup');
         return;
       }
 
-      if (!enteredCode || enteredCode.length !== 6) {
-        showAuthAlert("Please enter the complete 6-digit verification code from your email.");
-        triggerAlertShake('authStatusAlert');
+      if (!cleanCode || cleanCode.length !== 6) {
+        showVerifyAlert("Please enter the complete 6-digit verification code from your email.");
+        if (codeInput) codeInput.focus();
         return;
+      }
+
+      // Visual feedback on button immediately!
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs mr-1.5"></i><span>Verifying PIN & Activating...</span>';
       }
 
       try {
         const res = await fetch('/api/verify-pin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: pendingRegistrationUser.email, pin: enteredCode })
+          body: JSON.stringify({ email: targetEmail, pin: cleanCode })
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({ success: false, error: 'Network communication error' }));
 
         if (!res.ok || !data.success) {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span>Verify &amp; Create Account &rarr;</span>';
+          }
+
           let clientAttempts = parseInt(localStorage.getItem('c2c_login_failed_attempts') || '0', 10) + 1;
           localStorage.setItem('c2c_login_failed_attempts', clientAttempts.toString());
 
@@ -31619,22 +31703,23 @@ function onWizardBranchChanged(branchKey) {
             localStorage.setItem('c2c_login_lockout_until', lockUntil.toString());
             startLoginLockoutTimer(waitSecs);
           } else {
-            showAuthAlert(data.error || `Incorrect or expired 6-digit verification code. ${remainingAttempts} attempt(s) remaining before security lockout.`);
+            showVerifyAlert(data.error || `Incorrect or expired 6-digit verification code. ${remainingAttempts} attempt(s) remaining before security lockout.`);
           }
-          triggerAlertShake('authStatusAlert');
+          if (codeInput) codeInput.focus();
           return;
         }
 
+        // Verification Succeeded!
         stopVerificationPolling();
         clearUserClientStorage();
 
         const verifiedUser = data.user || {
           id: 'user-' + Date.now(),
-          name: pendingRegistrationUser.name || 'User',
-          email: pendingRegistrationUser.email,
-          role: pendingRegistrationUser.role || 'learner',
-          stream: normalizeStreamKey(pendingRegistrationUser.stream || 'it'),
-          branch: normalizeStreamKey(pendingRegistrationUser.stream || 'it'),
+          name: (userSession && userSession.name) || 'User',
+          email: targetEmail,
+          role: (userSession && userSession.role) || 'learner',
+          stream: normalizeStreamKey((userSession && userSession.stream) || 'it'),
+          branch: normalizeStreamKey((userSession && userSession.stream) || 'it'),
           skills: null,
           is_verified: true
         };
@@ -31652,8 +31737,21 @@ function onWizardBranchChanged(branchKey) {
         };
         saveStateToStorage();
 
+        if (data.token) {
+          try {
+            localStorage.setItem('c2c_session_token', data.token);
+            sessionStorage.setItem('c2c_session_token', data.token);
+          } catch (e) {}
+        }
+
+        try {
+          sessionStorage.removeItem('c2c_pending_user');
+          localStorage.removeItem('c2c_pending_user');
+        } catch (e) {}
+
         updateAuthUI();
         closeAuthModal();
+
         if (typeof fetchStudentSkills === 'function') fetchStudentSkills();
         if (typeof fetchStudentAnalytics === 'function') fetchStudentAnalytics();
 
@@ -31670,8 +31768,11 @@ function onWizardBranchChanged(branchKey) {
 
         pendingRegistrationUser = null;
       } catch (err) {
-        showAuthAlert("Verification network error: " + err.message);
-        triggerAlertShake('authStatusAlert');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<span>Verify &amp; Create Account &rarr;</span>';
+        }
+        showVerifyAlert("Verification network error: " + err.message);
       }
     }
 
@@ -31679,7 +31780,8 @@ function onWizardBranchChanged(branchKey) {
     let resendCooldownSeconds = 0;
 
     async function resendVerificationEmail() {
-      const email = (pendingRegistrationUser && pendingRegistrationUser.email) ||
+      const userSession = getPendingUser();
+      const email = (userSession && userSession.email) ||
                     (document.getElementById('authEmailInput') && document.getElementById('authEmailInput').value.trim()) ||
                     (document.getElementById('authVerifyEmailDisplay') && document.getElementById('authVerifyEmailDisplay').innerText.trim());
 

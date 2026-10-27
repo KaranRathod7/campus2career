@@ -18,9 +18,12 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { email, pin } = req.body || {};
+    const { email, pin, token: bodyToken } = req.body || {};
     const normalizedEmail = (email || '').trim().toLowerCase();
-    const cleanPin = (pin || '').trim();
+    const rawPin = (pin || bodyToken || '').toString().trim();
+    // Support either clean numeric 6-digit PIN or 32-byte hex token
+    const numericOnly = rawPin.replace(/\D/g, '');
+    const cleanPin = (numericOnly.length === 6) ? numericOnly : rawPin;
 
     if (!normalizedEmail || !cleanPin) {
       return res.status(400).json({ success: false, error: 'Email and 6-digit PIN are required.' });
