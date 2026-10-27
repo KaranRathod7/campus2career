@@ -25576,16 +25576,46 @@ function onWizardBranchChanged(branchKey) {
       const preset = presets[domainKey];
       if (!preset || !Array.isArray(preset.skills) || preset.skills.length === 0) return 0;
 
-      // 1. If user has completed onboarding, check saved domain progress
-      const isOnboarded = Boolean(appState.user && appState.user.onboarded);
-      if (isOnboarded && appState.user_domain_progress && appState.user_domain_progress[domainKey]) {
+      // 1. Check saved domain progress (e.g. from previous tests, learning, or explored presets)
+      if (appState.user_domain_progress && appState.user_domain_progress[domainKey]) {
         const dp = appState.user_domain_progress[domainKey];
         const pVal = Number(dp.mastery_percent || dp.mastery || dp.readiness_score || dp.score || 0);
         if (pVal > 0) return Math.round(pVal);
       }
 
-      // 2. Real verified activity check across individual skills in preset:
-      // A domain is ONLY explored if it has verified test attempts or completed lecture lessons
+      // 2. Check if this is the active domain the user has explored / configured
+      const activePreset = (appState.user && (appState.user.active_domain || appState.user.activeTrackPreset)) || appState.selectedPreset;
+      const isPresetActive = (domainKey === activePreset);
+
+      const presetSkillNames = new Set(preset.skills.map(s => (s.name || '').toLowerCase().trim()));
+      const presetSkillIds = new Set(preset.skills.map(s => (s.id || '').toLowerCase().trim()));
+
+      let matchingStackSkills = [];
+      if (Array.isArray(appState.currentStack) && appState.currentStack.length > 0) {
+        matchingStackSkills = appState.currentStack.filter(s => 
+          presetSkillIds.has((s.id || '').toLowerCase().trim()) || 
+          presetSkillNames.has((s.name || '').toLowerCase().trim())
+        );
+      }
+
+      // A domain is explored if it is the active preset with a configured stack,
+      // OR if the user's stack predominantly matches this preset's skills
+      if ((isPresetActive && matchingStackSkills.length > 0) || matchingStackSkills.length >= Math.min(2, preset.skills.length)) {
+        const stackScores = matchingStackSkills.map(s => {
+          if (typeof calculateSkillBreakdown === 'function') {
+            const b = calculateSkillBreakdown(s);
+            if (b && b.total > 0) return b.total;
+          }
+          return Number(s.score !== undefined ? s.score : (s.baseScore !== undefined ? s.baseScore : (s.total_score || 35)));
+        });
+        if (stackScores.length > 0) {
+          const avg = Math.round(stackScores.reduce((a, b) => a + b, 0) / stackScores.length);
+          if (avg > 0) return avg;
+        }
+      }
+
+      // 3. Real verified activity check across individual skills in preset:
+      // Check if user has taken verified MCQ tests or watched lectures for skills in this preset
       let totalVerifiedScore = 0;
       let evaluatedCount = 0;
 
@@ -25593,7 +25623,7 @@ function onWizardBranchChanged(branchKey) {
         const sNameLower = (skill.name || '').toLowerCase().trim();
         const sIdLower = (skill.id || '').toLowerCase().trim();
 
-        // 2a. Check verified test attempts in mcqHistory
+        // 3a. Check verified test attempts in mcqHistory
         const mcqAttempts = (appState.mcqHistory || []).filter(h => 
           (h.skill_name && h.skill_name.toLowerCase().trim() === sNameLower) ||
           (h.skill_id && h.skill_id.toLowerCase().trim() === sIdLower)
@@ -25608,7 +25638,7 @@ function onWizardBranchChanged(branchKey) {
           }
         }
 
-        // 2b. Check studentAnalytics for real completed exams
+        // 3b. Check studentAnalytics for real completed exams
         const analyticsSkills = (appState.studentAnalytics && appState.studentAnalytics.skill_competencies) || [];
         const inAnalytics = analyticsSkills.find(s => 
           (s.name && s.name.toLowerCase().trim() === sNameLower) ||
@@ -25624,7 +25654,7 @@ function onWizardBranchChanged(branchKey) {
           }
         }
 
-        // 2c. Check verified completed lectures
+        // 3c. Check verified completed lectures
         const skillId = skill.id || sIdLower;
         const completedList = (appState.progress && appState.progress.completedLessonsBySkill && 
           (appState.progress.completedLessonsBySkill[skillId] || appState.progress.completedLessonsBySkill[skill.name])) || [];
@@ -25638,8 +25668,7 @@ function onWizardBranchChanged(branchKey) {
         return Math.round(totalVerifiedScore / evaluatedCount);
       }
 
-      // If no verified tests, no completed lectures, and not onboarded:
-      // It is completely unexplored!
+      // If no activity and not explored, it is completely unexplored!
       return 0;
     }
 
@@ -25740,6 +25769,19 @@ function onWizardBranchChanged(branchKey) {
         appState.user.skills = clonedSkills.map(s => s.name);
       }
       appState.selectedPreset = presetKey;
+
+      // Track explored domain progress
+      if (!appState.user_domain_progress) appState.user_domain_progress = {};
+      const presetAvg = Math.round(clonedSkills.reduce((a, s) => a + (Number(s.score) || 35), 0) / clonedSkills.length);
+      appState.user_domain_progress[presetKey] = {
+        domain: presetKey,
+        mastery_percent: presetAvg,
+        explored: true
+      };
+      try {
+        localStorage.setItem('campus2career_domain_progress', JSON.stringify(appState.user_domain_progress));
+      } catch (e) {}
+
       renderWizardPresets(branchKey);
 
       // Update users.active_domain and load the associated skills into the dashboard and radar chart

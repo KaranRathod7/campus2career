@@ -148,6 +148,8 @@ module.exports = async (req, res) => {
         stream: user.stream || null,
         branch: user.branch || user.stream || null,
         skills: user.skills || null,
+        active_domain: user.active_domain || null,
+        activeTrackPreset: user.active_domain || null,
         college: user.college || null,
         year: user.year || null,
         token_version: user.token_version || 1,
