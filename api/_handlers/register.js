@@ -67,45 +67,71 @@ module.exports = async (req, res) => {
       return res.status(500).json({ success: false, error: 'Registration check failed. Please try again later.' });
     }
 
-    if (existing && !isWhitelisted) {
-      return res.status(409).json({
-        success: false,
-        error: 'already_registered',
-        message: 'This email is already registered. Please log in instead.'
-      });
-    }
-
     // Hash password
     const password_hash = await bcrypt.hash(password, 10);
 
-    // Direct Database Insertion on Registration:
-    // Create or update unverified user with their exact registered stream
-    let userRecord;
-    try {
-      if (isWhitelisted) {
-        userRecord = await db.upsertUser({
-          name: name.trim(),
-          username: cleanUsername,
-          email: normalizedEmail,
-          password_hash,
-          role: assignedRole,
-          stream: rawStream,
-          is_verified: false
-        });
-      } else {
-        userRecord = await db.createUser({
-          name: name.trim(),
-          username: cleanUsername,
-          email: normalizedEmail,
-          password_hash,
-          role: assignedRole,
-          stream: rawStream,
-          is_verified: false
+    let userRecord = null;
+    if (existing && !isWhitelisted) {
+      if (existing.is_verified) {
+        return res.status(409).json({
+          success: false,
+          error: 'already_registered',
+          message: 'This email is already registered and verified. Please log in instead.'
         });
       }
-    } catch (err) {
-      console.error('[DB Insert Error]:', err.message, err.detail);
-      return res.status(500).json({ success: false, error: 'Failed to create user account. Please try again later.' });
+      // If user exists but is NOT verified yet, update their password hash and re-issue verification PIN!
+      userRecord = existing;
+      try {
+        const p = db.initPool();
+        if (p) {
+          await p.query('UPDATE users SET password_hash = $1 WHERE LOWER(TRIM(email)) = LOWER(TRIM($2))', [password_hash, normalizedEmail]);
+        }
+      } catch (upErr) {
+        console.warn('[Register Password Update Warning]:', upErr.message);
+      }
+    }
+
+    if (!userRecord) {
+      // Direct Database Insertion on Registration:
+      try {
+        if (isWhitelisted) {
+          userRecord = await db.upsertUser({
+            name: name.trim(),
+            username: cleanUsername,
+            email: normalizedEmail,
+            password_hash,
+            role: assignedRole,
+            stream: rawStream,
+            is_verified: false
+          });
+        } else {
+          userRecord = await db.createUser({
+            name: name.trim(),
+            username: cleanUsername,
+            email: normalizedEmail,
+            password_hash,
+            role: assignedRole,
+            stream: rawStream,
+            is_verified: false
+          });
+        }
+      } catch (err) {
+        // Handle race condition where user was inserted concurrently
+        if (err.message && err.message.toLowerCase().includes('unique')) {
+          userRecord = await db.getUserByEmail(normalizedEmail);
+          if (userRecord && userRecord.is_verified) {
+            return res.status(409).json({
+              success: false,
+              error: 'already_registered',
+              message: 'This email is already registered and verified. Please log in instead.'
+            });
+          }
+        }
+        if (!userRecord) {
+          console.error('[DB Insert Error]:', err.message, err.detail || '');
+          return res.status(500).json({ success: false, error: 'Failed to create user account. Please try again later.' });
+        }
+      }
     }
 
     // Seed chosen skills or auto-seed stream skills
@@ -146,6 +172,7 @@ module.exports = async (req, res) => {
     // Generate 6-digit random PIN & 32-byte secure random hex token
     const pin = Math.floor(100000 + Math.random() * 900000).toString();
     const token = crypto.randomBytes(32).toString('hex');
+    console.log(`[CAMPUS2CAREER VERIFICATION PIN]: ${pin} for ${normalizedEmail}`);
 
     // Store into pending_verifications in database with 15-minute expiration
     try {

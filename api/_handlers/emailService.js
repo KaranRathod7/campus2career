@@ -75,7 +75,7 @@ async function sendBrevoRaw({ to, subject, htmlContent, textContent }) {
 
 async function sendVerificationEmail({ to, name = 'Student', pin, token, baseUrl = 'http://localhost:8000' }) {
   const verifyUrl = `${baseUrl.replace(/\/$/, '')}/api/verify-email?token=${token}&email=${encodeURIComponent(to)}`;
-  const subject = 'Campus2Career — Account Verification & Activation';
+  const subject = `Your Campus2Career Verification Code: ${pin}`;
 
   const htmlContent = `
   <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #0B132B; color: #FFFFFF; border-radius: 20px; overflow: hidden; border: 1px solid #1E293B;">
@@ -112,6 +112,15 @@ async function sendVerificationEmail({ to, name = 'Student', pin, token, baseUrl
   `;
 
   const textContent = `Hello ${name},\n\nYour 6-digit Campus2Career verification PIN is: ${pin}\n\nOr click here to activate your account:\n${verifyUrl}\n\nExpires in 15 minutes.`;
+
+  console.log(`[VERIFY DISPATCH] Initiating verification email send to: ${to} (PIN: ${pin})`);
+
+  if (RESEND_API_KEY) {
+    console.log(`[Transport] Attempting verification dispatch via Resend for ${to}...`);
+    const resendRes = await sendResendRaw({ to, subject, htmlContent, textContent });
+    if (resendRes.success) return resendRes;
+    console.warn(`[Transport Notice] Resend verification dispatch failed (${resendRes.error}), falling back to Brevo...`);
+  }
 
   return await sendBrevoRaw({ to, subject, htmlContent, textContent });
 }

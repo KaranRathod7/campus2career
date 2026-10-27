@@ -81,6 +81,9 @@ router.all('/reset-password', adapt(require('./_handlers/reset-password')));
 // Verification & SMTP Dispatch
 router.all('/verify-pin', adapt(require('./_handlers/verify-pin')));
 router.all('/verify-email', adapt(require('./_handlers/verify-email')));
+router.all('/resend-verification', adapt(require('./_handlers/resend-verification')));
+router.all('/auth/resend-verification', adapt(require('./_handlers/resend-verification')));
+router.all('/resend-pin', adapt(require('./_handlers/resend-verification')));
 router.all('/send-email', adapt(require('./_handlers/send-email')));
 router.all('/emails', adapt(require('./_handlers/emails')));
 router.all('/smtp-config', adapt(require('./_handlers/smtp-config')));

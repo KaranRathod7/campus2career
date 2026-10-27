@@ -929,9 +929,17 @@
             </div>
             <h4 class="text-sm font-bold text-slate-900 dark:text-white">Verify Your Email Address</h4>
             <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              To prevent unauthorized email use, a 6-digit confirmation code and activation link were dispatched to:
+              A 6-digit confirmation code and 1-click activation link were dispatched to:
               <br><strong id="authVerifyEmailDisplay" class="text-[#008080] dark:text-teal-400 font-mono text-xs"></strong>
             </p>
+          </div>
+
+          <!-- Spam / Junk Folder Advisory -->
+          <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/80 text-[11px] text-amber-800 dark:text-amber-300 flex items-start space-x-2.5 text-left shadow-2xs">
+            <i class="fa-solid fa-triangle-exclamation text-amber-600 dark:text-amber-400 mt-0.5 shrink-0 text-xs"></i>
+            <div class="leading-relaxed">
+              <span><strong>Email delayed or not in Inbox?</strong> Please check your <strong>Spam, Junk, or Promotions folder</strong>. The sender is <code class="font-mono text-[10px] bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 px-1 py-0.5 rounded">campus2career7@gmail.com</code>. Delivery may take 30–90 seconds.</span>
+            </div>
           </div>
 
           <!-- Cross-Device Auto-Verification Beacon -->
@@ -31667,33 +31675,76 @@ function onWizardBranchChanged(branchKey) {
       }
     }
 
+    let resendCooldownTimer = null;
+    let resendCooldownSeconds = 0;
+
     async function resendVerificationEmail() {
-      if (!pendingRegistrationUser || !pendingRegistrationUser.email) {
-        showAuthAlert("No pending registration found.");
+      const email = (pendingRegistrationUser && pendingRegistrationUser.email) ||
+                    (document.getElementById('authEmailInput') && document.getElementById('authEmailInput').value.trim()) ||
+                    (document.getElementById('authVerifyEmailDisplay') && document.getElementById('authVerifyEmailDisplay').innerText.trim());
+
+      if (!email) {
+        showAuthAlert("No email address found. Please fill in the sign-up form.");
         triggerAlertShake('authStatusAlert');
+        switchAuthTab('signup');
         return;
       }
+
+      if (resendCooldownSeconds > 0) {
+        showToast(`Please wait ${resendCooldownSeconds}s before requesting another verification code.`);
+        return;
+      }
+
+      const resendBtn = document.getElementById('authResendCodeBtn');
+      if (resendBtn) {
+        resendBtn.disabled = true;
+        resendBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-[10px]"></i><span> Resending...</span>';
+      }
+
       try {
-        const res = await fetch('/api/register', {
+        const res = await fetch('/api/resend-verification', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: pendingRegistrationUser.name || 'User',
-            email: pendingRegistrationUser.email,
-            password: 'TemporaryPass2026!',
-            role: pendingRegistrationUser.role || 'learner',
-            stream: pendingRegistrationUser.stream || 'it'
-          })
+          body: JSON.stringify({ email: email })
         });
         const data = await res.json();
+
         if (res.ok && data.success) {
-          startVerificationPolling(pendingRegistrationUser.email);
-          showToast("✓ New verification code & link sent to your email!");
+          startVerificationPolling(email);
+          showToast("✓ New 6-digit code dispatched! Check your Inbox and Spam/Junk folder.");
+          
+          // Start 30-second cooldown
+          resendCooldownSeconds = 30;
+          if (resendCooldownTimer) clearInterval(resendCooldownTimer);
+          resendCooldownTimer = setInterval(() => {
+            resendCooldownSeconds--;
+            if (resendBtn) {
+              if (resendCooldownSeconds > 0) {
+                resendBtn.innerHTML = `<i class="fa-solid fa-clock text-[10px]"></i><span> Resend in ${resendCooldownSeconds}s</span>`;
+                resendBtn.disabled = true;
+              } else {
+                clearInterval(resendCooldownTimer);
+                resendCooldownTimer = null;
+                resendBtn.innerHTML = '<i class="fa-solid fa-rotate-right text-[10px]"></i><span> Resend Code</span>';
+                resendBtn.disabled = false;
+              }
+            }
+          }, 1000);
         } else {
-          showToast(data.error || "Failed to resend code. Please try again.");
+          showAuthAlert(data.error || "Failed to resend code. Please try again in a few moments.");
+          triggerAlertShake('authStatusAlert');
+          if (resendBtn) {
+            resendBtn.innerHTML = '<i class="fa-solid fa-rotate-right text-[10px]"></i><span> Resend Code</span>';
+            resendBtn.disabled = false;
+          }
         }
       } catch (e) {
-        showToast("Resend request failed. Please check network.");
+        showAuthAlert("Network connection error. Could not request new code.");
+        triggerAlertShake('authStatusAlert');
+        if (resendBtn) {
+          resendBtn.innerHTML = '<i class="fa-solid fa-rotate-right text-[10px]"></i><span> Resend Code</span>';
+          resendBtn.disabled = false;
+        }
       }
     }
 
