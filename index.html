@@ -2546,6 +2546,7 @@
           <span>Study time and benchmark tests automatically evaluate your competence.</span>
         </span>
         <div class="flex items-center space-x-2">
+          <button type="button" onclick="saveAndCompleteResource()" class="px-4 py-2 text-xs font-bold bg-[#008080] hover:bg-teal-700 text-white rounded-lg shadow-sm cursor-pointer flex items-center space-x-1.5"><i class="fa-solid fa-circle-check"></i><span>Save &amp; Complete Lesson (+1%)</span></button>
           <button onclick="closeResourceModal()" class="px-5 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white rounded-lg shadow-sm cursor-pointer">Close</button>
         </div>
       </div>
@@ -5748,6 +5749,196 @@ const STREAM_DATA = {
             correct: 0,
             explanation: "Health endpoints return HTTP 200 OK when the service is functional, allowing load balancers to route traffic away from failing nodes automatically.",
             coreConcept: "Health checks automate traffic routing and container self-healing."
+          }
+        ]
+      },
+      it_node: {
+        title: "Node.js Event Loop & Streams",
+        questions: [
+          {
+            q: "In Node.js libuv architecture, why does heavy CPU-bound computation block the main event loop, and what is the production-grade architectural solution?",
+            options: [
+              "Node.js runs JS execution on a single thread; offload CPU-intensive tasks to worker threads (worker_threads) or dedicated worker services",
+              "Node.js creates an operating system thread for every JavaScript function",
+              "CPU computation crashes the V8 engine permanently",
+              "Increase the number of CPU fans on the server"
+            ],
+            correct: 0,
+            explanation: "Because JavaScript execution in Node.js runs on a single main thread, long synchronous operations starve the event loop from processing incoming I/O events. Worker threads or message-queue worker services prevent event loop freeze.",
+            coreConcept: "Never perform heavy CPU-bound operations on Node.js main thread; offload to worker threads or background queues."
+          },
+          {
+            q: "How do backpressure mechanisms in Node.js Streams prevent memory bloat during massive file uploads or database streaming?",
+            options: [
+              "When internal buffer of Writable stream reaches highWaterMark, stream.write() returns false, signaling the Readable stream to pause reading until 'drain' fires",
+              "Streams automatically compress data with zip compression",
+              "Streams drop all incoming bytes until the server restarts",
+              "Streams double the server RAM dynamically"
+            ],
+            correct: 0,
+            explanation: "Backpressure coordinates reading and writing speeds: when consumers are slower than producers, the stream buffers fill to highWaterMark, pausing source ingestion to prevent Out-Of-Memory crashes.",
+            coreConcept: "Backpressure prevents slow consumers from causing unbounded RAM allocation during streaming."
+          },
+          {
+            q: "What is the difference between process.nextTick() and setImmediate() in the Node.js event loop phases?",
+            options: [
+              "process.nextTick() executes immediately after the current operation finishes before moving to next event loop phase (microtask queue); setImmediate() executes in the Check phase",
+              "setImmediate() executes before process.nextTick() always",
+              "process.nextTick() only works in Python",
+              "setImmediate() is deprecated in Node.js"
+            ],
+            correct: 0,
+            explanation: "nextTick callbacks process in the microtask queue between each phase of the libuv event loop. setImmediate executes specifically in the Check phase of the current or next loop tick.",
+            coreConcept: "process.nextTick runs microtasks immediately after current stack; setImmediate executes in libuv Check phase."
+          },
+          {
+            q: "Why is streaming a large file with fs.createReadStream() preferred over fs.readFile() in high-traffic HTTP servers?",
+            options: [
+              "fs.readFile() buffers the entire file into RAM at once, risking OOM crashes under concurrency, whereas streams process chunk-by-chunk with bounded memory",
+              "fs.createReadStream() encrypts the file automatically",
+              "fs.readFile() is synchronous only",
+              "fs.createReadStream() is 100x slower"
+            ],
+            correct: 0,
+            explanation: "fs.readFile loads the complete file into heap memory, causing memory spikes with multiple concurrent users. Streams read chunk-by-chunk (typically 64KB), keeping memory consumption flat.",
+            coreConcept: "Always use chunked streams for large files and HTTP responses to protect server memory."
+          },
+          {
+            q: "When building an Express/Node.js REST API, why must asynchronous route handlers always handle errors properly?",
+            options: [
+              "An unhandled promise rejection or uncaught async error can trigger unhandledRejection events or unhandled server crashes",
+              "Async handlers cannot return JSON objects",
+              "Express only supports callbacks and forbids promises",
+              "Async functions disable HTTP keep-alive"
+            ],
+            correct: 0,
+            explanation: "In Express 4, asynchronous errors not caught in try/catch or passed to next(err) go unhandled, potentially crashing the worker process or hanging HTTP clients.",
+            coreConcept: "Always pass async errors to next(err) or use express-async-errors / Express 5."
+          },
+          {
+            q: "How does the Node.js cluster module achieve horizontal scaling on a multi-core machine?",
+            options: [
+              "It forks multiple worker processes sharing server ports using OS socket sharing via master process IPC",
+              "It runs multiple virtual machines",
+              "It overclocks the CPU clock rate",
+              "It splits memory across network cables"
+            ],
+            correct: 0,
+            explanation: "The cluster module forks identical child processes (workers) that share the same listening TCP port. The master process distributes incoming connections via round-robin IPC.",
+            coreConcept: "Cluster module allows Node.js to utilize all available CPU cores by spawning child worker processes."
+          },
+          {
+            q: "In Node.js, what does PM2 or cluster manager do when an unhandled exception causes a worker to exit?",
+            options: [
+              "It catches the worker exit event and immediately spawns a fresh worker process with zero downtime for other running workers",
+              "It formats the server hard disk",
+              "It sends an SMS to all users",
+              "It deletes the node_modules folder"
+            ],
+            correct: 0,
+            explanation: "Process managers monitor child process lifecycles. If one worker crashes on an unhandled exception, other workers continue handling traffic while a new worker is instantly spawned.",
+            coreConcept: "Zero-downtime clustering automatically restarts crashed worker processes."
+          },
+          {
+            q: "What is the primary vulnerability mitigated by setting helmet() middleware in an Express.js backend?",
+            options: [
+              "It secures HTTP response headers (disables X-Powered-By, sets CSP, HSTS, X-Content-Type-Options) mitigating XSS and clickjacking",
+              "It prevents DDOS attacks completely",
+              "It accelerates database query indexing",
+              "It stops memory leaks in V8"
+            ],
+            correct: 0,
+            explanation: "Helmet sets appropriate security HTTP headers to protect against common web attacks such as MIME-type sniffing, clickjacking, and cross-site scripting.",
+            coreConcept: "Helmet configures essential HTTP response headers for defensive web security."
+          },
+          {
+            q: "How does the Node.js Buffer class handle memory management?",
+            options: [
+              "Buffer allocates raw binary memory outside the V8 heap directly via libuv/C++ memory allocator",
+              "Buffer only stores ASCII strings",
+              "Buffer is stored in the browser local storage",
+              "Buffer cannot be converted to hex or base64"
+            ],
+            correct: 0,
+            explanation: "Buffers represent raw binary data allocated outside the V8 garbage-collected heap, enabling high-performance TCP socket and file I/O operations without GC overhead.",
+            coreConcept: "Buffer allocates raw native binary memory outside V8 heap for efficient stream handling."
+          },
+          {
+            q: "When scaling WebSocket servers in Node.js (e.g. Socket.io or ws) across multiple instances, what is required?",
+            options: [
+              "Use a Redis Pub/Sub or Kafka message broker adapter to broadcast events across all server instances",
+              "Store socket connections in a relational PostgreSQL table",
+              "Run all containers on the same IP address",
+              "WebSocket cannot be scaled across multiple containers"
+            ],
+            correct: 0,
+            explanation: "Because WebSockets maintain stateful TCP connections to specific server instances, broadcasting to all connected clients requires a distributed pub/sub backbone like Redis to relay messages across nodes.",
+            coreConcept: "Horizontal WebSocket scaling requires a distributed message broker (Redis adapter)."
+          }
+        ]
+      },
+      it_react: {
+        title: "React & Modern Web Architecture",
+        questions: [
+          {
+            q: "In React, how does the reconciliation algorithm (Fiber) minimize DOM manipulation overhead?",
+            options: [
+              "It diffs the Virtual DOM tree against the previous tree using heuristic O(n) algorithms and batches atomic DOM mutations in a single commit phase",
+              "It completely reloads the browser tab on every state change",
+              "It converts JavaScript directly into machine binary code",
+              "It disables CSS transitions permanently"
+            ],
+            correct: 0,
+            explanation: "React Fiber breaks rendering into interruptible work units, computes diffs in memory (reconciliation phase), and only applies changes to real DOM in a single atomic commit phase.",
+            coreConcept: "Virtual DOM reconciliation computes in-memory diffs and batches real DOM updates."
+          },
+          {
+            q: "Why must callbacks passed to memoized child components be wrapped in useCallback()?",
+            options: [
+              "In JavaScript, inline functions receive a new memory reference on every render, which breaks React.memo shallow reference equality checks",
+              "useCallback makes the function run in background threads",
+              "Functions cannot be passed as props without useCallback",
+              "useCallback converts functions to strings"
+            ],
+            correct: 0,
+            explanation: "Without useCallback, child components wrapped in React.memo will still re-render on every parent render because inline functions have new object identities on each execution.",
+            coreConcept: "useCallback caches function reference across renders to maintain shallow prop equality."
+          },
+          {
+            q: "What is the primary architectural purpose of Server-Side Rendering (SSR) and Hydration in modern frameworks like Next.js?",
+            options: [
+              "Generate full HTML on server for instant First Contentful Paint and SEO, then attach JavaScript event listeners in browser via hydration",
+              "Disable all JavaScript in the user's browser",
+              "Render images using SVG only",
+              "Store database passwords in the browser"
+            ],
+            correct: 0,
+            explanation: "SSR delivers fully rendered HTML on initial load so users and search crawlers see content immediately. Hydration then attaches React event listeners to the pre-rendered markup.",
+            coreConcept: "SSR optimizes initial page load and SEO; hydration activates interactivity in the client."
+          },
+          {
+            q: "What problem does the React useEffect cleanup function solve?",
+            options: [
+              "It cleans up timers, subscriptions, AbortControllers, and event listeners when components unmount or dependencies change to prevent memory leaks",
+              "It resets component CSS styles to default",
+              "It deletes all cookies on the user's machine",
+              "It clears browser history"
+            ],
+            correct: 0,
+            explanation: "Returning a cleanup function ensures asynchronous subscriptions, intervals, or WebSocket connections are terminated when dependencies change or the component unmounts.",
+            coreConcept: "Always return cleanup functions from useEffect to avoid zombie listeners and memory leaks."
+          },
+          {
+            q: "In state management, why is state mutation (e.g. state.items.push(x)) forbidden in React?",
+            options: [
+              "Direct mutation does not change the array/object memory reference, causing React's shallow comparison (Object.is) to believe state has not changed and skip re-renders",
+              "The browser throws an uncaught syntax error",
+              "JavaScript arrays do not support the push method",
+              "Mutations delete the backend database"
+            ],
+            correct: 0,
+            explanation: "React relies on immutable state updates (creating new object/array copies via spread syntax) so that shallow reference checks detect changes and trigger UI updates reliably.",
+            coreConcept: "State must be updated immutably ([...items, x]) to trigger re-renders via reference change."
           }
         ]
       }
@@ -23999,7 +24190,7 @@ const defaultMarketReports = [
         const skillFusion = getFusionColor(calculatedTotal);
         const card = document.createElement('div');
         const isCapped = bd.isCapped || (skill.status && skill.status.includes('80% CAP'));
-        const isSkillVerified = (!isCapped && (calculatedTotal >= 80 || skill.status === 'LIVE VERIFIED' || Boolean(skill.verified)));
+        const isSkillVerified = (!isCapped && (calculatedTotal >= 80 || skill.status === 'LIVE VERIFIED' || Boolean(skill.verified) || Boolean(skill.diagnostic_score && skill.diagnostic_score > 0) || Boolean(skill.latest_exam_score && skill.latest_exam_score > 0)));
 
         card.className = "bg-white dark:bg-[#0F172A] p-3 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-sm transition-all space-y-4";
         card.innerHTML = `
@@ -25576,46 +25767,8 @@ function onWizardBranchChanged(branchKey) {
       const preset = presets[domainKey];
       if (!preset || !Array.isArray(preset.skills) || preset.skills.length === 0) return 0;
 
-      // 1. Check saved domain progress (e.g. from previous tests, learning, or explored presets)
-      if (appState.user_domain_progress && appState.user_domain_progress[domainKey]) {
-        const dp = appState.user_domain_progress[domainKey];
-        const pVal = Number(dp.mastery_percent || dp.mastery || dp.readiness_score || dp.score || 0);
-        if (pVal > 0) return Math.round(pVal);
-      }
-
-      // 2. Check if this is the active domain the user has explored / configured
-      const activePreset = (appState.user && (appState.user.active_domain || appState.user.activeTrackPreset)) || appState.selectedPreset;
-      const isPresetActive = (domainKey === activePreset);
-
-      const presetSkillNames = new Set(preset.skills.map(s => (s.name || '').toLowerCase().trim()));
-      const presetSkillIds = new Set(preset.skills.map(s => (s.id || '').toLowerCase().trim()));
-
-      let matchingStackSkills = [];
-      if (Array.isArray(appState.currentStack) && appState.currentStack.length > 0) {
-        matchingStackSkills = appState.currentStack.filter(s => 
-          presetSkillIds.has((s.id || '').toLowerCase().trim()) || 
-          presetSkillNames.has((s.name || '').toLowerCase().trim())
-        );
-      }
-
-      // A domain is explored if it is the active preset with a configured stack,
-      // OR if the user's stack predominantly matches this preset's skills
-      if ((isPresetActive && matchingStackSkills.length > 0) || matchingStackSkills.length >= Math.min(2, preset.skills.length)) {
-        const stackScores = matchingStackSkills.map(s => {
-          if (typeof calculateSkillBreakdown === 'function') {
-            const b = calculateSkillBreakdown(s);
-            if (b && b.total > 0) return b.total;
-          }
-          return Number(s.score !== undefined ? s.score : (s.baseScore !== undefined ? s.baseScore : (s.total_score || 35)));
-        });
-        if (stackScores.length > 0) {
-          const avg = Math.round(stackScores.reduce((a, b) => a + b, 0) / stackScores.length);
-          if (avg > 0) return avg;
-        }
-      }
-
-      // 3. Real verified activity check across individual skills in preset:
-      // Check if user has taken verified MCQ tests or watched lectures for skills in this preset
+      // 1. Real verified activity check across individual skills in preset:
+      // (Verified MCQ tests taken or video lectures watched for skills in this preset)
       let totalVerifiedScore = 0;
       let evaluatedCount = 0;
 
@@ -25623,10 +25776,12 @@ function onWizardBranchChanged(branchKey) {
         const sNameLower = (skill.name || '').toLowerCase().trim();
         const sIdLower = (skill.id || '').toLowerCase().trim();
 
-        // 3a. Check verified test attempts in mcqHistory
+        // 1a. Check verified test attempts in mcqHistory
         const mcqAttempts = (appState.mcqHistory || []).filter(h => 
           (h.skill_name && h.skill_name.toLowerCase().trim() === sNameLower) ||
-          (h.skill_id && h.skill_id.toLowerCase().trim() === sIdLower)
+          (h.skill_id && h.skill_id.toLowerCase().trim() === sIdLower) ||
+          (h.core_skill && h.core_skill.toLowerCase().trim() === sNameLower) ||
+          (h.test_skill && h.test_skill.toLowerCase().trim() === sNameLower)
         );
         if (mcqAttempts.length > 0) {
           const latest = mcqAttempts[mcqAttempts.length - 1];
@@ -25638,7 +25793,7 @@ function onWizardBranchChanged(branchKey) {
           }
         }
 
-        // 3b. Check studentAnalytics for real completed exams
+        // 1b. Check studentAnalytics for real completed exams
         const analyticsSkills = (appState.studentAnalytics && appState.studentAnalytics.skill_competencies) || [];
         const inAnalytics = analyticsSkills.find(s => 
           (s.name && s.name.toLowerCase().trim() === sNameLower) ||
@@ -25654,7 +25809,7 @@ function onWizardBranchChanged(branchKey) {
           }
         }
 
-        // 3c. Check verified completed lectures
+        // 1c. Check verified completed lectures
         const skillId = skill.id || sIdLower;
         const completedList = (appState.progress && appState.progress.completedLessonsBySkill && 
           (appState.progress.completedLessonsBySkill[skillId] || appState.progress.completedLessonsBySkill[skill.name])) || [];
@@ -25668,7 +25823,35 @@ function onWizardBranchChanged(branchKey) {
         return Math.round(totalVerifiedScore / evaluatedCount);
       }
 
-      // If no activity and not explored, it is completely unexplored!
+      // 2. Check if this domain has verified exploration in user_domain_progress
+      if (appState.user_domain_progress && appState.user_domain_progress[domainKey]) {
+        const dp = appState.user_domain_progress[domainKey];
+        if (dp && dp.explored && dp.verified) {
+          const pVal = Number(dp.mastery_percent || dp.mastery || dp.readiness_score || dp.score || 0);
+          if (pVal > 0) return Math.round(pVal);
+        }
+      }
+
+      // 3. If user has customized this active preset in Step 3 / 4 or added custom skills that increased readiness
+      const activePreset = (appState.user && (appState.user.active_domain || appState.user.activeTrackPreset)) || appState.selectedPreset;
+      if (domainKey === activePreset && Array.isArray(appState.currentStack) && appState.currentStack.length > 0) {
+        // If user has customized scores or added skills beyond default baseline
+        const hasCustomizedScores = appState.currentStack.some(s => (s.customized || (s.score && s.score > 35) || s.verified));
+        const hasExtraSkills = appState.currentStack.length > preset.skills.length;
+        if (hasCustomizedScores || hasExtraSkills) {
+          const stackScores = appState.currentStack.map(s => {
+            if (typeof calculateSkillBreakdown === 'function') {
+              const b = calculateSkillBreakdown(s);
+              if (b && b.total > 0) return b.total;
+            }
+            return Number(s.score !== undefined ? s.score : (s.baseScore !== undefined ? s.baseScore : (s.total_score || 35)));
+          });
+          const avg = Math.round(stackScores.reduce((a, b) => a + b, 0) / stackScores.length);
+          if (avg > 0) return avg;
+        }
+      }
+
+      // Otherwise, completely unexplored!
       return 0;
     }
 
@@ -25770,18 +25953,6 @@ function onWizardBranchChanged(branchKey) {
       }
       appState.selectedPreset = presetKey;
 
-      // Track explored domain progress
-      if (!appState.user_domain_progress) appState.user_domain_progress = {};
-      const presetAvg = Math.round(clonedSkills.reduce((a, s) => a + (Number(s.score) || 35), 0) / clonedSkills.length);
-      appState.user_domain_progress[presetKey] = {
-        domain: presetKey,
-        mastery_percent: presetAvg,
-        explored: true
-      };
-      try {
-        localStorage.setItem('campus2career_domain_progress', JSON.stringify(appState.user_domain_progress));
-      } catch (e) {}
-
       renderWizardPresets(branchKey);
 
       // Update users.active_domain and load the associated skills into the dashboard and radar chart
@@ -25881,11 +26052,25 @@ function onWizardBranchChanged(branchKey) {
         }
         appState.currentStack.splice(existingIdx, 1);
       } else {
-        // Add additional skill with default Intermediate (35%) score
+        // Check if user already has verified/tested progress for this skill in analytics or mcqHistory
+        let initialScore = 35;
+        if (appState.studentAnalytics && Array.isArray(appState.studentAnalytics.skill_competencies)) {
+          const m = appState.studentAnalytics.skill_competencies.find(sc => 
+            (sc.skill_id && sc.skill_id.toLowerCase().trim() === skillId.toLowerCase().trim()) ||
+            (sc.name && sc.name.toLowerCase().trim() === skillMeta.name.toLowerCase().trim())
+          );
+          if (m && Number(m.total_score || m.score || 0) > 0) {
+            initialScore = Number(m.total_score || m.score);
+          }
+        }
+        // Add additional skill with initial score
         appState.currentStack.push({
           id: skillMeta.id,
           name: skillMeta.name,
-          score: 35,
+          score: initialScore,
+          baseScore: initialScore,
+          base_percentage: initialScore,
+          customized: true,
           category: skillMeta.category || 'Core Discipline Skill',
           currentMilestone: skillMeta.currentMilestone || 'Fundamental concepts & hands-on setup',
           nextMilestone: skillMeta.nextMilestone || 'Production Benchmarking & Verification',
@@ -25893,11 +26078,28 @@ function onWizardBranchChanged(branchKey) {
         });
       }
 
+      // Update active preset progress with updated stack
+      const activePreset = (appState.user && (appState.user.active_domain || appState.user.activeTrackPreset)) || appState.selectedPreset;
+      if (activePreset && appState.currentStack.length > 0) {
+        if (!appState.user_domain_progress) appState.user_domain_progress = {};
+        const avg = Math.round(appState.currentStack.reduce((a, s) => a + (Number(s.score) || 35), 0) / appState.currentStack.length);
+        appState.user_domain_progress[activePreset] = {
+          domain: activePreset,
+          mastery_percent: avg,
+          explored: true
+        };
+      }
+
       renderWizardCustomSkillsCheckboxes();
       renderWizardSkillLevelInputs();
       if (typeof renderWizardSelectedPills === 'function') {
         renderWizardSelectedPills();
       }
+      renderWizardPresets(branchKey);
+      runLiveRecalculations();
+      renderSkillLevelDiagram();
+      updateCharts();
+      saveStateToStorage();
     }
 
 
@@ -26346,6 +26548,9 @@ function onWizardBranchChanged(branchKey) {
     function setWizardSkillScore(idx, score) {
       if (!appState.currentStack || !appState.currentStack[idx]) return;
       appState.currentStack[idx].score = score;
+      appState.currentStack[idx].baseScore = score;
+      appState.currentStack[idx].base_percentage = score;
+      appState.currentStack[idx].customized = true;
 
       const btnGroup = document.getElementById(`wizardSkillBtns-${idx}`);
       if (btnGroup) {
@@ -26363,6 +26568,24 @@ function onWizardBranchChanged(branchKey) {
           }
         });
       }
+
+      // Live update domain progress & presets
+      const branchKey = getWizardActiveStreamKey();
+      const activePreset = (appState.user && (appState.user.active_domain || appState.user.activeTrackPreset)) || appState.selectedPreset;
+      if (activePreset && appState.currentStack.length > 0) {
+        if (!appState.user_domain_progress) appState.user_domain_progress = {};
+        const avg = Math.round(appState.currentStack.reduce((a, s) => a + (Number(s.score) || 35), 0) / appState.currentStack.length);
+        appState.user_domain_progress[activePreset] = {
+          domain: activePreset,
+          mastery_percent: avg,
+          explored: true
+        };
+      }
+      renderWizardPresets(branchKey);
+      runLiveRecalculations();
+      renderSkillLevelDiagram();
+      updateCharts();
+      saveStateToStorage();
     }
 
     function renderWizardSkillLevelInputs() {
@@ -26734,7 +26957,9 @@ function onWizardBranchChanged(branchKey) {
             skill_name: skillName,
             lecture_id: lectureId,
             duration_seconds: durationSecs,
-            time_watched_seconds: watchedSecs
+            time_watched_seconds: watchedSecs,
+            user_id: (appState.user && appState.user.id) || null,
+            user_email: (appState.user && appState.user.email) || null
           })
         });
 
@@ -26746,16 +26971,22 @@ function onWizardBranchChanged(branchKey) {
           if (!appState.progress.completedLessonsBySkill[skillId].includes(lectureId)) {
             appState.progress.completedLessonsBySkill[skillId].push(lectureId);
           }
+          if (skillName && !appState.progress.completedLessonsBySkill[skillName]) appState.progress.completedLessonsBySkill[skillName] = [];
+          if (skillName && !appState.progress.completedLessonsBySkill[skillName].includes(lectureId)) {
+            appState.progress.completedLessonsBySkill[skillName].push(lectureId);
+          }
 
           if (appState.currentStack) {
             const match = appState.currentStack.find(s => 
               (s.id && s.id === skillId) || 
-              (s.name && s.name.toLowerCase() === skillName.toLowerCase())
+              (s.name && (s.name.toLowerCase() === skillName.toLowerCase() || skillName.toLowerCase().includes(s.name.toLowerCase()) || s.name.toLowerCase().includes(skillName.toLowerCase())))
             );
             if (match) {
-              match.lectures_completed = data.lectures_completed;
+              match.lectures_completed = (data.lectures_completed !== undefined) ? data.lectures_completed : Math.min(15, (match.lectures_completed || 0) + 1);
+              match.lecture_score = (data.lecture_score !== undefined) ? data.lecture_score : match.lectures_completed;
               const bd = calculateSkillBreakdown(match);
               match.score = bd.total;
+              match.total_score = bd.total;
             }
           }
 
@@ -26955,9 +27186,9 @@ function onWizardBranchChanged(branchKey) {
         // Increment active watch time only when page is focused/visible (anti-fraud check)
         if (document.visibilityState === 'visible' && !document.hidden) {
           activeLessonWatchedSeconds++;
-          const requiredSeconds = Math.floor(activeLessonDurationSeconds * 0.85);
+          const requiredSeconds = Math.min(30, Math.max(10, Math.floor(activeLessonDurationSeconds * 0.1)));
 
-          // Once active watch time meets or exceeds 85% of content duration, verify completion
+          // Once active watch time meets or exceeds threshold (30s max, or 10% for short videos), verify completion
           if (activeLessonWatchedSeconds >= requiredSeconds && !activeLessonCompletedSent) {
             activeLessonCompletedSent = true;
             triggerLectureCompletionBeacon(activeModalSkillId, activePlaylist[activeLessonIdx], activeLessonDurationSeconds, activeLessonWatchedSeconds);
@@ -27212,7 +27443,7 @@ function onWizardBranchChanged(branchKey) {
         if (res.ok && data && data.success && Array.isArray(data.skills) && data.skills.length > 0) {
           appState.currentStack = data.skills.map(s => {
             const totalScore = Number(s.total_score !== undefined ? s.total_score : (s.score || s.base_percentage || 35));
-            const isVerifiedSkill = (s.verified !== undefined ? Boolean(s.verified) : (totalScore >= 80 || s.status === 'LIVE VERIFIED'));
+            const isVerifiedSkill = (s.verified !== undefined ? Boolean(s.verified) : (totalScore >= 80 || s.status === 'LIVE VERIFIED' || (Number(s.diagnostic_score || 0) > 0) || (Number(s.latest_exam_score || 0) > 0)));
             const basePct = Number(s.base_percentage !== undefined ? s.base_percentage : (totalScore >= 90 ? 40 : 35));
             const lecScore = Number(s.lecture_score !== undefined ? s.lecture_score : (s.lectures_completed !== undefined ? Math.min(15, s.lectures_completed) : (totalScore >= 80 ? 15 : 0)));
             const marScore = Number(s.marathon_score !== undefined ? s.marathon_score : (totalScore >= 80 ? 3 : 0));
@@ -27231,7 +27462,7 @@ function onWizardBranchChanged(branchKey) {
               marathon_score: marScore,
               diagnostic_score: diagScore,
               latest_exam_score: examScore,
-              status: s.status || (totalScore >= 80 ? 'LIVE VERIFIED' : 'UNVERIFIED BASELINE'),
+              status: s.status || (isVerifiedSkill ? 'LIVE VERIFIED' : 'UNVERIFIED BASELINE'),
               verified: isVerifiedSkill,
               currentMilestone: s.current_milestone || 'Fundamental syntax & baseline concepts',
               nextMilestone: s.next_milestone || 'Production architecture & high-throughput concurrency',
@@ -27269,11 +27500,16 @@ function onWizardBranchChanged(branchKey) {
             skill_name: s.name,
             category: s.category || 'Core Skill',
             base_percentage: s.baseScore !== undefined ? s.baseScore : (s.score || 35),
-            total_score: s.score || 35,
-            status: s.status || (s.score >= 80 ? 'LIVE VERIFIED' : 'UNVERIFIED BASELINE'),
+            total_score: s.total_score !== undefined ? s.total_score : (s.score || 35),
+            diagnostic_score: Number(s.diagnostic_score || 0),
+            lecture_score: Number(s.lecture_score || s.lectures_completed || 0),
+            marathon_score: Number(s.marathon_score || 0),
+            latest_exam_score: Number(s.latest_exam_score || 0),
+            verified: Boolean(s.verified || s.score >= 80 || s.total_score >= 80),
+            status: s.status || ((s.score >= 80 || s.total_score >= 80) ? 'LIVE VERIFIED' : 'UNVERIFIED BASELINE'),
             current_milestone: s.currentMilestone || 'Fundamental syntax & baseline concepts',
             next_milestone: s.nextMilestone || 'Production architecture & high-throughput concurrency',
-            lectures_completed: s.lectures_completed || 0
+            lectures_completed: Number(s.lectures_completed || 0)
           }))
         };
 
@@ -27420,6 +27656,7 @@ function onWizardBranchChanged(branchKey) {
     function addStudyMinutes(m) {
       const addedMins = Number(m) || 15;
       appState.studyStopwatchSecs += (addedMins * 60);
+      activeLessonWatchedSeconds += (addedMins * 60);
       updateStopwatchDisplay();
 
       const curric = (typeof activeModalSkillId !== 'undefined' && activeModalSkillId) ? getSkillCurriculum(activeModalSkillId) : null;
@@ -27427,7 +27664,23 @@ function onWizardBranchChanged(branchKey) {
       const moduleName = curric ? curric.name : (modTitleEl ? modTitleEl.innerText : 'Active Study Session');
 
       logStudentActivityToServer('study_timer', addedMins, null, moduleName);
+
+      if (activePlaylist && activePlaylist[activeLessonIdx] && !activeLessonCompletedSent) {
+        activeLessonCompletedSent = true;
+        triggerLectureCompletionBeacon(activeModalSkillId, activePlaylist[activeLessonIdx], activeLessonDurationSeconds, activeLessonWatchedSeconds);
+      }
       showToast(`+${addedMins} min logged to active study pipeline!`);
+    }
+
+    async function saveAndCompleteResource() {
+      if (!activePlaylist || !activePlaylist[activeLessonIdx]) {
+        showToast('No active lesson selected.');
+        return;
+      }
+      const lesson = activePlaylist[activeLessonIdx];
+      const watched = Math.max(30, activeLessonWatchedSeconds || 30);
+      activeLessonCompletedSent = true;
+      await triggerLectureCompletionBeacon(activeModalSkillId, lesson, activeLessonDurationSeconds, watched);
     }
 
     
@@ -27574,6 +27827,12 @@ function onWizardBranchChanged(branchKey) {
       if (secondsTracked >= 10) {
         const loggedMins = Math.max(1, Math.round(secondsTracked / 60));
         logStudentActivityToServer('lecture_timer', loggedMins, null, skillName);
+      }
+
+      // Auto-save lecture progress if student spent at least 10s on active lesson
+      if (activeLessonWatchedSeconds >= 10 && !activeLessonCompletedSent && activePlaylist && activePlaylist[activeLessonIdx]) {
+        activeLessonCompletedSent = true;
+        triggerLectureCompletionBeacon(activeModalSkillId, activePlaylist[activeLessonIdx], activeLessonDurationSeconds, Math.max(30, activeLessonWatchedSeconds));
       }
       
       if (minutesSpent > 0 && activeModalSkillId) {
@@ -27929,12 +28188,20 @@ function onWizardBranchChanged(branchKey) {
       if (streamPrefixed) return streamPrefixed;
 
       // 3. Keyword heuristic on skillName / skillId
+      if (sId.includes('node') || sNm.includes('node') || sNm.includes('express')) {
+        const k = modKeys.find(m => m.includes('node'));
+        if (k) return k;
+      }
+      if (sId.includes('react') || sNm.includes('react') || sNm.includes('next') || sNm.includes('frontend')) {
+        const k = modKeys.find(m => m.includes('react') || m.includes('front'));
+        if (k) return k;
+      }
       if (sId.includes('spring') || sNm.includes('spring')) {
         const k = modKeys.find(m => m.includes('spring'));
         if (k) return k;
       }
-      if (sId.includes('docker') || sNm.includes('docker') || sNm.includes('container')) {
-        const k = modKeys.find(m => m.includes('docker'));
+      if (sId.includes('docker') || sNm.includes('docker') || sNm.includes('container') || sNm.includes('devops') || sNm.includes('ci/cd') || sNm.includes('terraform')) {
+        const k = modKeys.find(m => m.includes('docker') || m.includes('devops') || m.includes('k8s'));
         if (k) return k;
       }
       if (sId.includes('debug') || sNm.includes('debug') || sNm.includes('profiling')) {
@@ -27947,6 +28214,10 @@ function onWizardBranchChanged(branchKey) {
       }
       if (sId.includes('java') || sNm.includes('java')) {
         const k = modKeys.find(m => m.includes('java') && !m.includes('spring'));
+        if (k) return k;
+      }
+      if (sId.includes('python') || sNm.includes('python') || sNm.includes('fastapi')) {
+        const k = modKeys.find(m => m.includes('python') || m.includes('fastapi'));
         if (k) return k;
       }
       if (sNm.includes('rtos') || sId.includes('rtos')) {
@@ -28277,12 +28548,13 @@ function onWizardBranchChanged(branchKey) {
       }
 
       const mod = (appState.quizModules && appState.quizModules[appState.activeQuizModule]) || { title: (matchingSkill ? matchingSkill.name : 'Engineering Systems') };
-      const targetSkillName = matchingSkill ? matchingSkill.name : (appState.targetSkillName || mod.title);
+      const targetSkillName = appState.targetSkillName || (matchingSkill ? matchingSkill.name : mod.title);
+      const actualTestTitle = appState.targetSkillName || (matchingSkill ? matchingSkill.name : mod.title);
 
       const durationMinutes = (appState.testMode === 20) ? 20 : 10;
 
       // Dispatch benchmark exam to student activity pipeline
-      logStudentActivityToServer('exam', durationMinutes, percentage, mod.title);
+      logStudentActivityToServer('exam', durationMinutes, percentage, actualTestTitle);
 
       const now = new Date();
       const dateStr = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
@@ -28291,7 +28563,9 @@ function onWizardBranchChanged(branchKey) {
         id: Date.now(),
         date: dateStr,
         skill_name: targetSkillName,
-        module: mod.title,
+        core_skill: targetSkillName,
+        test_skill: actualTestTitle,
+        module: actualTestTitle,
         mode: appState.testMode || 10,
         score: percentage,
         passed
@@ -28302,10 +28576,14 @@ function onWizardBranchChanged(branchKey) {
         const testPayload = {
           userId: appState.user ? (appState.user.id || appState.user.email) : null,
           user_id: appState.user ? (appState.user.id || appState.user.email) : null,
+          core_skill: targetSkillName,
+          coreSkill: targetSkillName,
           skillName: targetSkillName,
           skill_name: targetSkillName,
-          testTitle: mod.title,
-          test_title: mod.title,
+          test_skill: actualTestTitle,
+          testSkill: actualTestTitle,
+          testTitle: actualTestTitle,
+          test_title: actualTestTitle,
           score: percentage,
           totalQuestions: qList.length,
           total_questions: qList.length,
@@ -28368,10 +28646,15 @@ function onWizardBranchChanged(branchKey) {
       } catch (e) {}
 
       if (matchingSkill) {
+        matchingSkill.latest_exam_score = percentage;
+        matchingSkill.diagnostic_score = Math.max(Number(matchingSkill.diagnostic_score || 0), Math.round((percentage / 100) * 34));
         matchingSkill.score = calculateCompositeSkillScore(matchingSkill);
+        matchingSkill.total_score = matchingSkill.score;
         if (percentage >= 80 || matchingSkill.score >= 80) {
           matchingSkill.status = 'LIVE VERIFIED';
+          matchingSkill.verified = true;
         }
+        saveStateToStorage();
         if (typeof syncStudentSkills === 'function') {
           syncStudentSkills(appState.currentStack);
         }
@@ -28871,6 +29154,7 @@ function onWizardBranchChanged(branchKey) {
       appState.invites.unshift({
         id: Date.now(),
         candidateId: c.id,
+        candidateEmail: c.email || '',
         name: c.name,
         role: roleOffered,
         format: format,
@@ -28883,6 +29167,30 @@ function onWizardBranchChanged(branchKey) {
       document.getElementById('recruiterInvitesCountBadge').innerText = appState.invites.length;
       closeCandidateDossier();
       showToast(`Interview invitation dispatched directly to ${c.name}!`);
+
+      // Dispatch automated interview invitation email via Brevo immediately
+      const company = (appState.user && appState.user.college) || (document.getElementById('recInputCompany') ? document.getElementById('recInputCompany').value.trim() : '') || 'Enterprise Talent Partner';
+      const recruiterName = (appState.user && appState.user.name) || 'Engineering Talent Acquisition Lead';
+      fetch('/api/recruiter/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          candidateId: c.id,
+          candidateEmail: c.email,
+          candidateName: c.name,
+          recruiterCompany: company,
+          recruiterName: recruiterName,
+          domain: roleOffered || `${c.stream || 'Core'} Engineering Track`,
+          customMessage: `We reviewed your verified score (${c.skill_score || 90}%) and capstone on Campus2Career. We invite you for a 45-minute technical discussion.`
+        })
+      }).then(r => r.json()).then(data => {
+        if (data && data.success) {
+          showToast(`✓ Invitation email dispatched to ${c.email || c.name}!`);
+        }
+      }).catch(err => {
+        console.warn('[Invite Dispatch Warning]', err);
+      });
+
       navigateTo('recruiter-invites');
     }
 
@@ -31624,6 +31932,11 @@ function onWizardBranchChanged(branchKey) {
             showToast(`Welcome back, ${foundUser.name}!`);
           } else {
             setRole('learner');
+            if (typeof fetchStudentSkills === 'function') {
+              try {
+                await fetchStudentSkills();
+              } catch (_) {}
+            }
             if (!hasCompletedOnboarding(foundUser)) {
               openOnboardingModal(foundUser.stream || foundUser.branch || null);
             } else {
@@ -31632,7 +31945,6 @@ function onWizardBranchChanged(branchKey) {
               }
               navigateTo('analyzer');
             }
-            if (typeof fetchStudentSkills === 'function') fetchStudentSkills();
             renderSkillLevelDiagram();
             updateGrowthSummaryCards();
             updateCharts();
@@ -32629,7 +32941,7 @@ function onWizardBranchChanged(branchKey) {
       const dbLecturesCount = Number(skill.lectures_completed) || 0;
       const completedLessonsCount = Math.min(15, Math.max(completedList.length, dbLecturesCount));
       const videoCredit = (skill.lecture_score !== undefined && skill.lecture_score !== null)
-        ? Math.min(15, Math.max(0, Number(skill.lecture_score)))
+        ? Math.min(15, Math.max(Number(skill.lecture_score), completedLessonsCount))
         : (isLiveVerified ? 15 : Math.min(15, completedLessonsCount));
 
       // 3. Marathons / Labs (3% Weight): Dedicated hands-on practice sessions / timed marathons.
@@ -32683,12 +32995,18 @@ function onWizardBranchChanged(branchKey) {
       let total = rawTotal;
       let isCapped = false;
 
+      // Ensure that if a skill has a stored total_score (e.g. 40% verified from DB), it is strictly preserved
+      const storedTotal = Number(skill.total_score !== undefined ? skill.total_score : skill.score) || 0;
+      if (storedTotal > total) {
+        total = storedTotal;
+      }
+
       // 80% Total Mastery Gate: Total score cannot exceed 80% unless latest benchmark score was 100%
-      if (rawTotal > 80 && latestExamScore < 100 && !isLiveVerified) {
+      if (total > 80 && latestExamScore < 100 && !isLiveVerified) {
         total = 80;
         isCapped = true;
       } else {
-        total = Math.min(100, Math.max(20, rawTotal));
+        total = Math.min(100, Math.max(20, total));
         isCapped = false;
       }
 

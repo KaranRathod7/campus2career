@@ -693,6 +693,14 @@ async function ensureSchema() {
 
         // Extra column verification
         const attemptCols = [
+          "ALTER TABLE student_test_attempts ADD COLUMN IF NOT EXISTS core_skill VARCHAR(150);",
+          "ALTER TABLE student_test_attempts ADD COLUMN IF NOT EXISTS test_skill VARCHAR(255);",
+          "ALTER TABLE student_test_attempts ADD COLUMN IF NOT EXISTS skill_name VARCHAR(150);",
+          "ALTER TABLE student_test_attempts ADD COLUMN IF NOT EXISTS test_title VARCHAR(255);",
+          "UPDATE student_test_attempts SET core_skill = COALESCE(core_skill, skill_name) WHERE core_skill IS NULL;",
+          "UPDATE student_test_attempts SET test_skill = COALESCE(test_skill, test_title) WHERE test_skill IS NULL;",
+          "UPDATE student_test_attempts SET skill_name = COALESCE(skill_name, core_skill) WHERE skill_name IS NULL;",
+          "UPDATE student_test_attempts SET test_title = COALESCE(test_title, test_skill) WHERE test_title IS NULL;",
           "ALTER TABLE student_test_attempts ADD COLUMN IF NOT EXISTS score NUMERIC(5,2);",
           "ALTER TABLE student_test_attempts ADD COLUMN IF NOT EXISTS score_percentage NUMERIC(5,2);",
           "ALTER TABLE student_test_attempts ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';",
@@ -2351,14 +2359,14 @@ const db = {
     if (p) {
       try {
         await ensureSchema();
-        const res = await pool.query(
-          'SELECT * FROM candidates WHERE id::text = $1 OR user_id::text = $1 OR LOWER(TRIM(email)) = $2 LIMIT 1',
+        const res = await p.query(
+          'SELECT * FROM candidates WHERE id::text = $1 OR user_id::text = $1 OR LOWER(TRIM(email)) = $2 OR LOWER(TRIM(name)) = $2 OR LOWER(TRIM(REPLACE(name, \' \', \'_\'))) = $2 LIMIT 1',
           [cleanId, cleanLower]
         );
         if (res.rows[0]) return res.rows[0];
 
         const uRes = await p.query(
-          'SELECT id, name, email, stream, role, dynamic_competence_percent AS skill_score FROM users WHERE id::text = $1 OR LOWER(TRIM(email)) = $2 LIMIT 1',
+          'SELECT id, name, email, stream, role, dynamic_competence_percent AS skill_score FROM users WHERE id::text = $1 OR LOWER(TRIM(email)) = $2 OR LOWER(TRIM(username)) = $2 OR LOWER(TRIM(name)) = $2 OR LOWER(TRIM(REPLACE(name, \' \', \'_\'))) = $2 LIMIT 1',
           [cleanId, cleanLower]
         );
         if (uRes.rows[0]) {
@@ -2375,13 +2383,16 @@ const db = {
     const cand = (store.candidates || []).find(c => 
       (c.id && String(c.id).toLowerCase() === cleanLower) ||
       (c.user_id && String(c.user_id).toLowerCase() === cleanLower) ||
-      (c.email && c.email.toLowerCase() === cleanLower)
+      (c.email && c.email.toLowerCase() === cleanLower) ||
+      (c.name && (c.name.toLowerCase() === cleanLower || c.name.toLowerCase().replace(/\s+/g, '_') === cleanLower))
     );
     if (cand) return cand;
 
     const usr = (store.users || []).find(u => 
       (u.id && String(u.id).toLowerCase() === cleanLower) ||
-      (u.email && u.email.toLowerCase() === cleanLower)
+      (u.email && u.email.toLowerCase() === cleanLower) ||
+      (u.username && u.username.toLowerCase() === cleanLower) ||
+      (u.name && (u.name.toLowerCase() === cleanLower || u.name.toLowerCase().replace(/\s+/g, '_') === cleanLower))
     );
     if (usr) {
       return {
@@ -2806,18 +2817,27 @@ const db = {
         let res;
         try {
           res = await p.query(
-            `INSERT INTO student_test_attempts (user_id, skill_name, test_title, score, score_percentage, total_questions, correct_answers, metadata)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-             RETURNING *`,
-            [validUuid, cleanSkill, cleanTitle, numScore, numScore, totalQ, correctA, JSON.stringify(metaObj)]
-          );
-        } catch (colErr) {
-          res = await p.query(
-            `INSERT INTO student_test_attempts (user_id, skill_name, test_title, score, total_questions, correct_answers, metadata)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
+            `INSERT INTO student_test_attempts (user_id, core_skill, test_skill, skill_name, test_title, score, score_percentage, total_questions, correct_answers, metadata)
+             VALUES ($1, $2, $3, $2, $3, $4, $4, $5, $6, $7)
              RETURNING *`,
             [validUuid, cleanSkill, cleanTitle, numScore, totalQ, correctA, JSON.stringify(metaObj)]
           );
+        } catch (colErr) {
+          try {
+            res = await p.query(
+              `INSERT INTO student_test_attempts (user_id, skill_name, test_title, score, score_percentage, total_questions, correct_answers, metadata)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+               RETURNING *`,
+              [validUuid, cleanSkill, cleanTitle, numScore, numScore, totalQ, correctA, JSON.stringify(metaObj)]
+            );
+          } catch (colErr2) {
+            res = await p.query(
+              `INSERT INTO student_test_attempts (user_id, skill_name, test_title, score, total_questions, correct_answers, metadata)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)
+               RETURNING *`,
+              [validUuid, cleanSkill, cleanTitle, numScore, totalQ, correctA, JSON.stringify(metaObj)]
+            );
+          }
         }
         attempt = res.rows[0];
 
@@ -2917,6 +2937,8 @@ const db = {
     attempt = {
       id: `attempt-${Date.now()}-${Math.floor(Math.random()*1000)}`,
       user_id: validUuid || user_id || 'anonymous',
+      core_skill: cleanSkill,
+      test_skill: cleanTitle,
       skill_name: cleanSkill,
       test_title: cleanTitle,
       score: numScore,
@@ -2998,7 +3020,9 @@ const db = {
       try {
         await ensureSchema();
         const res = await p.query(
-          `SELECT skill_name, test_title, score, created_at
+          `SELECT COALESCE(core_skill, skill_name) as core_skill,
+                  COALESCE(test_skill, test_title) as test_skill,
+                  skill_name, test_title, score, created_at
            FROM student_test_attempts
            WHERE user_id = $1 OR user_id::text = $2
            ORDER BY created_at ASC`,
@@ -3013,8 +3037,10 @@ const db = {
     return (store.student_test_attempts || [])
       .filter(a => user_id && (a.user_id === user_id || String(a.user_id) === String(user_id)))
       .map(a => ({
-        skill_name: a.skill_name,
-        test_title: a.test_title,
+        core_skill: a.core_skill || a.skill_name,
+        test_skill: a.test_skill || a.test_title,
+        skill_name: a.core_skill || a.skill_name,
+        test_title: a.test_skill || a.test_title,
         score: a.score,
         created_at: a.created_at
       }))
@@ -3531,17 +3557,15 @@ const db = {
 
         const validUuid = (resolvedUserId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(resolvedUserId))) ? String(resolvedUserId) : null;
 
-        // Wipe previous stream skills for this user to ensure discipline stream isolation
+        // Non-destructive synchronization: Fetch existing rows to preserve test/diagnostic scores
+        const existingProgressMap = {};
         if (validUuid) {
-          await p.query('DELETE FROM student_skill_progress WHERE user_id = $1', [validUuid]);
-          const sb = getSupabaseClient();
-          if (sb) {
-            try {
-              await sb.from('student_skill_progress').delete().eq('user_id', validUuid);
-            } catch (sbDelErr) {
-              console.warn('[Supabase Skill Wipe Warning]:', sbDelErr.message);
-            }
-          }
+          try {
+            const exRes = await p.query('SELECT * FROM student_skill_progress WHERE user_id = $1', [validUuid]);
+            (exRes.rows || []).forEach(r => {
+              if (r.skill_name) existingProgressMap[r.skill_name.toLowerCase().trim()] = r;
+            });
+          } catch (_) {}
         }
 
         const skillNames = skillList.map(s => (s.skill_name || s.name || '').trim()).filter(Boolean);
@@ -3552,23 +3576,51 @@ const db = {
         for (const s of skillList) {
           const skillName = (s.skill_name || s.name || '').trim();
           if (!skillName) continue;
-          const skillId = (s.skill_id || s.id || skillName.toLowerCase().replace(/[^a-z0-9]/g, '_')).trim();
-          const category = (s.category || 'Core Skill').trim();
-          const basePct = Math.min(100, Math.max(0, parseInt(s.base_percentage !== undefined ? s.base_percentage : (s.baseScore !== undefined ? s.baseScore : s.score), 10) || 35));
-          const totalScore = Math.min(100, Math.max(0, parseInt(s.total_score !== undefined ? s.total_score : s.score, 10) || basePct));
-          const status = (s.status || (totalScore >= 80 ? 'LIVE VERIFIED' : 'UNVERIFIED BASELINE')).trim();
-          const currentMilestone = (s.current_milestone || s.currentMilestone || 'Fundamental syntax & baseline concepts').trim();
-          const nextMilestone = (s.next_milestone || s.nextMilestone || 'Production architecture & high-throughput concurrency').trim();
-          const lecturesCompleted = Math.max(0, parseInt(s.lectures_completed || 0, 10));
+          const sLower = skillName.toLowerCase();
+          const existing = existingProgressMap[sLower];
+
+          const skillId = (s.skill_id || s.id || (existing && existing.skill_id) || skillName.toLowerCase().replace(/[^a-z0-9]/g, '_')).trim();
+          const category = (s.category || (existing && existing.category) || 'Core Skill').trim();
+          const basePct = Math.min(100, Math.max(0, parseInt(s.base_percentage !== undefined ? s.base_percentage : (s.baseScore !== undefined ? s.baseScore : (existing && existing.base_percentage) || s.score), 10) || 35));
+          
+          const diagnosticScore = Math.max(0, Number(s.diagnostic_score !== undefined ? s.diagnostic_score : ((existing && existing.diagnostic_score) || 0)));
+          const lectureScore = Math.max(0, Number(s.lecture_score !== undefined ? s.lecture_score : ((existing && existing.lecture_score) || 0)));
+          const marathonScore = Math.max(0, Number(s.marathon_score !== undefined ? s.marathon_score : ((existing && existing.marathon_score) || 0)));
+          const latestExamScore = Math.max(0, Number(s.latest_exam_score !== undefined ? s.latest_exam_score : ((existing && existing.latest_exam_score) || 0)));
+
+          let totalScore = Number(s.total_score !== undefined ? s.total_score : (s.score !== undefined ? s.score : (existing && existing.total_score) || basePct));
+          totalScore = Math.max(totalScore, basePct + diagnosticScore + lectureScore + marathonScore);
+          totalScore = Math.min(100, Math.max(20, totalScore));
+
+          const isVerified = Boolean(s.verified || (existing && existing.verified) || totalScore >= 80 || latestExamScore >= 80);
+          const status = (s.status || (isVerified ? 'LIVE VERIFIED' : ((existing && existing.status) || 'UNVERIFIED BASELINE'))).trim();
+          const currentMilestone = (s.current_milestone || s.currentMilestone || (existing && existing.current_milestone) || 'Fundamental syntax & baseline concepts').trim();
+          const nextMilestone = (s.next_milestone || s.nextMilestone || (existing && existing.next_milestone) || 'Production architecture & high-throughput concurrency').trim();
+          const lecturesCompleted = Math.max(Number(s.lectures_completed || 0), Number((existing && existing.lectures_completed) || 0));
 
           if (validUuid) {
             const res = await p.query(
               `INSERT INTO student_skill_progress (
-                 user_id, skill_id, skill_name, category, base_percentage, total_score, status, lectures_completed, current_milestone, next_milestone, updated_at
+                 user_id, skill_id, skill_name, category, base_percentage, total_score, diagnostic_score, lecture_score, marathon_score, latest_exam_score, status, verified, lectures_completed, current_milestone, next_milestone, updated_at
                )
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW())
+               ON CONFLICT (user_id, skill_name) DO UPDATE SET
+                 skill_id = EXCLUDED.skill_id,
+                 category = EXCLUDED.category,
+                 base_percentage = EXCLUDED.base_percentage,
+                 total_score = GREATEST(student_skill_progress.total_score, EXCLUDED.total_score),
+                 diagnostic_score = GREATEST(student_skill_progress.diagnostic_score, EXCLUDED.diagnostic_score),
+                 lecture_score = GREATEST(student_skill_progress.lecture_score, EXCLUDED.lecture_score),
+                 marathon_score = GREATEST(student_skill_progress.marathon_score, EXCLUDED.marathon_score),
+                 latest_exam_score = GREATEST(COALESCE(student_skill_progress.latest_exam_score, 0), EXCLUDED.latest_exam_score),
+                 status = CASE WHEN EXCLUDED.verified OR student_skill_progress.verified OR GREATEST(student_skill_progress.total_score, EXCLUDED.total_score) >= 80 THEN 'LIVE VERIFIED' ELSE EXCLUDED.status END,
+                 verified = student_skill_progress.verified OR EXCLUDED.verified OR (GREATEST(student_skill_progress.total_score, EXCLUDED.total_score) >= 80),
+                 lectures_completed = GREATEST(student_skill_progress.lectures_completed, EXCLUDED.lectures_completed),
+                 current_milestone = EXCLUDED.current_milestone,
+                 next_milestone = EXCLUDED.next_milestone,
+                 updated_at = NOW()
                RETURNING *;`,
-              [validUuid, skillId, skillName, category, basePct, totalScore, status, lecturesCompleted, currentMilestone, nextMilestone]
+              [validUuid, skillId, skillName, category, basePct, totalScore, diagnosticScore, lectureScore, marathonScore, latestExamScore, status, isVerified, lecturesCompleted, currentMilestone, nextMilestone]
             );
             if (res.rows[0]) synced.push(res.rows[0]);
           }
@@ -3687,41 +3739,69 @@ const db = {
     const normEmail = (user_email || '').trim().toLowerCase();
     const effectiveUserId = resolvedUserId || user_id || (normEmail ? `usr-${normEmail}` : 'usr-default');
 
-    // Wipe previous skills for this user in local store as well
-    store.student_skill_progress = store.student_skill_progress.filter(item => 
-      item.user_id !== effectiveUserId && (item.user_email ? item.user_email.toLowerCase() !== normEmail : true)
-    );
-
     for (const s of skillList) {
       const skillName = (s.skill_name || s.name || '').trim();
       if (!skillName) continue;
-      const skillId = (s.skill_id || s.id || skillName.toLowerCase().replace(/[^a-z0-9]/g, '_')).trim();
-      const category = (s.category || 'Core Skill').trim();
-      const basePct = Math.min(100, Math.max(0, parseInt(s.base_percentage !== undefined ? s.base_percentage : (s.baseScore !== undefined ? s.baseScore : s.score), 10) || 35));
-      const totalScore = Math.min(100, Math.max(0, parseInt(s.total_score !== undefined ? s.total_score : s.score, 10) || basePct));
-      const status = (s.status || (totalScore >= 80 ? 'LIVE VERIFIED' : 'UNVERIFIED BASELINE')).trim();
-      const currentMilestone = (s.current_milestone || s.currentMilestone || 'Fundamental syntax & baseline concepts').trim();
-      const nextMilestone = (s.next_milestone || s.nextMilestone || 'Production architecture & high-throughput concurrency').trim();
-      const lecturesCompleted = Math.max(0, parseInt(s.lectures_completed || 0, 10));
+      const sLower = skillName.toLowerCase();
+      const existing = store.student_skill_progress.find(item => 
+        (item.user_id === effectiveUserId || (item.user_email && item.user_email.toLowerCase() === normEmail)) &&
+        item.skill_name.toLowerCase() === sLower
+      );
 
-      const newItem = {
-        id: `ssp-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        user_id: effectiveUserId,
-        user_email: normEmail,
-        skill_id: skillId,
-        skill_name: skillName,
-        category,
-        base_percentage: basePct,
-        total_score: totalScore,
-        status,
-        lectures_completed: lecturesCompleted,
-        current_milestone: currentMilestone,
-        next_milestone: nextMilestone,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      store.student_skill_progress.push(newItem);
-      synced.push(newItem);
+      const skillId = (s.skill_id || s.id || (existing && existing.skill_id) || skillName.toLowerCase().replace(/[^a-z0-9]/g, '_')).trim();
+      const category = (s.category || (existing && existing.category) || 'Core Skill').trim();
+      const basePct = Math.min(100, Math.max(0, parseInt(s.base_percentage !== undefined ? s.base_percentage : (s.baseScore !== undefined ? s.baseScore : (existing && existing.base_percentage) || s.score), 10) || 35));
+      const diagnosticScore = Math.max(0, Number(s.diagnostic_score !== undefined ? s.diagnostic_score : ((existing && existing.diagnostic_score) || 0)));
+      const lectureScore = Math.max(0, Number(s.lecture_score !== undefined ? s.lecture_score : ((existing && existing.lecture_score) || 0)));
+      const marathonScore = Math.max(0, Number(s.marathon_score !== undefined ? s.marathon_score : ((existing && existing.marathon_score) || 0)));
+      const latestExamScore = Math.max(0, Number(s.latest_exam_score !== undefined ? s.latest_exam_score : ((existing && existing.latest_exam_score) || 0)));
+
+      let totalScore = Number(s.total_score !== undefined ? s.total_score : (s.score !== undefined ? s.score : (existing && existing.total_score) || basePct));
+      totalScore = Math.max(totalScore, basePct + diagnosticScore + lectureScore + marathonScore);
+      totalScore = Math.min(100, Math.max(20, totalScore));
+
+      const isVerified = Boolean(s.verified || (existing && existing.verified) || totalScore >= 80 || latestExamScore >= 80);
+      const status = (s.status || (isVerified ? 'LIVE VERIFIED' : ((existing && existing.status) || 'UNVERIFIED BASELINE'))).trim();
+      const currentMilestone = (s.current_milestone || s.currentMilestone || (existing && existing.current_milestone) || 'Fundamental syntax & baseline concepts').trim();
+      const nextMilestone = (s.next_milestone || s.nextMilestone || (existing && existing.next_milestone) || 'Production architecture & high-throughput concurrency').trim();
+      const lecturesCompleted = Math.max(Number(s.lectures_completed || 0), Number((existing && existing.lectures_completed) || 0));
+
+      if (existing) {
+        existing.base_percentage = basePct;
+        existing.total_score = Math.max(existing.total_score || 0, totalScore);
+        existing.diagnostic_score = Math.max(existing.diagnostic_score || 0, diagnosticScore);
+        existing.lecture_score = Math.max(existing.lecture_score || 0, lectureScore);
+        existing.marathon_score = Math.max(existing.marathon_score || 0, marathonScore);
+        existing.latest_exam_score = Math.max(existing.latest_exam_score || 0, latestExamScore);
+        existing.status = isVerified ? 'LIVE VERIFIED' : existing.status;
+        existing.verified = isVerified;
+        existing.lectures_completed = lecturesCompleted;
+        synced.push(existing);
+      } else {
+        const newItem = {
+          id: `ssp-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          user_id: effectiveUserId,
+          user_email: normEmail,
+          skill_id: skillId,
+          skill_name: skillName,
+          category,
+          base_percentage: basePct,
+          total_score: totalScore,
+          diagnostic_score: diagnosticScore,
+          lecture_score: lectureScore,
+          marathon_score: marathonScore,
+          latest_exam_score: latestExamScore,
+          status,
+          verified: isVerified,
+          lectures_completed: lecturesCompleted,
+          current_milestone: currentMilestone,
+          next_milestone: nextMilestone,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        store.student_skill_progress.push(newItem);
+        synced.push(newItem);
+      }
     }
 
     if (resolvedStream && normEmail) {
@@ -4024,7 +4104,7 @@ const db = {
     const watched = Math.max(0, parseInt(time_watched_seconds, 10) || 0);
     const cleanSkill = (skill_name || 'Core Skill').trim();
     const cleanLecture = String(lecture_id || 'lecture-1').trim();
-    const isCompleted = watched >= Math.floor(duration * 0.85);
+    const isCompleted = watched >= Math.min(30, Math.floor(duration * 0.85));
 
     let resolvedUserId = user_id;
 
@@ -4037,7 +4117,7 @@ const db = {
       };
     }
 
-    // Legitimately completed (watched >= 85%)
+    // Legitimately completed (watched >= 30s or >= 85%)
     if (p) {
       try {
         if (!resolvedUserId && user_email) {
@@ -4073,7 +4153,8 @@ const db = {
           await p.query(
             `UPDATE student_skill_progress
              SET lectures_completed = $1,
-                 total_score = LEAST(100, base_percentage + $1 + CASE WHEN status = 'LIVE VERIFIED' THEN 34 ELSE 0 END),
+                 lecture_score = $1,
+                 total_score = LEAST(100, base_percentage + $1 + marathon_score + CASE WHEN status = 'LIVE VERIFIED' THEN 34 ELSE COALESCE(diagnostic_score, 0) END),
                  updated_at = NOW()
              WHERE user_id = $2 AND (
                LOWER(skill_name) = LOWER($3) OR

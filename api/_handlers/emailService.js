@@ -115,14 +115,20 @@ async function sendVerificationEmail({ to, name = 'Student', pin, token, baseUrl
 
   console.log(`[VERIFY DISPATCH] Initiating verification email send to: ${to} (PIN: ${pin})`);
 
-  if (RESEND_API_KEY) {
-    console.log(`[Transport] Attempting verification dispatch via Resend for ${to}...`);
-    const resendRes = await sendResendRaw({ to, subject, htmlContent, textContent });
-    if (resendRes.success) return resendRes;
-    console.warn(`[Transport Notice] Resend verification dispatch failed (${resendRes.error}), falling back to Brevo...`);
+  // 1. Direct primary dispatch via Brevo (Instant delivery in < 2 seconds)
+  if (BREVO_API_KEY) {
+    const brevoRes = await sendBrevoRaw({ to, subject, htmlContent, textContent });
+    if (brevoRes.success) return brevoRes;
+    console.warn(`[Transport Notice] Brevo dispatch notice (${brevoRes.error}), attempting Resend fallback...`);
   }
 
-  return await sendBrevoRaw({ to, subject, htmlContent, textContent });
+  // 2. Fallback to Resend if configured
+  if (RESEND_API_KEY) {
+    const resendRes = await sendResendRaw({ to, subject, htmlContent, textContent });
+    if (resendRes.success) return resendRes;
+  }
+
+  return { success: false, error: 'Email delivery failed across all transports' };
 }
 
 async function sendInterviewInviteEmail({ to, candidateName, recruiterCompany, recruiterName, domain, customMessage }) {
@@ -216,16 +222,20 @@ async function sendPasswordResetOtpEmail({ to, name = 'Student', code }) {
   console.log(`[RESET ATTEMPT] Initiating OTP send for: ${to}`);
   console.log(`[PASSWORD RESET OTP]: ${code} for ${to}`);
 
-  // 1. Try Resend if configured
-  if (RESEND_API_KEY) {
-    console.log(`[Transport] Attempting dispatch via Resend for ${to}...`);
-    const resendRes = await sendResendRaw({ to, subject, htmlContent, textContent });
-    if (resendRes.success) return resendRes;
-    console.warn(`[Transport Notice] Resend dispatch failed (${resendRes.error}), falling back to Brevo...`);
+  // 1. Direct primary dispatch via Brevo (Instant delivery in < 2 seconds)
+  if (BREVO_API_KEY) {
+    const brevoRes = await sendBrevoRaw({ to, subject, htmlContent, textContent });
+    if (brevoRes.success) return brevoRes;
+    console.warn(`[Transport Notice] Brevo reset dispatch notice (${brevoRes.error}), attempting Resend fallback...`);
   }
 
-  // 2. Dispatch via Brevo
-  return await sendBrevoRaw({ to, subject, htmlContent, textContent });
+  // 2. Fallback to Resend if configured
+  if (RESEND_API_KEY) {
+    const resendRes = await sendResendRaw({ to, subject, htmlContent, textContent });
+    if (resendRes.success) return resendRes;
+  }
+
+  return { success: false, error: 'Password reset dispatch failed across all transports' };
 }
 
 module.exports = {

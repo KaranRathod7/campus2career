@@ -27,13 +27,22 @@ module.exports = async (req, res) => {
 
     const company = recruiterCompany || 'Campus2Career Enterprise Partner';
 
-    // 1. Look up candidate in database by ID or Email
+    // 1. Look up candidate in database by ID, Name or Email
     let candidate = null;
     if (candidateId) {
       candidate = await db.getCandidateById(candidateId);
     }
     if (!candidate && candidateEmail) {
       candidate = await db.getCandidateById(candidateEmail);
+    }
+    if (!candidate && candidateName) {
+      candidate = await db.getCandidateById(candidateName);
+    }
+    if (!candidate && candidateEmail) {
+      try { candidate = await db.getUserByEmail(candidateEmail); } catch (_) {}
+    }
+    if (!candidate && candidateId) {
+      try { candidate = await db.getUserById(candidateId); } catch (_) {}
     }
 
     // Determine target recipient info with robust fallbacks

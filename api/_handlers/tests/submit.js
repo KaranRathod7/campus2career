@@ -34,8 +34,8 @@ async function submitTestScore(req, res) {
   try {
     const body = req.body || {};
     let userId = body.userId || body.user_id;
-    const skillName = body.skillName || body.skill_name;
-    const testTitle = body.testTitle || body.test_title || `${skillName} Assessment`;
+    const skillName = body.core_skill || body.coreSkill || body.skillName || body.skill_name;
+    const testTitle = body.test_skill || body.testSkill || body.testTitle || body.test_title || `${skillName} Assessment`;
     const score = (body.score !== undefined && body.score !== null && !isNaN(body.score)) ? Number(body.score) : undefined;
     const totalQuestions = Number(body.totalQuestions !== undefined ? body.totalQuestions : body.total_questions) || 0;
     const correctAnswers = Number(body.correctAnswers !== undefined ? body.correctAnswers : body.correct_answers) || 0;
@@ -62,6 +62,8 @@ async function submitTestScore(req, res) {
       try {
         let insertData = {
           user_id: effectiveUserId,
+          core_skill: skillName,
+          test_skill: testTitle,
           skill_name: skillName,
           test_title: testTitle,
           score: score,
@@ -146,6 +148,8 @@ async function submitTestScore(req, res) {
         } else if (fetchError || !currentProgress) {
           const fallbackRes = await db.recordTestAttempt({
             user_id: effectiveUserId,
+            core_skill: skillName,
+            test_skill: testTitle,
             skill_name: skillName,
             test_title: testTitle,
             score: score,
@@ -170,6 +174,8 @@ async function submitTestScore(req, res) {
     // 2. Direct PostgreSQL Pool / Local In-Memory Store Execution
     const result = await db.recordTestAttempt({
       user_id: effectiveUserId,
+      core_skill: skillName,
+      test_skill: testTitle,
       skill_name: skillName,
       test_title: testTitle,
       score: score,

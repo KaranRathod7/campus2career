@@ -123,5 +123,11 @@ BEFORE DELETE ON public.users
 FOR EACH ROW
 EXECUTE FUNCTION public.cascade_delete_user_data();
 
+-- 4. student_test_attempts: rename / add core_skill and test_skill columns
+ALTER TABLE IF EXISTS public.student_test_attempts ADD COLUMN IF NOT EXISTS core_skill VARCHAR(150);
+ALTER TABLE IF EXISTS public.student_test_attempts ADD COLUMN IF NOT EXISTS test_skill VARCHAR(255);
+UPDATE public.student_test_attempts SET core_skill = COALESCE(core_skill, skill_name) WHERE core_skill IS NULL;
+UPDATE public.student_test_attempts SET test_skill = COALESCE(test_skill, test_title) WHERE test_skill IS NULL;
+
 -- Verification Check
-SELECT 'Cascade trigger successfully active and resilient to missing tables' AS status;
+SELECT 'Cascade trigger successfully active, core_skill & test_skill columns ready' AS status;
