@@ -41,7 +41,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    const isWhitelisted = (normalizedEmail === 'theyareop@gmail.com');
+    const isWhitelisted = (normalizedEmail === 'theyareop@gmail.com' || normalizedEmail === 'karansinhrrr@gmail.com');
 
     // Run username and email existence checks concurrently for fast processing
     let existingUserByUsername = null;
@@ -148,22 +148,21 @@ module.exports = async (req, res) => {
     const host = req.headers.host || 'localhost:8000';
     const baseUrl = `${proto}://${host}`;
 
-    // Dispatch Brevo email in background with quick 1.2s race to ensure sub-2-second registration
-    const emailPromise = sendVerificationEmail({
-      to: normalizedEmail,
-      name: name.trim(),
-      pin,
-      token,
-      baseUrl
-    }).catch(emailErr => {
+    // Dispatch Brevo verification email directly (guaranteed delivery before serverless freeze, under 5s)
+    let emailResult = { success: false, error: 'Brevo email not dispatched' };
+    try {
+      emailResult = await sendVerificationEmail({
+        to: normalizedEmail,
+        name: name.trim(),
+        pin,
+        token,
+        baseUrl
+      });
+      console.log(`[Brevo Registration Dispatch]: ${normalizedEmail} -> success=${emailResult.success}`);
+    } catch (emailErr) {
       console.warn('[Brevo Dispatch Warning]:', emailErr.message);
-      return { success: false, error: emailErr.message };
-    });
-
-    const emailResult = await Promise.race([
-      emailPromise,
-      new Promise(resolve => setTimeout(() => resolve({ success: true, pending: true, message: 'Dispatched via Brevo in background' }), 1200))
-    ]);
+      emailResult = { success: false, error: emailErr.message };
+    }
 
     return res.status(200).json({
       success: true,

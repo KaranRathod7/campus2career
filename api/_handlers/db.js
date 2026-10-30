@@ -853,6 +853,62 @@ async function ensureSchema() {
         `);
       } catch (e) {}
 
+      // 8. Automatic Cascade Deletion Trigger on users table
+      try {
+        await p.query(`
+          CREATE OR REPLACE FUNCTION public.cascade_delete_user_data()
+          RETURNS TRIGGER AS \$\$
+          BEGIN
+              IF to_regclass('public.candidates') IS NOT NULL THEN
+                  BEGIN EXECUTE 'DELETE FROM public.candidates WHERE user_id = $1 OR LOWER(TRIM(email)) = LOWER(TRIM($2))' USING OLD.id, OLD.email; EXCEPTION WHEN OTHERS THEN NULL; END;
+              END IF;
+              IF to_regclass('public.student_skill_progress') IS NOT NULL THEN
+                  BEGIN EXECUTE 'DELETE FROM public.student_skill_progress WHERE user_id = $1' USING OLD.id; EXCEPTION WHEN OTHERS THEN NULL; END;
+              END IF;
+              IF to_regclass('public.user_domain_progress') IS NOT NULL THEN
+                  BEGIN EXECUTE 'DELETE FROM public.user_domain_progress WHERE LOWER(TRIM(user_email)) = LOWER(TRIM($1))' USING OLD.email; EXCEPTION WHEN OTHERS THEN NULL; END;
+              END IF;
+              IF to_regclass('public.student_activity') IS NOT NULL THEN
+                  BEGIN EXECUTE 'DELETE FROM public.student_activity WHERE user_id = $1' USING OLD.id; EXCEPTION WHEN OTHERS THEN NULL; END;
+              END IF;
+              IF to_regclass('public.student_activity_logs') IS NOT NULL THEN
+                  BEGIN EXECUTE 'DELETE FROM public.student_activity_logs WHERE user_id = $1 OR LOWER(TRIM(user_email)) = LOWER(TRIM($2))' USING OLD.id, OLD.email; EXCEPTION WHEN OTHERS THEN NULL; END;
+              END IF;
+              IF to_regclass('public.user_completed_lectures') IS NOT NULL THEN
+                  BEGIN EXECUTE 'DELETE FROM public.user_completed_lectures WHERE user_id = $1 OR LOWER(TRIM(user_email)) = LOWER(TRIM($2))' USING OLD.id, OLD.email; EXCEPTION WHEN OTHERS THEN NULL; END;
+              END IF;
+              IF to_regclass('public.student_test_attempts') IS NOT NULL THEN
+                  BEGIN EXECUTE 'DELETE FROM public.student_test_attempts WHERE user_id = $1' USING OLD.id; EXCEPTION WHEN OTHERS THEN NULL; END;
+              END IF;
+              IF to_regclass('public.diagnostics') IS NOT NULL THEN
+                  BEGIN EXECUTE 'DELETE FROM public.diagnostics WHERE LOWER(TRIM(user_email)) = LOWER(TRIM($1))' USING OLD.email; EXCEPTION WHEN OTHERS THEN NULL; END;
+              END IF;
+              IF to_regclass('public.login_attempts') IS NOT NULL THEN
+                  BEGIN EXECUTE 'DELETE FROM public.login_attempts WHERE user_id = $1 OR LOWER(TRIM(email)) = LOWER(TRIM($2))' USING OLD.id, OLD.email; EXCEPTION WHEN OTHERS THEN NULL; END;
+              END IF;
+              IF to_regclass('public.login_rate_limits') IS NOT NULL THEN
+                  BEGIN EXECUTE 'DELETE FROM public.login_rate_limits WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))' USING OLD.email; EXCEPTION WHEN OTHERS THEN NULL; END;
+              END IF;
+              IF to_regclass('public.pending_verifications') IS NOT NULL THEN
+                  BEGIN EXECUTE 'DELETE FROM public.pending_verifications WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))' USING OLD.email; EXCEPTION WHEN OTHERS THEN NULL; END;
+              END IF;
+              IF to_regclass('public.password_resets') IS NOT NULL THEN
+                  BEGIN EXECUTE 'DELETE FROM public.password_resets WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))' USING OLD.email; EXCEPTION WHEN OTHERS THEN NULL; END;
+              END IF;
+              RETURN OLD;
+          END;
+          \$\$ LANGUAGE plpgsql;
+
+          DROP TRIGGER IF EXISTS trigger_cascade_delete_user ON public.users;
+          CREATE TRIGGER trigger_cascade_delete_user
+          BEFORE DELETE ON public.users
+          FOR EACH ROW
+          EXECUTE FUNCTION public.cascade_delete_user_data();
+        `);
+      } catch (trgErr) {
+        console.warn('[Campus2Career DB] Trigger creation notice:', trgErr.message);
+      }
+
       schemaInitialized = true;
       console.log('[Campus2Career DB] Inline DDL schema verification successfully completed.');
     } catch (err) {
@@ -1295,29 +1351,28 @@ const db = {
           deletedId = uRes.rows[0].id;
           deletedEmail = uRes.rows[0].email.toLowerCase().trim();
 
-          // 1. Delete student_skill_progress
-          await p.query('DELETE FROM student_skill_progress WHERE user_id = $1', [deletedId]);
-          // 2. Delete student_test_attempts
-          await p.query('DELETE FROM student_test_attempts WHERE user_id = $1', [deletedId]);
-          // 3. Delete user_completed_lectures
-          await p.query('DELETE FROM user_completed_lectures WHERE user_id = $1 OR LOWER(TRIM(user_email)) = $2', [deletedId, deletedEmail]);
-          // 4. Delete student_activity
-          await p.query('DELETE FROM student_activity WHERE user_id = $1', [deletedId]);
-          // 5. Delete candidates
-          await p.query('DELETE FROM candidates WHERE user_id = $1 OR LOWER(TRIM(email)) = $2', [deletedId, deletedEmail]);
-          // 6. Delete password_resets
-          await p.query('DELETE FROM password_resets WHERE LOWER(TRIM(email)) = $1', [deletedEmail]);
-          // 7. Delete pending_verifications
-          await p.query('DELETE FROM pending_verifications WHERE LOWER(TRIM(email)) = $1', [deletedEmail]);
-          // 8. Delete login_attempts
-          await p.query('DELETE FROM login_attempts WHERE user_id = $1 OR LOWER(TRIM(email)) = $2', [deletedId, deletedEmail]);
-          // 9. Delete login_rate_limits
-          await p.query('DELETE FROM login_rate_limits WHERE LOWER(TRIM(email)) = $1', [deletedEmail]);
-          // 10. Delete user_domain_progress
-          await p.query('DELETE FROM user_domain_progress WHERE LOWER(TRIM(user_email)) = $1', [deletedEmail]);
-          // 11. Delete diagnostics
-          await p.query('DELETE FROM diagnostics WHERE LOWER(TRIM(user_email)) = $1', [deletedEmail]);
-          // 12. Delete user
+          const safeQuery = async (queryText, params) => {
+            try {
+              await p.query(queryText, params);
+            } catch (qErr) {
+              if (qErr.code !== '42P01') {
+                console.warn('[DB deleteUser notice]:', qErr.message);
+              }
+            }
+          };
+
+          await safeQuery('DELETE FROM student_skill_progress WHERE user_id = $1', [deletedId]);
+          await safeQuery('DELETE FROM student_test_attempts WHERE user_id = $1', [deletedId]);
+          await safeQuery('DELETE FROM user_completed_lectures WHERE user_id = $1 OR LOWER(TRIM(user_email)) = $2', [deletedId, deletedEmail]);
+          await safeQuery('DELETE FROM student_activity WHERE user_id = $1', [deletedId]);
+          await safeQuery('DELETE FROM student_activity_logs WHERE user_id = $1 OR LOWER(TRIM(user_email)) = $2', [deletedId, deletedEmail]);
+          await safeQuery('DELETE FROM candidates WHERE user_id = $1 OR LOWER(TRIM(email)) = $2', [deletedId, deletedEmail]);
+          await safeQuery('DELETE FROM password_resets WHERE LOWER(TRIM(email)) = $1', [deletedEmail]);
+          await safeQuery('DELETE FROM pending_verifications WHERE LOWER(TRIM(email)) = $1', [deletedEmail]);
+          await safeQuery('DELETE FROM login_attempts WHERE user_id = $1 OR LOWER(TRIM(email)) = $2', [deletedId, deletedEmail]);
+          await safeQuery('DELETE FROM login_rate_limits WHERE LOWER(TRIM(email)) = $1', [deletedEmail]);
+          await safeQuery('DELETE FROM user_domain_progress WHERE LOWER(TRIM(user_email)) = $1', [deletedEmail]);
+          await safeQuery('DELETE FROM diagnostics WHERE LOWER(TRIM(user_email)) = $1', [deletedEmail]);
           await p.query('DELETE FROM users WHERE id = $1', [deletedId]);
         }
       } catch (err) {

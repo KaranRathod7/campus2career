@@ -8,8 +8,8 @@
       "role": "admin",
       "is_verified": true,
       "stream": "ALL",
-      "last_login_at": "2026-10-27T13:02:56.338Z",
-      "last_login_time": "27/10/2026, 18:32:56 (Asia/Kolkata)"
+      "last_login_at": "2026-10-30T02:57:54.922Z",
+      "last_login_time": "30/10/2026, 08:27:54 (Asia/Kolkata)"
     },
     {
       "id": "usr-1792429659906",
@@ -549,15 +549,15 @@
     {
       "id": "a0000000-0000-4000-8000-000000000002",
       "name": "Karansinh Rajput",
-      "username": "karansinh_rajput",
+      "username": "karan_1806",
       "email": "karansinhrrr@gmail.com",
-      "password_hash": "\\.sQe2UX8qRDsqEbB3SqeJ5fSOxnwNkOi9oL.RuiZbYPSnlmT43.",
+      "password_hash": "$2b$10$04EZBazgTe2XzUuFihp71ezkLWc/yfTUh72k4uHm9DZ6Nz8PmDL6S",
       "role": "learner",
       "stream": "ECE",
       "branch": "ECE",
       "college": "VJTI Mumbai",
       "year": 3,
-      "is_verified": true,
+      "is_verified": false,
       "onboarded": true,
       "skills": [
         "Embedded C & ARM Cortex-M",
@@ -626,6 +626,28 @@
       "stream": "IT",
       "is_verified": false,
       "created_at": "2026-10-27T13:02:56.470Z"
+    },
+    {
+      "id": "usr-1793329045959",
+      "name": "Speed Tester",
+      "username": "tester_045791",
+      "email": "speed_test_1793329045786@gmail.com",
+      "password_hash": "$2b$10$W69vHVo7BuyhPrOaOLPGWuNeF3NBtJKc7xUlgOK0IXMNFJpxqyNuW",
+      "role": "learner",
+      "stream": "ECE",
+      "is_verified": false,
+      "created_at": "2026-10-30T02:57:25.959Z"
+    },
+    {
+      "id": "usr-1793329075051",
+      "name": "Speed Test Student",
+      "username": "speed_1793329074929",
+      "email": "test_speed_1793329074929@btech.ac.in",
+      "password_hash": "$2b$10$doXIheEWjyW45HgcdaV1IOLZhKjktnTzp5ZqLbThkpOKBAJyGvW3S",
+      "role": "learner",
+      "stream": "IT",
+      "is_verified": false,
+      "created_at": "2026-10-30T02:57:55.051Z"
     }
   ],
   "login_attempts": [
@@ -791,6 +813,17 @@
       "login_time": "27/10/2026, 18:32:56 (Asia/Kolkata)",
       "login_hour": 18,
       "created_at": "2026-10-27T13:02:56.338Z"
+    },
+    {
+      "id": "login-1793329074922-606",
+      "user_id": null,
+      "email": "admin@campus2career.org",
+      "status": "SUCCESS",
+      "ip_address": "127.0.0.1",
+      "user_agent": "TestRunner/1.0",
+      "login_time": "30/10/2026, 08:27:54 (Asia/Kolkata)",
+      "login_hour": 8,
+      "created_at": "2026-10-30T02:57:54.922Z"
     }
   ],
   "pending_verifications": [
@@ -873,6 +906,30 @@
       "token": "f67e52ad45f292b1704ac021a85a67bf4ed5c8d5e0a5528cacd39649584b773c",
       "expires_at": "2026-10-27T13:17:56.474Z",
       "created_at": "2026-10-27T13:02:56.474Z"
+    },
+    {
+      "id": "pv-1793329045975",
+      "email": "speed_test_1793329045786@gmail.com",
+      "pin": "472922",
+      "token": "f8a5673bad021dd61d664d96a81dea1d4f6780e2b45bd8c566b99e59f76e467c",
+      "expires_at": "2026-10-30T03:12:25.975Z",
+      "created_at": "2026-10-30T02:57:25.975Z"
+    },
+    {
+      "id": "pv-1793329061934",
+      "email": "karansinhrrr@gmail.com",
+      "pin": "223955",
+      "token": "41a844b20a032c6fe0545ec6923607d0a084b736ac7998586c4216371ab48187",
+      "expires_at": "2026-10-30T03:12:41.934Z",
+      "created_at": "2026-10-30T02:57:41.935Z"
+    },
+    {
+      "id": "pv-1793329075053",
+      "email": "test_speed_1793329074929@btech.ac.in",
+      "pin": "741331",
+      "token": "18550d28681706dc9b3723870b92edac1af98eaecaa5d56e7fea4f85b0754190",
+      "expires_at": "2026-10-30T03:12:55.053Z",
+      "created_at": "2026-10-30T02:57:55.053Z"
     }
   ],
   "candidates": [
