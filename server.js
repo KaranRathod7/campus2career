@@ -40,7 +40,7 @@ const adapt = (handler) => async (req, res, next) => {
 
 // 3. Consolidated API Router (Matches Vercel Serverless Function behavior)
 const apiApp = require('./api/index');
-app.use(apiApp);
+app.use('/api', apiApp);
 
 // 4. Static File Hosting
 app.use(express.static(path.join(__dirname)));

@@ -124,10 +124,28 @@ FOR EACH ROW
 EXECUTE FUNCTION public.cascade_delete_user_data();
 
 -- 4. student_test_attempts: rename / add core_skill and test_skill columns
+DO $$
+BEGIN
+    -- Defensive rename from skill_name to core_skill if core_skill does not exist yet
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='student_test_attempts' AND column_name='skill_name') AND
+       NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='student_test_attempts' AND column_name='core_skill') THEN
+        ALTER TABLE public.student_test_attempts RENAME COLUMN skill_name TO core_skill;
+    END IF;
+    -- Defensive rename from test_title to test_skill if test_skill does not exist yet
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='student_test_attempts' AND column_name='test_title') AND
+       NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='student_test_attempts' AND column_name='test_skill') THEN
+        ALTER TABLE public.student_test_attempts RENAME COLUMN test_title TO test_skill;
+    END IF;
+END $$;
+
 ALTER TABLE IF EXISTS public.student_test_attempts ADD COLUMN IF NOT EXISTS core_skill VARCHAR(150);
 ALTER TABLE IF EXISTS public.student_test_attempts ADD COLUMN IF NOT EXISTS test_skill VARCHAR(255);
+ALTER TABLE IF EXISTS public.student_test_attempts ADD COLUMN IF NOT EXISTS skill_name VARCHAR(150);
+ALTER TABLE IF EXISTS public.student_test_attempts ADD COLUMN IF NOT EXISTS test_title VARCHAR(255);
 UPDATE public.student_test_attempts SET core_skill = COALESCE(core_skill, skill_name) WHERE core_skill IS NULL;
 UPDATE public.student_test_attempts SET test_skill = COALESCE(test_skill, test_title) WHERE test_skill IS NULL;
+UPDATE public.student_test_attempts SET skill_name = COALESCE(skill_name, core_skill) WHERE skill_name IS NULL;
+UPDATE public.student_test_attempts SET test_title = COALESCE(test_title, test_skill) WHERE test_title IS NULL;
 
 -- Verification Check
 SELECT 'Cascade trigger successfully active, core_skill & test_skill columns ready' AS status;

@@ -110,18 +110,15 @@ async function submitTestScore(req, res) {
         const rawTotal = currentBase + currentLec + currentMar + newDiag;
 
         let newTotal = rawTotal;
-        let newStatus = 'UNVERIFIED BASELINE';
+        let newStatus = 'LIVE VERIFIED';
         if (rawTotal > 80 && score < 100) {
           newTotal = 80;
           newStatus = '80% CAP (Score 100% on Benchmark to Unlock Master Level)';
-        } else if (score >= 80 || rawTotal >= 80) {
-          newTotal = Math.min(100, Math.max(20, rawTotal));
-          newStatus = 'LIVE VERIFIED';
         } else {
           newTotal = Math.min(100, Math.max(20, rawTotal));
-          newStatus = 'UNVERIFIED BASELINE';
+          newStatus = 'LIVE VERIFIED';
         }
-        const isVerified = (score >= 80) || (newTotal >= 80);
+        const isVerified = true;
 
         const { data: upsertedProgress, error: upError } = await sb
           .from('student_skill_progress')

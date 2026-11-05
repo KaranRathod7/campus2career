@@ -95,11 +95,17 @@ async function getStudentAnalytics(req, res) {
         // Fetch timeline of all attempts (for line charts)
         const { data: aTimeline, error: tErr } = await supabase
           .from('student_test_attempts')
-          .select('skill_name, test_title, score, created_at')
+          .select('*')
           .eq('user_id', userId)
           .order('created_at', { ascending: true });
         if (!tErr && aTimeline) {
-          attemptTimeline = aTimeline;
+          attemptTimeline = aTimeline.map(t => ({
+            ...t,
+            core_skill: t.core_skill || t.skill_name,
+            test_skill: t.test_skill || t.test_title,
+            skill_name: t.core_skill || t.skill_name,
+            test_title: t.test_skill || t.test_title,
+          }));
         }
       } catch (sbErr) {
         console.warn('[Analytics Supabase SDK Warning]:', sbErr.message);

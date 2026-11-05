@@ -762,12 +762,9 @@ async function ensureSchema() {
             IF v_raw_total > 80 AND NEW.score < 100 THEN
               v_new_total := 80;
               v_new_status := '80% CAP (Score 100% on Benchmark to Unlock Master Level)';
-            ELSIF NEW.score >= 80 OR v_raw_total >= 80 THEN
-              v_new_total := LEAST(100, GREATEST(20, v_raw_total));
-              v_new_status := 'LIVE VERIFIED';
             ELSE
               v_new_total := LEAST(100, GREATEST(20, v_raw_total));
-              v_new_status := 'UNVERIFIED BASELINE';
+              v_new_status := 'LIVE VERIFIED';
             END IF;
 
             INSERT INTO student_skill_progress (
@@ -795,7 +792,7 @@ async function ensureSchema() {
               v_new_total,
               NEW.score,
               v_new_status,
-              (NEW.score >= 80),
+              true,
               NEW.created_at,
               CURRENT_TIMESTAMP
             )
@@ -2860,19 +2857,16 @@ const db = {
           const newDiag = Math.min(34, currentDiag + gain);
           const rawTotal = currentBase + currentLec + currentMar + newDiag;
           let newTotal = rawTotal;
-          let newStatus = 'UNVERIFIED BASELINE';
+          let newStatus = 'LIVE VERIFIED';
 
           if (rawTotal > 80 && numScore < 100) {
             newTotal = 80;
             newStatus = '80% CAP (Score 100% on Benchmark to Unlock Master Level)';
-          } else if (numScore >= 80 || rawTotal >= 80) {
-            newTotal = Math.min(100, Math.max(20, rawTotal));
-            newStatus = 'LIVE VERIFIED';
           } else {
             newTotal = Math.min(100, Math.max(20, rawTotal));
-            newStatus = 'UNVERIFIED BASELINE';
+            newStatus = 'LIVE VERIFIED';
           }
-          const isVerified = (numScore >= 80) || (newTotal >= 80);
+          const isVerified = true;
 
           const upRes = await p.query(
             `INSERT INTO student_skill_progress (
@@ -2965,18 +2959,15 @@ const db = {
     const rawTotal = currentBase + currentLec + currentMar + newDiag;
 
     let newTotal = rawTotal;
-    let newStatus = 'UNVERIFIED BASELINE';
+    let newStatus = 'LIVE VERIFIED';
     if (rawTotal > 80 && numScore < 100) {
       newTotal = 80;
       newStatus = '80% CAP (Score 100% on Benchmark to Unlock Master Level)';
-    } else if (numScore >= 80 || rawTotal >= 80) {
-      newTotal = Math.min(100, Math.max(20, rawTotal));
-      newStatus = 'LIVE VERIFIED';
     } else {
       newTotal = Math.min(100, Math.max(20, rawTotal));
-      newStatus = 'UNVERIFIED BASELINE';
+      newStatus = 'LIVE VERIFIED';
     }
-    const isVerified = (numScore >= 80) || (newTotal >= 80);
+    const isVerified = true;
 
     if (skillProg) {
       skillProg.diagnostic_score = newDiag;
@@ -3471,11 +3462,11 @@ const db = {
     }
 
     let skillCompetencies = [];
-    if (userProgressSkills.length >= 3) {
+    if (userProgressSkills.length > 0) {
       skillCompetencies = userProgressSkills.map(s => ({
         name: s.skill_name,
         score: Number(s.total_score) || Number(s.base_percentage) || 35,
-        verified: s.status === 'LIVE VERIFIED' || Number(s.total_score) >= 80,
+        verified: s.status === 'LIVE VERIFIED' || s.verified === true || Number(s.total_score) >= 80 || (Number(s.latest_exam_score || 0) > 0),
         category: s.category || 'Core Skill',
         current_milestone: s.current_milestone,
         next_milestone: s.next_milestone
