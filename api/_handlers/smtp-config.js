@@ -1,5 +1,5 @@
 // GET & POST /api/smtp-config
-// Admin SMTP / Brevo dispatch configuration endpoint
+// Admin SMTP / Brevo / Resend dispatch configuration endpoint
 const fs = require('fs');
 const path = require('path');
 const { verifyAdmin } = require('./authMiddleware');
@@ -16,6 +16,8 @@ function loadConfig() {
     provider: 'brevo',
     brevo_api_key: process.env.BREVO_API_KEY || '',
     brevo_from_email: process.env.BREVO_FROM_EMAIL || 'campus2career7@gmail.com',
+    resend_api_key: process.env.RESEND_API_KEY || '',
+    resend_from_email: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
     sender_name: 'Campus2Career Verification',
     sender_email: 'campus2career7@gmail.com',
     smtp_enabled: true,
@@ -61,6 +63,7 @@ module.exports = async (req, res) => {
     // Mask sensitive secrets in response
     const sanitized = Object.assign({}, config, {
       brevo_api_key: config.brevo_api_key ? `${config.brevo_api_key.substring(0, 10)}...${config.brevo_api_key.slice(-6)}` : '',
+      resend_api_key: config.resend_api_key ? `${config.resend_api_key.substring(0, 7)}...` : '',
       smtp_password: config.smtp_password ? '••••••••' : ''
     });
     return res.status(200).json({ success: true, config: sanitized });
@@ -78,6 +81,10 @@ module.exports = async (req, res) => {
       curConfig.brevo_api_key = payload.brevo_api_key.trim();
     }
     if (payload.brevo_from_email) curConfig.brevo_from_email = payload.brevo_from_email.trim();
+    if (payload.resend_api_key && !payload.resend_api_key.includes('••••')) {
+      curConfig.resend_api_key = payload.resend_api_key.trim();
+    }
+    if (payload.resend_from_email) curConfig.resend_from_email = payload.resend_from_email.trim();
     if (payload.smtp_server) curConfig.smtp_server = payload.smtp_server.trim();
     if (payload.smtp_port) curConfig.smtp_port = Number(payload.smtp_port);
     if (payload.smtp_user) curConfig.smtp_user = payload.smtp_user.trim();
@@ -92,7 +99,7 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'SMTP configuration updated successfully.'
+      message: 'Email configuration updated successfully.'
     });
   }
 

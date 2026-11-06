@@ -549,9 +549,9 @@
     {
       "id": "a0000000-0000-4000-8000-000000000002",
       "name": "Karansinh Rajput",
-      "username": "karan_1806",
+      "username": "karan_2367",
       "email": "karansinhrrr@gmail.com",
-      "password_hash": "$2b$10$04EZBazgTe2XzUuFihp71ezkLWc/yfTUh72k4uHm9DZ6Nz8PmDL6S",
+      "password_hash": "$2b$10$ceJ7RmUwNJJbQHCyomsNFegP2gHrlQNVY1gx0nI8RIj6yTHwdcoV.",
       "role": "learner",
       "stream": "ECE",
       "branch": "ECE",
@@ -648,6 +648,57 @@
       "stream": "IT",
       "is_verified": false,
       "created_at": "2026-10-30T02:57:55.051Z"
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000001",
+      "name": "Karan Rathod",
+      "username": "karan_rathod",
+      "email": "karancrathod2000@gmail.com",
+      "password_hash": "$2b$10$ahljmNsSFBpkb3.IQ7igzupJ/nXwQV.8gXjj0l/H6O8LiwPZJvC0u",
+      "role": "learner",
+      "stream": "IT",
+      "branch": "IT",
+      "college": "Sardar Patel Institute of Technology",
+      "year": 4,
+      "is_verified": true,
+      "onboarded": true,
+      "skills": [
+        "Java & Multithreading",
+        "Spring Boot & Microservices",
+        "PostgreSQL & SQL Tuning",
+        "Docker & Containers"
+      ],
+      "total_study_minutes": 240,
+      "total_lecture_minutes": 180,
+      "avg_exam_score": 94,
+      "dynamic_competence_percent": 94,
+      "token_version": 3,
+      "created_at": "2026-11-06T09:26:32.863Z",
+      "updated_at": "2026-11-06T09:33:56.421Z",
+      "last_login_at": "2026-11-06T09:33:56.538Z",
+      "last_login_time": "06/11/2026, 15:03:56 (Asia/Kolkata)"
+    },
+    {
+      "id": "usr-1793957402085",
+      "name": "Test Student",
+      "username": "teststudent_1955",
+      "email": "test_student_1793957401956@example.com",
+      "password_hash": "$2b$10$WbOkHIWojir5Lowry9NEIeweLxHF21PVOAhCha9CK16HL60WPM7Qe",
+      "role": "learner",
+      "stream": "IT",
+      "is_verified": true,
+      "created_at": "2026-11-06T09:30:02.085Z"
+    },
+    {
+      "id": "usr-1793957636655",
+      "name": "Aarav Sharma",
+      "username": "aarav_6540",
+      "email": "learner_1793957636540@btech.ac.in",
+      "password_hash": "$2b$10$hOrsyhSSrFuvGyeSkTuoV.vP0UhOKbw6zAh/OrWoieJAOLBSQQaGO",
+      "role": "learner",
+      "stream": "CSE",
+      "is_verified": true,
+      "created_at": "2026-11-06T09:33:56.655Z"
     }
   ],
   "login_attempts": [
@@ -824,6 +875,17 @@
       "login_time": "30/10/2026, 08:27:54 (Asia/Kolkata)",
       "login_hour": 8,
       "created_at": "2026-10-30T02:57:54.922Z"
+    },
+    {
+      "id": "login-1793957636538-199",
+      "user_id": "a0000000-0000-4000-8000-000000000001",
+      "email": "karancrathod2000@gmail.com",
+      "status": "SUCCESS",
+      "ip_address": "127.0.0.1",
+      "user_agent": "Unknown",
+      "login_time": "06/11/2026, 15:03:56 (Asia/Kolkata)",
+      "login_hour": 15,
+      "created_at": "2026-11-06T09:33:56.538Z"
     }
   ],
   "pending_verifications": [
@@ -916,20 +978,20 @@
       "created_at": "2026-10-30T02:57:25.975Z"
     },
     {
-      "id": "pv-1793329061934",
-      "email": "karansinhrrr@gmail.com",
-      "pin": "223955",
-      "token": "41a844b20a032c6fe0545ec6923607d0a084b736ac7998586c4216371ab48187",
-      "expires_at": "2026-10-30T03:12:41.934Z",
-      "created_at": "2026-10-30T02:57:41.935Z"
-    },
-    {
       "id": "pv-1793329075053",
       "email": "test_speed_1793329074929@btech.ac.in",
       "pin": "741331",
       "token": "18550d28681706dc9b3723870b92edac1af98eaecaa5d56e7fea4f85b0754190",
       "expires_at": "2026-10-30T03:12:55.053Z",
       "created_at": "2026-10-30T02:57:55.053Z"
+    },
+    {
+      "id": "pv-1793957637003",
+      "email": "karansinhrrr@gmail.com",
+      "pin": "698703",
+      "token": "34a3c3554522bb67382caf16543944e536b24d3795a19602e97c056855cfc7ea",
+      "expires_at": "2026-11-06T09:48:57.003Z",
+      "created_at": "2026-11-06T09:33:57.003Z"
     }
   ],
   "candidates": [

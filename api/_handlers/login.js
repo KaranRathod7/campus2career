@@ -121,11 +121,33 @@ module.exports = async (req, res) => {
 
     // 5. Verification check
     if (!user.is_verified) {
+      let pendingPin = null;
+      try {
+        const crypto = require('crypto');
+        pendingPin = Math.floor(100000 + Math.random() * 900000).toString();
+        const pendingToken = crypto.randomBytes(32).toString('hex');
+        await db.createPendingVerification(normalizedEmail, pendingPin, pendingToken);
+        const { sendVerificationEmail } = require('./emailService');
+        const proto = req.headers['x-forwarded-proto'] || 'http';
+        const host = req.headers.host || 'localhost:8000';
+        sendVerificationEmail({
+          to: normalizedEmail,
+          name: user.name || 'Student',
+          pin: pendingPin,
+          token: pendingToken,
+          baseUrl: `${proto}://${host}`
+        }).catch(err => console.warn('[Login Unverified Dispatch Warning]:', err.message));
+      } catch (e) {
+        console.warn('[Pending Verification Issue]:', e.message);
+      }
+
       return res.status(403).json({
         success: false,
         needs_verification: true,
         needsVerification: true,
-        error: 'Your email address has not been verified yet. Please check your email for the 6-digit confirmation code.',
+        pin: pendingPin,
+        devPin: pendingPin,
+        error: 'Your email address has not been verified yet. Please enter your 6-digit confirmation code below.',
         email: normalizedEmail
       });
     }

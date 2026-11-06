@@ -968,7 +968,7 @@
 
           <div class="pt-1 flex items-center justify-between text-xs">
             <span class="text-[11px] text-slate-500 dark:text-slate-400">Didn't receive email in Gmail?</span>
-            <button type="button" onclick="resendVerificationEmail()" class="text-[#008080] dark:text-teal-400 hover:underline font-bold flex items-center space-x-1">
+            <button type="button" id="authResendCodeBtn" onclick="resendVerificationEmail()" class="text-[#008080] dark:text-teal-400 hover:underline font-bold flex items-center space-x-1">
               <i class="fa-solid fa-arrows-rotate text-[11px]"></i>
               <span>Resend Email</span>
             </button>
@@ -29885,7 +29885,7 @@ function onWizardBranchChanged(branchKey) {
 
       // 4. Reset modal form fields
       const emailInput = document.getElementById('authEmailInput');
-      const passInput = document.getElementById('authPasswordInput');
+      const passInput = document.getElementById('authPassInput') || document.getElementById('authPasswordInput');
       const nameInput = document.getElementById('authNameInput');
       const codeInput = document.getElementById('authVerificationCodeInput');
       if (emailInput) emailInput.value = '';
@@ -30172,11 +30172,11 @@ function onWizardBranchChanged(branchKey) {
           dropdown.innerHTML = `
             <div class="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 flex items-center justify-between">
               <span>Instant Matches (${filtered.length})</span>
-              <button onclick="navigateTo('resources'); document.getElementById('navSearchDropdown').classList.add('hidden');" class="text-teal-600 hover:underline">View All &rarr;</button>
+              <button onclick="navigateTo('resources'); const _dd=document.getElementById('navSearchDropdown'); if(_dd) _dd.classList.add('hidden');" class="text-teal-600 hover:underline">View All &rarr;</button>
             </div>
             <div class="space-y-1 pt-1">
               ${filtered.slice(0, 4).map(r => `
-                <div onclick="openResourceModal(${r.id}); document.getElementById('navSearchDropdown').classList.add('hidden');" 
+                <div onclick="openResourceModal(${r.id}); const _dd2=document.getElementById('navSearchDropdown'); if(_dd2) _dd2.classList.add('hidden');" 
                   class="p-2 rounded-lg hover:bg-teal-50/80 cursor-pointer flex items-start space-x-2 transition-all">
                   <i class="fa-${r.type === 'youtube' ? 'brands fa-youtube text-red-500' : 'solid fa-file-code text-teal-600'} mt-0.5 text-xs"></i>
                   <div class="flex-1 min-w-0">
@@ -31828,11 +31828,19 @@ function onWizardBranchChanged(branchKey) {
         // Initiate 60-second cooldown timer
         setCooldown(60);
 
-        showAuthAlert(`✓ Verification email sent to ${email}! Check your Gmail inbox or spam folder for your 6-digit reset code (valid for 5 minutes).`, true);
         const otpInput = document.getElementById('forgotOtpInput');
-        if (otpInput) {
-          otpInput.value = '';
-          otpInput.focus();
+        const resetCode = data.code || data.devCode;
+        if (resetCode) {
+          if (otpInput) otpInput.value = resetCode;
+          showAuthAlert(`✓ Verification code: <span class="font-mono text-sm px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-100 font-extrabold tracking-widest">${resetCode}</span> (Auto-filled). Enter your new password below.`, true);
+          const newPassInput = document.getElementById('forgotNewPassInput');
+          if (newPassInput) newPassInput.focus();
+        } else {
+          showAuthAlert(`✓ Verification email sent to ${email}! Check your inbox or spam folder for your 6-digit reset code (valid for 5 minutes).`, true);
+          if (otpInput) {
+            otpInput.value = '';
+            otpInput.focus();
+          }
         }
       } catch (err) {
         console.error('[Forgot Password Error]', err);
@@ -32102,8 +32110,20 @@ function onWizardBranchChanged(branchKey) {
             setTimeout(() => codeInput.focus(), 100);
           }
 
+          const receivedPin = data.pin || data.devPin;
+          if (receivedPin) {
+            if (codeInput) codeInput.value = receivedPin;
+            if (verifyAlertEl) {
+              verifyAlertEl.innerHTML = `✓ Verification PIN: <span class="font-mono text-base px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-100 font-extrabold tracking-widest">${receivedPin}</span> (Auto-filled). Click <strong>Verify &amp; Create Account</strong> below to activate!`;
+              verifyAlertEl.className = "text-xs p-3 rounded-xl font-bold text-center border bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800";
+              verifyAlertEl.classList.remove('hidden');
+            }
+            showToast("Account created! Verification PIN auto-filled.");
+          } else {
+            showToast(`Verification code sent to ${email}! Check your inbox.`);
+          }
+
           startVerificationPolling(email);
-          showToast(`Verification PIN & 1-click link dispatched via Brevo! Check ${email}`);
         } catch (err) {
           if (submitBtn) {
             submitBtn.disabled = false;
@@ -32177,7 +32197,19 @@ function onWizardBranchChanged(branchKey) {
               if (verifyStep) verifyStep.classList.remove('hidden');
               if (emailDisplay) emailDisplay.innerText = identifier;
               startVerificationPolling(identifier);
-              showAuthAlert(data.error || "Email verification required. Check your inbox for the PIN or activation link.");
+              const loginPin = data.pin || data.devPin;
+              const codeInput = document.getElementById('authVerificationCodeInput');
+              const verifyAlertEl = document.getElementById('authVerifyAlert');
+              if (loginPin) {
+                if (codeInput) codeInput.value = loginPin;
+                if (verifyAlertEl) {
+                  verifyAlertEl.innerHTML = `✓ Verification PIN: <span class="font-mono text-base px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-100 font-extrabold tracking-widest">${loginPin}</span> (Auto-filled). Click <strong>Verify &amp; Create Account</strong> below to activate!`;
+                  verifyAlertEl.className = "text-xs p-3 rounded-xl font-bold text-center border bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800";
+                  verifyAlertEl.classList.remove('hidden');
+                }
+              } else {
+                showAuthAlert(data.error || "Email verification required. Check your inbox for the PIN or activation link.");
+              }
               return;
             }
 
@@ -32477,7 +32509,20 @@ function onWizardBranchChanged(branchKey) {
 
         if (res.ok && data.success) {
           startVerificationPolling(email);
-          showToast("✓ New 6-digit code dispatched! Check your Inbox and Spam/Junk folder.");
+          const codeInput = document.getElementById('authVerificationCodeInput');
+          const verifyAlertEl = document.getElementById('authVerifyAlert');
+          const freshPin = data.pin || data.devPin;
+          if (freshPin) {
+            if (codeInput) codeInput.value = freshPin;
+            if (verifyAlertEl) {
+              verifyAlertEl.innerHTML = `✓ Fresh verification PIN: <span class="font-mono text-base px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-100 font-extrabold tracking-widest">${freshPin}</span> (Auto-filled). Click Verify below!`;
+              verifyAlertEl.className = "text-xs p-3 rounded-xl font-bold text-center border bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800";
+              verifyAlertEl.classList.remove('hidden');
+            }
+            showToast(`✓ Fresh PIN: ${freshPin} (Auto-filled)`);
+          } else {
+            showToast("✓ New 6-digit code dispatched! Check your Inbox and Spam/Junk folder.");
+          }
           
           // Start 30-second cooldown
           resendCooldownSeconds = 30;

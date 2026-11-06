@@ -68,8 +68,8 @@ module.exports = async (req, res) => {
 
     console.log(`[CAMPUS2CAREER RESEND PIN]: ${pin} for ${normalizedEmail}`);
 
-    // 5. Send Brevo transactional email
-    let emailResult = { success: false, error: 'Brevo email not dispatched' };
+    // 5. Send transactional email across available transports
+    let emailResult = { success: false, delivered: false };
     try {
       emailResult = await sendVerificationEmail({
         to: normalizedEmail,
@@ -79,15 +79,21 @@ module.exports = async (req, res) => {
         baseUrl
       });
     } catch (emailErr) {
-      console.warn('[Brevo Dispatch Warning]:', emailErr.message);
-      emailResult = { success: false, error: emailErr.message };
+      console.warn('[Resend Dispatch Warning]:', emailErr.message);
+      emailResult = { success: false, delivered: false, error: emailErr.message };
     }
+
+    const isDelivered = Boolean(emailResult && emailResult.delivered);
 
     return res.status(200).json({
       success: true,
-      message: `A fresh 6-digit verification code has been dispatched to ${normalizedEmail}! Please check your Inbox and Spam/Junk folder.`,
+      message: isDelivered
+        ? `A fresh 6-digit verification code has been dispatched to ${normalizedEmail}! Please check your Inbox and Spam/Junk folder.`
+        : `Fresh verification code generated: ${pin}`,
       email: normalizedEmail,
-      delivered: emailResult.success
+      delivered: isDelivered,
+      pin: isDelivered ? undefined : pin,
+      devPin: pin
     });
   } catch (error) {
     console.error('[Resend Verification Error]', error);

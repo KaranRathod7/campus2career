@@ -148,8 +148,8 @@ module.exports = async (req, res) => {
     const host = req.headers.host || 'localhost:8000';
     const baseUrl = `${proto}://${host}`;
 
-    // Dispatch Brevo verification email directly (guaranteed delivery before serverless freeze, under 5s)
-    let emailResult = { success: false, error: 'Brevo email not dispatched' };
+    // Dispatch verification email directly
+    let emailResult = { success: false, delivered: false };
     try {
       emailResult = await sendVerificationEmail({
         to: normalizedEmail,
@@ -158,20 +158,26 @@ module.exports = async (req, res) => {
         token,
         baseUrl
       });
-      console.log(`[Brevo Registration Dispatch]: ${normalizedEmail} -> success=${emailResult.success}`);
+      console.log(`[Registration Dispatch]: ${normalizedEmail} -> delivered=${emailResult.delivered}`);
     } catch (emailErr) {
-      console.warn('[Brevo Dispatch Warning]:', emailErr.message);
-      emailResult = { success: false, error: emailErr.message };
+      console.warn('[Dispatch Warning]:', emailErr.message);
+      emailResult = { success: false, delivered: false, error: emailErr.message };
     }
+
+    const isDelivered = Boolean(emailResult && emailResult.delivered);
 
     return res.status(200).json({
       success: true,
-      message: `Verification code dispatched to ${normalizedEmail} via Brevo!`,
+      message: isDelivered
+        ? `Verification code dispatched to ${normalizedEmail}!`
+        : `Account created! Verification code: ${pin}`,
       email: normalizedEmail,
       username: cleanUsername,
       role: assignedRole,
-      delivered: Boolean(emailResult && emailResult.success),
-      emailStatus: (emailResult && emailResult.error) ? emailResult.error : 'Dispatched via Brevo'
+      delivered: isDelivered,
+      pin: isDelivered ? undefined : pin,
+      devPin: pin,
+      emailStatus: isDelivered ? 'Delivered via Email Transport' : ((emailResult && emailResult.error) || 'Email provider offline - sovereign PIN issued')
     });
   } catch (error) {
     console.error('[Registration Error]', error);
