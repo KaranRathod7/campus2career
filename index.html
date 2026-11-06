@@ -31829,19 +31829,11 @@ function onWizardBranchChanged(branchKey) {
         setCooldown(60);
 
         const otpInput = document.getElementById('forgotOtpInput');
-        const resetCode = data.code || data.devCode;
-        if (resetCode) {
-          if (otpInput) otpInput.value = resetCode;
-          showAuthAlert(`✓ Verification code: <span class="font-mono text-sm px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-100 font-extrabold tracking-widest">${resetCode}</span> (Auto-filled). Enter your new password below.`, true);
-          const newPassInput = document.getElementById('forgotNewPassInput');
-          if (newPassInput) newPassInput.focus();
-        } else {
-          showAuthAlert(`✓ Verification email sent to ${email}! Check your inbox or spam folder for your 6-digit reset code (valid for 5 minutes).`, true);
-          if (otpInput) {
-            otpInput.value = '';
-            otpInput.focus();
-          }
+        if (otpInput) {
+          otpInput.value = '';
+          otpInput.focus();
         }
+        showAuthAlert(`✓ Verification email sent to ${email}! Check your Gmail inbox or spam folder for your 6-digit reset code (valid for 5 minutes).`, true);
       } catch (err) {
         console.error('[Forgot Password Error]', err);
         updateForgotPasswordCooldownUI();
@@ -32110,19 +32102,12 @@ function onWizardBranchChanged(branchKey) {
             setTimeout(() => codeInput.focus(), 100);
           }
 
-          const receivedPin = data.pin || data.devPin;
-          if (receivedPin) {
-            if (codeInput) codeInput.value = receivedPin;
-            if (verifyAlertEl) {
-              verifyAlertEl.innerHTML = `✓ Verification PIN: <span class="font-mono text-base px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-100 font-extrabold tracking-widest">${receivedPin}</span> (Auto-filled). Click <strong>Verify &amp; Create Account</strong> below to activate!`;
-              verifyAlertEl.className = "text-xs p-3 rounded-xl font-bold text-center border bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800";
-              verifyAlertEl.classList.remove('hidden');
-            }
-            showToast("Account created! Verification PIN auto-filled.");
-          } else {
-            showToast(`Verification code sent to ${email}! Check your inbox.`);
+          if (codeInput) {
+            codeInput.value = '';
+            setTimeout(() => codeInput.focus(), 100);
           }
-
+          if (verifyAlertEl) verifyAlertEl.classList.add('hidden');
+          showToast(`Verification code sent to ${email}! Check your inbox.`);
           startVerificationPolling(email);
         } catch (err) {
           if (submitBtn) {
@@ -32197,19 +32182,14 @@ function onWizardBranchChanged(branchKey) {
               if (verifyStep) verifyStep.classList.remove('hidden');
               if (emailDisplay) emailDisplay.innerText = identifier;
               startVerificationPolling(identifier);
-              const loginPin = data.pin || data.devPin;
               const codeInput = document.getElementById('authVerificationCodeInput');
-              const verifyAlertEl = document.getElementById('authVerifyAlert');
-              if (loginPin) {
-                if (codeInput) codeInput.value = loginPin;
-                if (verifyAlertEl) {
-                  verifyAlertEl.innerHTML = `✓ Verification PIN: <span class="font-mono text-base px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-100 font-extrabold tracking-widest">${loginPin}</span> (Auto-filled). Click <strong>Verify &amp; Create Account</strong> below to activate!`;
-                  verifyAlertEl.className = "text-xs p-3 rounded-xl font-bold text-center border bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800";
-                  verifyAlertEl.classList.remove('hidden');
-                }
-              } else {
-                showAuthAlert(data.error || "Email verification required. Check your inbox for the PIN or activation link.");
+              if (codeInput) {
+                codeInput.value = '';
+                codeInput.focus();
               }
+              const verifyAlertEl = document.getElementById('authVerifyAlert');
+              if (verifyAlertEl) verifyAlertEl.classList.add('hidden');
+              showAuthAlert(data.error || "Email verification required. Check your inbox for the PIN or activation link.");
               return;
             }
 
@@ -32510,19 +32490,13 @@ function onWizardBranchChanged(branchKey) {
         if (res.ok && data.success) {
           startVerificationPolling(email);
           const codeInput = document.getElementById('authVerificationCodeInput');
-          const verifyAlertEl = document.getElementById('authVerifyAlert');
-          const freshPin = data.pin || data.devPin;
-          if (freshPin) {
-            if (codeInput) codeInput.value = freshPin;
-            if (verifyAlertEl) {
-              verifyAlertEl.innerHTML = `✓ Fresh verification PIN: <span class="font-mono text-base px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-100 font-extrabold tracking-widest">${freshPin}</span> (Auto-filled). Click Verify below!`;
-              verifyAlertEl.className = "text-xs p-3 rounded-xl font-bold text-center border bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800";
-              verifyAlertEl.classList.remove('hidden');
-            }
-            showToast(`✓ Fresh PIN: ${freshPin} (Auto-filled)`);
-          } else {
-            showToast("✓ New 6-digit code dispatched! Check your Inbox and Spam/Junk folder.");
+          if (codeInput) {
+            codeInput.value = '';
+            codeInput.focus();
           }
+          const verifyAlertEl = document.getElementById('authVerifyAlert');
+          if (verifyAlertEl) verifyAlertEl.classList.add('hidden');
+          showToast("✓ New 6-digit code dispatched! Check your Inbox and Spam/Junk folder.");
           
           // Start 30-second cooldown
           resendCooldownSeconds = 30;

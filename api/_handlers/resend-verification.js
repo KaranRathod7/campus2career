@@ -85,15 +85,20 @@ module.exports = async (req, res) => {
 
     const isDelivered = Boolean(emailResult && emailResult.delivered);
 
+    if (!isDelivered) {
+      return res.status(500).json({
+        success: false,
+        delivered: false,
+        error: `Email dispatch failed (${emailResult.error || 'Provider rejected'}). Please check your Brevo API key or Gmail App Password.`,
+        email: normalizedEmail
+      });
+    }
+
     return res.status(200).json({
       success: true,
-      message: isDelivered
-        ? `A fresh 6-digit verification code has been dispatched to ${normalizedEmail}! Please check your Inbox and Spam/Junk folder.`
-        : `Fresh verification code generated: ${pin}`,
+      message: `A fresh 6-digit verification code has been dispatched to ${normalizedEmail}! Please check your Gmail Inbox and Spam folder.`,
       email: normalizedEmail,
-      delivered: isDelivered,
-      pin: isDelivered ? undefined : pin,
-      devPin: pin
+      delivered: true
     });
   } catch (error) {
     console.error('[Resend Verification Error]', error);

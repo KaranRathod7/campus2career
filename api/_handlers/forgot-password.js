@@ -98,7 +98,7 @@ module.exports = async (req, res) => {
     console.log(`[PASSWORD RESET CODE]: ${resetCode} FOR ${cleanEmail} (Valid for 5 mins)`);
     console.log('==============================================');
 
-    // 4. Dispatch OTP via email service with comprehensive logging and error handling
+    // 4. Dispatch OTP via email service
     let emailResult = { success: false, delivered: false };
     try {
       emailResult = await sendPasswordResetOtpEmail({
@@ -108,7 +108,7 @@ module.exports = async (req, res) => {
       });
     } catch (emailErr) {
       console.warn('[Forgot Password Dispatch Notice]:', emailErr.message);
-      emailResult = { success: true, delivered: false, error: emailErr.message };
+      emailResult = { success: false, delivered: false, error: emailErr.message };
     }
 
     if (emailResult && emailResult.delivered) {
@@ -119,15 +119,11 @@ module.exports = async (req, res) => {
         message: `Verification code sent to ${cleanEmail}. Please check your inbox and spam folder.`
       });
     } else {
-      // Sovereign delivery fallback: Ensure user is NEVER blocked by an external email provider outage
-      console.log(`[PASSWORD RESET SOVEREIGN FALLBACK] Code ${resetCode} provided for ${cleanEmail}`);
-      return res.status(200).json({
-        success: true,
+      return res.status(500).json({
+        success: false,
         delivered: false,
-        code: resetCode,
-        devCode: resetCode,
-        email: cleanEmail,
-        message: `Verification code generated: ${resetCode}`
+        error: `Email delivery failed (${emailResult.error || 'Provider rejected'}). Please check your Brevo API key or Gmail App Password.`,
+        email: cleanEmail
       });
     }
   } catch (error) {

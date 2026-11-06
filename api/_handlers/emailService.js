@@ -340,15 +340,13 @@ async function sendVerificationEmail({ to, name = 'Student', pin, token, baseUrl
     return { success: true, delivered: true, pin, token, messageId: dispatchRes.messageId, provider: dispatchRes.provider };
   }
 
-  console.log(`[SOVEREIGN FALLBACK] Verification code ${pin} generated and preserved for ${to}`);
   return {
-    success: true,
+    success: false,
     delivered: false,
-    fallback: true,
     pin,
     token,
-    error: dispatchRes.error,
-    provider: 'local-sovereign'
+    error: dispatchRes.error || 'Delivery failed',
+    provider: dispatchRes.provider || 'none'
   };
 }
 
@@ -421,14 +419,12 @@ async function sendPasswordResetOtpEmail({ to, name = 'Student', code }) {
     return { success: true, delivered: true, code, messageId: dispatchRes.messageId, provider: dispatchRes.provider };
   }
 
-  console.log(`[SOVEREIGN RESET FALLBACK] Password reset code ${code} active for ${to}`);
   return {
-    success: true,
+    success: false,
     delivered: false,
-    fallback: true,
     code,
-    error: dispatchRes.error,
-    provider: 'local-sovereign'
+    error: dispatchRes.error || 'Delivery failed',
+    provider: dispatchRes.provider || 'none'
   };
 }
 

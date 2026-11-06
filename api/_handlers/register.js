@@ -160,24 +160,28 @@ module.exports = async (req, res) => {
       });
       console.log(`[Registration Dispatch]: ${normalizedEmail} -> delivered=${emailResult.delivered}`);
     } catch (emailErr) {
-      console.warn('[Dispatch Warning]:', emailErr.message);
+      console.warn('[Registration Dispatch Warning]:', emailErr.message);
       emailResult = { success: false, delivered: false, error: emailErr.message };
     }
 
     const isDelivered = Boolean(emailResult && emailResult.delivered);
 
+    if (!isDelivered) {
+      return res.status(500).json({
+        success: false,
+        delivered: false,
+        error: `Email delivery failed (${emailResult.error || 'Provider rejected'}). Please check your Brevo API key or Gmail App Password.`,
+        email: normalizedEmail
+      });
+    }
+
     return res.status(200).json({
       success: true,
-      message: isDelivered
-        ? `Verification code dispatched to ${normalizedEmail}!`
-        : `Account created! Verification code: ${pin}`,
+      message: `Verification code dispatched to ${normalizedEmail}! Please check your Gmail inbox or spam folder.`,
       email: normalizedEmail,
       username: cleanUsername,
       role: assignedRole,
-      delivered: isDelivered,
-      pin: isDelivered ? undefined : pin,
-      devPin: pin,
-      emailStatus: isDelivered ? 'Delivered via Email Transport' : ((emailResult && emailResult.error) || 'Email provider offline - sovereign PIN issued')
+      delivered: true
     });
   } catch (error) {
     console.error('[Registration Error]', error);
